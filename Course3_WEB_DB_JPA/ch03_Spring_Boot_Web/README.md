@@ -3,8 +3,8 @@ WEB, REST API, Spring Boot Web, Memory DB, Mysql, JPA, Spring Web(Filter, AOP)
 https://github.com/steve-developer/fastcampus-2023-part01/tree/main/PART1
 
 # Ch00. 들어가며 
-## Ch01. 강의소개
-## Ch02. 개발 환경 설치
+# Ch01. 강의소개
+# Ch02. 개발 환경 설치
 - Intellij, Java11
 - Project
 ```
