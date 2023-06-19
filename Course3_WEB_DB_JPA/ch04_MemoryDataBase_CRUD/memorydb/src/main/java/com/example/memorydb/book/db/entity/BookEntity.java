@@ -1,12 +1,15 @@
-package com.example.memorydb.book.entity;
+package com.example.memorydb.book.db.entity;
 
 import com.example.memorydb.entity.Entity;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class BookEntity extends Entity {
     private String name;
     private String category;
