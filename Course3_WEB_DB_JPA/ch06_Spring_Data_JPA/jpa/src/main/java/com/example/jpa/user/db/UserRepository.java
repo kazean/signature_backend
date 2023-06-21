@@ -1,2 +1,6 @@
-package com.example.jpa.user.db;public class UserRepository {
+package com.example.jpa.user.db;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
 }
