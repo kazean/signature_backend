@@ -29,6 +29,7 @@ public class LoggerFilter implements Filter {
 ```
 > `chain.doFilter(req, res)`  
 ContentCachingRequestWrapper/ Res: 캐싱된 HttpRequest  
+byte[] req.getContentAsByteArray()  
 But Response는 캐싱되어지지만 Res에 다시 쓰여지지 않으므로 `res.copyBodyToResponse()` 메서드를 호출해주어야 한다  
 cf, HttpServletRequest((HttpServletRequest) request)
 ```
@@ -101,18 +102,125 @@ public class WebConfig implements WebMvcConfigurer {
 public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception  
 public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception  
 - `HandlerMethod`
-> handlerMethod.getMethodAnnotation(class annotationType)  
+> A handlerMethod.getMethodAnnotation(class<A> annotationType)  
 class<?> handlerMethod.getBeanType()  
-class.getAnnotation(class<T> annotationClass)
+A class.getAnnotation(class<A> annotationClass)
 - Config - impl WebMvcConfigurer
 > @Over public void addInterceptors(InterceptorRegistry registry)  
 InterceptorRegistration registry.addInterceptor(HandlerInterceptor interceptor)  
-InterceptorRegistration interceptorRegistration.addPahPateerns(String... patterns)
-
-
-
-
-
+InterceptorRegistration interceptorRegistration.addPathPateerns(String... patterns)
 
 ## Ch09-03. Spring AOP
+### AOP(Aspect Orieneted Programming)
+관점지향 프로그래밍
+- 스프링 어플리케이션은 대부분 특별한 경우를 제외하고 Web Layer, Business Layer, Data Layer로 정의
+- Web Layer
+> Rest API, Client 중심 로직
+- Business Layer
+> 내부 정책에 따른 logic
+- Data Layer
+> 데이터 베이스 연동
+### AOP Annotation
+- @Aspect
+- @Pointcut
+- @Before
+- @After
+- @AfterReturning
+- @AfterThrowing
+- @Around
+> Before > [AfterReturning/AfterThrowing] > After
+### 포인트컷 지시자(Pointcut Desinators) AOP PCD
+- execution
+- within
+- this
+- target
+- args
+- @target
+- @args
+- @within
+- @annotation
+- bean
+### TimerAop
+```
+@Aspect
+@Component
+public class TimerAop {
+
+    @Pointcut(value = "within(com.example.filter.controller.UserApiController)")
+    public void timerPointcut() {
+
+    }
+
+    @Before(value = "timerPointcut()")
+    public void before(JoinPoint joinPoint) {
+        System.out.println("before");
+    }
+
+    @After(value = "timerPointcut()")
+    public void after(JoinPoint joinPoint) {
+        System.out.println("after");
+    }
+
+    @AfterReturning(value = "timerPointcut()", returning = "result")
+    public void afterReturning(JoinPoint joinPoint, Object result) {
+        System.out.println("after returning");
+    }
+
+    @AfterThrowing(value = "timerPointcut()", throwing = "ex")
+    public void afterThrowing(JoinPoint joinPoint, Throwable ex) {
+        System.out.println("after throwing");
+    }
+
+    @Around(value = "timerPointcut()")
+    public void around(ProceedingJoinPoint joinPoint) throws Throwable {
+        System.out.println("메소드 실행 이전");
+        Arrays.stream(joinPoint.getArgs()).forEach(it -> {
+            if (it instanceof UserRequest) {
+                var tempUser = (UserRequest) it;
+                var phoneNumber = tempUser.getPhoneNumber().replace("-", "");
+                tempUser.setPhoneNumber(phoneNumber);
+            }
+        });
+
+        // 암복호화 / 로깅
+        var newObjs = Arrays.asList(
+                new UserRequest()
+        );
+
+        var stopWatch = new StopWatch();
+        stopWatch.start();
+        joinPoint.proceed(newObjs.toArray());
+        stopWatch.stop();
+
+        System.out.println("총 소요된 시간 : " + stopWatch.getTotalTimeMillis() + "ms");
+
+        System.out.println("메소드 실행 이후");
+    }
+}
+```
+
 ## Ch09-04. Spring AOP Pointcut 문법
+포인트컷 지시자 PCD
+### `execution`
+"execution([접근제한자-생략가능] [리턴타입] [패키지지정] [클래스지정] [메소드지정] [매개변수지정])"
+- 접근제한자
+> private, public, 생략
+- 리턴타입
+> *, void, !void
+- 패키지 지정
+> com.example.controller, com.example.*, com.example.., com.example..impl  
+- 클래스 지정
+> Foo, *Sample  
+execution(public * com.exmaple.service.*Sample)
+- 메서드 지정
+> set*(..), *(..): 모든 메서드 > 동작 X StackOverFlow, foo(..)
+- 매개변수 지정
+> (..): N개 매개변수, (*): 매개변수가 1개
+### `within`
+패키지
+### this / target
+this(com.exmaple.dto.ifs.UserUfs)
+### args
+"execution(* setId(..) && args*id)"
+### `@target / @args / @within / @annotation`
+### bean

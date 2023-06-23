@@ -17,7 +17,6 @@ public class OpenApiInterceptor implements HandlerInterceptor {
         log.info("pre handler");
         // controller 전달, false 전달하지 않는다
         HandlerMethod handlerMethod = (HandlerMethod) handler;
-
         OpenApi methodLevel = handlerMethod.getMethodAnnotation(OpenApi.class);
         OpenApi classLevel = handlerMethod.getBeanType().getAnnotation(OpenApi.class);
         if (methodLevel != null) {
