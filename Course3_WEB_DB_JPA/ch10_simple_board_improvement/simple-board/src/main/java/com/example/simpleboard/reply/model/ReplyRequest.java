@@ -1,29 +1,30 @@
 package com.example.simpleboard.reply.model;
 
-import com.example.simpleboard.post.db.PostEntity;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.*;
 
-import javax.persistence.Column;
-import javax.persistence.ManyToOne;
-import java.time.LocalDateTime;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @Getter
 @Setter
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 @Builder
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ReplyDto {
-    private Long id;
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class ReplyRequest {
+    @NotNull
     private Long postId;
+    @NotBlank
     private String userName;
+    @NotBlank
+    @Size(min = 4, max = 4)
     private String password;
-    private String status;
+    @NotBlank
     private String title;
+    @NotBlank
     private String content;
-    private LocalDateTime repliedAt;
 }

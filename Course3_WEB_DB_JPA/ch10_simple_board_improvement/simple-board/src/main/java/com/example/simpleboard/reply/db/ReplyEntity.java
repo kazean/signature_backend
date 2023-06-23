@@ -1,13 +1,10 @@
-package com.example.simpleboard.reply.model;
+package com.example.simpleboard.reply.db;
 
 import com.example.simpleboard.post.db.PostEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.*;
 
-import javax.persistence.Column;
-import javax.persistence.ManyToOne;
+import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Getter
@@ -16,14 +13,20 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @ToString
 @Builder
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ReplyDto {
+@Entity(name = "reply")
+public class ReplyEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long postId;
+    @ManyToOne
+    @ToString.Exclude
+    @JsonIgnore
+    private PostEntity post;
     private String userName;
     private String password;
     private String status;
     private String title;
+    @Column(columnDefinition = "TEXT")
     private String content;
     private LocalDateTime repliedAt;
 }
