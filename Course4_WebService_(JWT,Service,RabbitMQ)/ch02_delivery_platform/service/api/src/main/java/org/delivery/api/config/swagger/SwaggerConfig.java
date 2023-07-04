@@ -1,4 +1,4 @@
-package org.delivery.api.config;
+package org.delivery.api.config.swagger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.core.jackson.ModelResolver;
