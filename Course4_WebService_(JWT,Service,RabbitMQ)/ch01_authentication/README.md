@@ -85,7 +85,7 @@ cookie.setSecure(true) // HTTPS
 
 # Ch01-04. HTTP Header 인증
 ## HTTP Header
-Http Basic, Http Digest, Oauth와 같은 프로토콜을 통해서 구현 되느네 일반적
+Http Basic, Http Digest, Oauth와 같은 프로토콜을 통해서 구현 되는게 일반적
 > Natvie App에서 보통 사용
 
 # Ch01-05. JWT Token 인증 - 1
