@@ -1,0 +1,28 @@
+{
+	"result": {
+		"result_code": 0,
+		"result_message": "string",
+		"result_description": "string"
+	},
+	"body": {
+		"email": "steve@gmail.com",
+		"password": "1234"
+	}
+}
+
+{
+	"result": {
+		"result_code": 0,
+		"result_message": "string",
+		"result_description": "string"
+	},
+	"body": {
+		"name": "스타개미 강남정",
+		"address": "서울시 강남구",
+		"store_category": "COFFEE_TEA",
+		"thumbnail_url": "https://i.namu.wiki/i/VYmU63tVd7RJs_T1dyXCj25IvbGUJtIfqu08MJzEIYRr_2NXfu9SemIiePTfmmE1ZrucXWLYzC7BnmExH2LhXprwCG3MAehoarIWQjva_Q2-pFt6MW_fYA84dvMBdxbpi8o_OVOwkY3nrZXhIKC2qQ.webp",
+		"minimum_amount": 8000,
+		"minimum_delivery_amount": 3000,
+		"phone_number": "0211112222"
+	}
+}
