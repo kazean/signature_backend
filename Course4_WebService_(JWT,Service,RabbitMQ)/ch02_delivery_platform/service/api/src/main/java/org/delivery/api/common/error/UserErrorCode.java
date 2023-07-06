@@ -1,15 +1,17 @@
 package org.delivery.api.common.error;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+/**
+ * User의 경우 1000번대 에러코드 사용
+ */
 @AllArgsConstructor
-public enum ErrorCode {
+@Getter
+public enum UserErrorCode implements ErrorCodeIfs{
 
-    OK(200, 200, "성공"),
-    BAD_REQUEST(HttpStatus.BAD_REQUEST.value(), 400, "잘못된 요청"),
-    SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR.value(), 500, "서버에러"),
-    NULL_POINT(HttpStatus.INTERNAL_SERVER_ERROR.value(), 512, "Null point")
+    USER_NOT_FOUND(400, 1404, "사용자를 찾을 수 없음"),
 
     ;
 

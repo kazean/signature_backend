@@ -18,6 +18,7 @@ public class LoggerFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         ContentCachingRequestWrapper req = new ContentCachingRequestWrapper((HttpServletRequest) request);
         ContentCachingResponseWrapper res = new ContentCachingResponseWrapper((HttpServletResponse) response);
+        log.info("INIT URI : {}", req.getRequestURI());
 
         chain.doFilter(req, res);
 
