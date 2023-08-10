@@ -21,6 +21,6 @@ token:
   secret:
     key: SpringBootJWTHelperTokenSecretKeyValue123!@#
   access-token:
-    plus-hour: 1
+    plus-hour: 24
   refresh-token:
-    plus-hour: 12
+    plus-hour: 48
