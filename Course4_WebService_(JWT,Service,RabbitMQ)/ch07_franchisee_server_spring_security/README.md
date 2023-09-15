@@ -39,8 +39,11 @@ rootProject.name = 'service'
 ~
 include 'store-admin'
 ```
+> include 'store-admin'
+
 - api build.gradle > store-admin build.gradle
 > jjwt 만 제외
+
 - StoreAdminApplicaiton.class
 ```
 @SpringBootApplication
@@ -50,6 +53,8 @@ public class StoreAdminApplication {
     }
 }
 ```
+> @SpringBootApplicaiton, SpringApplication.run()
+
 - api application.yml > store-admin application.yml
 ```
 server:
@@ -188,3 +193,265 @@ public interface StoreUserRepository extends JpaRepository<StoreUserEntity, Long
 }
 ```
 > @SuperBuilder, @EqualsAndHashCode(callSuper = true)
+
+
+# Ch07-04. 가맹점 유저 가입 개발
+StoreUser 가입 Register 개발
+- Business Flow
+```
+StoreUserRegisterRequest > OpenApiController > Business.regiseter (toEntity, register) > Service.register(PasswordEncoder, repository) > StoreUserResponse
+)
+```
+- Code
+```
+- public class SecurityConfig {
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+      // hash 로 암호화, 단방향
+      return new BCryptPasswordEncoder();
+  }
+}
+
+- public class StoreUserService {
+    private final StoreUserRepository storeUserRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public StoreUserEntity register(
+            StoreUserEntity storeUserEntity
+    ) {
+        storeUserEntity.setStatus(StoreUserStatus.REGISTERED);
+        storeUserEntity.setPassword(passwordEncoder.encode(storeUserEntity.getPassword()));
+        storeUserEntity.setRegisteredAt(LocalDateTime.now());
+        return storeUserRepository.save(storeUserEntity);
+    }
+
+    public Optional<StoreUserEntity> getRegisterUser(String email) { ~ } 
+}
+
+- public class StoreUserOpenApiController {
+    @PostMapping("")
+    public StoreUserResponse register(
+            @Valid
+            @RequestBody StoreUserRegisterRequest request
+            ) {
+        StoreUserResponse response = storeUserBusiness.register(request);
+        return response;
+    }
+}
+- public class StoreUserBusiness {
+
+  private final StoreUserConverter storeUserConverter;
+  private final StoreUserService storeUserService;
+  private final StoreRepository storeRepository; // TODO SERVICE 로 변경하기
+
+  public StoreUserResponse register(
+          StoreUserRegisterRequest request
+  ) {
+      Optional<StoreEntity> storeEntity = storeRepository.findFirstByNameAndStatusOrderByIdDesc(request.getStoreName(), StoreStatus.REGISTERED);
+      StoreUserEntity entity = storeUserConverter.toEntity(request, storeEntity.get());
+      StoreUserEntity newEntity = storeUserService.register(entity);
+      StoreUserResponse response = storeUserConverter.toResponse(newEntity, storeEntity.get());
+      return response;
+  }
+}
+- public class StoreUserConverter {
+  public StoreUserEntity toEntity(
+          StoreUserRegisterRequest request,
+          StoreEntity storeEntity
+  )
+
+  public StoreUserResponse toResponse(
+          StoreUserEntity storeUserEntity,
+          StoreEntity storeEntity
+  )
+}
+
+- public interface StoreRepository extends JpaRepository<StoreEntity, Long> {
+    // select * from store where name = ? and status ? order by id desc limit 1
+    Optional<StoreEntity> findFirstByNameAndStatusOrderByIdDesc(String name, StoreStatus status);
+}
+```
+> Request시 StoreName 입력  
+Business request에서 StoreUserEntity, StoreEntity > response:convert
+Service에서 pw입력시 PasswordEncode: @Bean PasswordEncoder > new BCryptPasswordEncoder();  
+Response UserResponse, StoreResponse
+
+
+- Model
+```
+- public class StoreUserResponse {
+  public static class UserResponse {
+  public static class StoreResponse {
+}
+
+- public class StoreUserRegisterRequest {
+  @NotBlank
+  private String storeName;
+  @NotBlank
+  private String email;
+  @NotBlank
+  private String password;
+  @NotBlank
+  private StoreUserRole role;
+}
+```
+> StoreUserRegisterRequest, StoreUserResponse
+
+
+# Ch07-05. Spring Security에서의 가맹점 유저 로그인 처리
+Spring Security formLogin: `UserDetails`
+- domain.authorization.AuthorizationService
+```
+public class AuthorizationService implements UserDetailsService {
+  private final StoreUserService storeUserService;
+
+  @Over
+  public UserDetails loadUserByUsername(String name) throw UsernameNotFoundException {
+    Optional<StoreUserEntity> storeUserEntity = storeUserService.getRegisterUser(username);
+    return storeUserEntity.map(it -> {
+        UserDetails user = User.builder()
+                .username(it.getEmail())
+                .password(it.getPassword())
+                .roles(it.getRole().toString())
+                .build();
+        return user;
+    })
+    .orElseThrow(() -> new UsernameNotFoundException(username));
+  }
+}
+```
+> impl `UserDetailsService`: `loadByUserByUsername`, `UserDetails`: User.builder().build()  
+username, password, roles는 필수
+
+- build.gralde
+```
+  implementation 'org.springframework.boot:spring-boot-starter-security'
+  implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+  // https://mvnrepository.com/artifact/org.thymeleaf.extras/thymeleaf-extras-springsecurity5
+  implementation group: 'org.thymeleaf.extras', name: 'thymeleaf-extras-springsecurity5', version: '3.0.4.RELEASE'
+```
+> spring-boot-starter-security, thmeleaf, thymeleaf-extras-springsecurity5
+
+- Security Page Code
+```
+@Controller
+@RequestMapping("")
+- public class PageController {
+
+    @RequestMapping(path = {"", "/main"})
+    public ModelAndView main() {
+        return new ModelAndView("main");
+    }
+
+    @RequestMapping("/order")
+    public ModelAndView order() {
+        return new ModelAndView("order/order");
+    }
+}
+
+- main.html
+<!DOCTYPE html>
+<html lang="kor" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h1>MAIN PAGE</h1>
+
+    <h1 th:text="${#authentication.name}"></h1></br>
+</body>
+</html>
+```
+> xmlns:th="http://www.thymeleaf.org", th:text="${#authentication}"
+
+
+# Ch07-06. Spring Security에서의 사용자 정보 확인하기
+UserDetails를 상속받아 사용자 정보 추가하기
+- UserSession, AuthorizationService 
+```
+public class UserSession implements UserDetails {
+
+    // user
+    private Long userId;
+    private String email;
+    private String password;
+    private StoreUserStatus status;
+    private StoreUserRole role;
+    private LocalDateTime registeredAt;
+    private LocalDateTime unregisteredAt;
+    private LocalDateTime lastLoginAt;
+
+    // store
+    private Long storeId;
+    private String storeName;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority(this.role.toString()));
+    }
+
+    @Override
+    public String getPassword() {
+        return this.password;
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return this.status == StoreUserStatus.REGISTERED;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return this.status == StoreUserStatus.REGISTERED;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return this.status == StoreUserStatus.REGISTERED;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+}
+
+- public class AuthorizationService implements UserDetailsService {
+@Override
+public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    Optional<StoreUserEntity> storeUserEntity = storeUserService.getRegisterUser(username);
+    Optional<StoreEntity> storeEntity = storeRepository.findFirstByIdAndStatusOrderByIdDesc(storeUserEntity.get().getStoreId(), StoreStatus.REGISTERED);
+
+    return storeUserEntity.map(it -> {
+                UserSession userSession = UserSession.builder()
+                        .userId(it.getId())
+                        .email(it.getEmail())
+                        .password(it.getPassword())
+                        .status(it.getStatus())
+                        .role(it.getRole())
+                        .registeredAt(it.getRegisteredAt())
+                        .unregisteredAt(it.getUnregisteredAt())
+                        .lastLoginAt(it.getLastLoginAt())
+                        .storeId(storeEntity.get().getId())
+                        .storeName(storeEntity.get().getName())
+                        .build();
+        return userSession;
+    })
+    .orElseThrow(() -> new UsernameNotFoundException(username));
+}
+```
+> implements UsertDetails
+- main.html
+```
+<h1 th:text="${#authentication.name}"></h1></br>
+<h1 th:text="${#authentication.principal.storeName}"></h1></br>
+<h1 th:text="${#authentication.principal.role}"></h1></br>
+<h1 th:text="${#authentication}"></h1></br>
+```
+> #authentication.principal
