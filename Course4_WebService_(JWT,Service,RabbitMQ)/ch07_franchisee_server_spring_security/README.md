@@ -126,7 +126,7 @@ public class SecurityConfig {
 > csrf().disable()  
 formLogin(Customizer.withDefaults())  
 httpsecurity.build()
->> authorizeHttpReqeusts(Customizer<AuthorizationManagerRequestMatcherRegistry>)  
+>> authorizeHttpReqeusts(Customizer'AuthorizationManagerRequestMatcherRegistry')  
   .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()  
   .mvcMatchers(String... patterns).permitAll
   .anyRequest().authenticated()  
@@ -199,7 +199,7 @@ public interface StoreUserRepository extends JpaRepository<StoreUserEntity, Long
 StoreUser 가입 Register 개발
 - Business Flow
 ```
-StoreUserRegisterRequest > OpenApiController > Business.regiseter (toEntity, register) > Service.register(PasswordEncoder, repository) > StoreUserResponse
+StoreUserRegisterRequest > OpenApiController > Business.register (toEntity, register) > Service.register(PasswordEncoder, repository) > StoreUserResponse
 )
 ```
 - Code
@@ -446,7 +446,8 @@ public UserDetails loadUserByUsername(String username) throws UsernameNotFoundEx
     .orElseThrow(() -> new UsernameNotFoundException(username));
 }
 ```
-> implements UsertDetails
+> implements UsertDetails  
+return List.of(new SimpleGrantedAuthority(this.role.toString()));
 - main.html
 ```
 <h1 th:text="${#authentication.name}"></h1></br>
