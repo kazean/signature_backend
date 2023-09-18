@@ -12,7 +12,7 @@
 5. 보안이벤트처리: 인증 및 권한 에러에 대한 이벤트 핸들링
 
 
-# Ch07-02. Spring Securit를 통한 가맹점 서버개발 - 1
+# Ch07-02. Spring Security를 통한 가맹점 서버개발 - 1
 ## Mysql
 ```
 $ cd /Users/admin/study/signature/ws/Course3_WEB_DB_JPA/ch05_Mysql/docker-compose/mysql
