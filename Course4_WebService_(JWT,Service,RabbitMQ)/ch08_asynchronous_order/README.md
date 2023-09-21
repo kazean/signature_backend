@@ -41,12 +41,13 @@ services:
 
 ## RabbitMQ
 - [그림]
-- Pushlisher, Exchange, Queue, Cusumer
+- Publisher, Exchange, Queue, Cusumer
 > Exchange: 라우팅 역할  
 Consumer: queue와 양방향 가능
 
 
 # Ch08-04. Producer 개발하기 - 1
+RabbitConfig, application.yml, Producer
 - dependencies 추가
 >  implementation 'org.springframework.boot:spring-boot-starter-amqp'
 - RabbitMqConfig
@@ -129,7 +130,7 @@ public class Producer {
 
 
 # Ch08-05. Producer 개발하기 - 2
-Common 모듈 추가
+Common 모듈 추가, UserOrderMessage(Model)
 ## Common
 - build.gradle
 ```
@@ -175,6 +176,7 @@ jar {
 > private Long userOrderId;
 
 ## api
+UserOrderProducer(Service), UserOrderBusiness 주문시 mq 추가
 - build.gradle - common 추가
 > implementation project(:common)
 - Code
@@ -383,3 +385,284 @@ userConnection = new ConcurrentHashMap() //String, SseEmitter
 </script>
 ```
 > new EventSource(url), eventSource.onopen((event) => ~), eventSource.onmessage((event => ~))
+
+
+# Ch08-09. SSE를 통한 사용자 주문	Push 알림 개발하기 - 2
+SseEmitter 객체로 만들기  
+UserSseConnection(Model), SeeConnectionPool(ConnectionPoolIfs) > SseApiController
+- UserSseConnection
+```java
+@Getter
+@ToString
+@EqualsAndHashCode
+public class UserSseConnection {
+
+    private final String uniqueKey;
+    private final SseEmitter sseEmitter;
+    private final ObjectMapper objectMapper;
+    private final ConnectionPoolIfs<String, UserSseConnection> connectionPoolIfs;
+
+    private UserSseConnection(
+            String uniqueKey,
+            ConnectionPoolIfs<String, UserSseConnection> connectionPoolIfs,
+            ObjectMapper objectMapper
+    ) {
+
+        // 초기화
+        this.uniqueKey = uniqueKey;
+        this.sseEmitter = new SseEmitter(60 * 1000L);
+        this.connectionPoolIfs = connectionPoolIfs;
+        this.objectMapper = objectMapper;
+
+        // on completion
+        this.sseEmitter.onCompletion(() -> {
+            // connection pool remove
+        });
+
+        // on timeout
+        this.sseEmitter.onTimeout(() -> {
+            this.sseEmitter.complete();
+            connectionPoolIfs.onCompletionCallback(this);
+        });
+
+        // onopen 메세지
+        this.sendMessage("onopen", "connect");
+    }
+
+    public static UserSseConnection connect(
+            String uniqueKey,
+            ConnectionPoolIfs<String, UserSseConnection> connectionPoolIfs,
+            ObjectMapper objectMapper
+    ) {
+        return new UserSseConnection(uniqueKey, connectionPoolIfs, objectMapper);
+    }
+
+    public void sendMessage(String eventName, Object data) {
+        try {
+            String json = this.objectMapper.writeValueAsString(data);
+            SseEmitter.SseEventBuilder event = SseEmitter.event()
+                    .name(eventName)
+                    .data(json);
+            this.sseEmitter.send(event);
+        } catch (IOException e) {
+            this.sseEmitter.completeWithError(e);
+        }
+    }
+
+    public void sendMessage(Object data) {
+    }
+}
+```
+> String uniqueKey, SseEmitter emitter, ConnectionPoolIfs connectionPool, ObjectMapper objectMapper  
+onTimeout시 connectionPool callBack
+- ConnectionPoolIfs, SseConnectionPool
+```java
+public interface ConnectionPoolIfs<T, R> {
+    void addSession(T key, R session);
+
+    R getSession(T uniqueKey);
+
+    void onCompletionCallback(R session);
+}
+
+@Slf4j
+@Component
+public class SseConnectionPool implements ConnectionPoolIfs<String, UserSseConnection> {
+    private static final Map<String, UserSseConnection> connectionPool = new ConcurrentHashMap<>();
+
+    @Override
+    public void addSession(String uniqueKey,UserSseConnection userSseConnection) {
+        connectionPool.put(uniqueKey, userSseConnection);
+    }
+
+    @Override
+    public UserSseConnection getSession(String uniqueKey) {
+        return connectionPool.get(uniqueKey);
+    }
+
+    @Override
+    public void onCompletionCallback(UserSseConnection session) {
+        log.info("call back connection pool completion : {}", session);
+        connectionPool.remove(session.getUniqueKey());
+    }
+}
+```
+- SseApiController
+```java
+@GetMapping(path="/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+public ResponseBodyEmitter connect(
+				@Parameter(hidden = true)
+				@AuthenticationPrincipal UserSession userSession
+) {
+		log.info("login user {}", userSession);
+		UserSseConnection userSessionConnection = UserSseConnection.connect(
+						userSession.getStoreId().toString(),
+						sseConnectionPool,
+						objectMapper
+		);
+
+		sseConnectionPool.addSession(userSessionConnection.getUniqueKey(), userSessionConnection);
+		return userSessionConnection.getSseEmitter();
+
+}
+
+@GetMapping("/push-event")
+public void pushEvent(
+				@Parameter(hidden = true)
+				@AuthenticationPrincipal UserSession userSession
+) {
+		UserSseConnection userSessionConnection = sseConnectionPool.getSession(userSession.getStoreId().toString());
+		Optional.ofNullable(userSessionConnection)
+						.ifPresent(it -> {
+								it.sendMessage("hello world");
+						});
+}
+```
+
+
+# Ch08-10. SSE를 통한 사용자 주문	Push 알림 개발하기 - 3
+사용자 주문 알림 왔을 때 주문수락을 위한 알림을 위한 개발  
+- Business Logic
+> UserOrderMessage: userOrderId  
+> UserOrderEntity > UserOrderMenu > StoreMenu
+- Code
+```java
+// # API - userorder
+// UserOrderEntity - storeId 추가 ( 1:N Relation 설정, store_id 컬럼추가)
+// UserOrderRequest - storeId 추가, storeMenuList (주문 Req)
+// UserOrderConverter - storeId 추가
+// UserOrderBusiness - toEntity(Long storeId ~)
+UserOrderEntity userOrderEntity = userOrderConverter.toEntity(user, body.getStoreId(), storeMenuEntityList);
+
+
+// # store-admin - userorder
+// UserOrderService
+public Optional<UserOrderEntity> getUserOrder(Long id) { ~ }
+
+// UserOrderBusiness
+public class UserOrderBusiness {
+    private final UserOrderService userOrderService;
+    private final SseConnectionPool sseConnectionPool;
+
+    /**
+     * 주문
+     * 주문 내역 찾기
+     * 스토어 찾기
+     * 연결된 세션 찾아서
+     * push
+     */
+    public void pushUserOrder(UserOrderMessage userOrderMessage) {
+        UserOrderEntity userOrderEntity = userOrderService.getUserOrder(userOrderMessage.getUserOrderId()).orElseThrow(
+                () -> new RuntimeException("사용자 주문내역 없음")
+        );
+        // user order entity
+        // user order menu
+        // user order menu > store menu
+        // response
+        // push
+
+        UserSseConnection userConnection = sseConnectionPool.getSession(userOrderEntity.getStoreId().toString());
+
+        // 주문 메뉴, 가격, 상태
+        // 사용자에게 Push
+        // userConnection.sendMessage();
+    }
+}
+// UserOrderResponse, UserOrderConverter
+
+// ## userordermenu
+public class UserOrderMenuService {
+	public List<UserOrderMenuEntity> getUserOrderMenuList(Long userOrderId) {}
+}
+// ## storemenu
+public class StoreMenuService {
+    public StoreMenuEntity getStoreMenuWithThrow(Long id) {}
+}
+
+public class StoreMenuConverter {
+    public StoreMenuResponse toResponse(StoreMenuEntity storeMenuEntity) {
+    }
+    public List<StoreMenuResponse> toResponse(List<StoreMenuEntity> list) {
+			return list.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+}
+public class StoreMenuResponse { ~ }
+```
+
+
+# Ch08-11. SSE를 통한 사용자 주문	Push 알림 개발하기 - 4
+```java
+@RequiredArgsConstructor
+@Service
+public class UserOrderBusiness {
+    private final UserOrderService userOrderService;
+    private final UserOrderConverter userOrderConverter;
+    private final SseConnectionPool sseConnectionPool;
+    private final UserOrderMenuService userOrderMenuService;
+    private final StoreMenuService storeMenuService;
+    private final StoreMenuConverter storeMenuConverter;
+
+    /**
+     * 주문
+     * 주문 내역 찾기
+     * 스토어 찾기
+     * 연결된 세션 찾아서
+     * push
+     */
+    public void pushUserOrder(UserOrderMessage userOrderMessage) {
+        // user order entity
+        UserOrderEntity userOrderEntity = userOrderService.getUserOrder(userOrderMessage.getUserOrderId()).orElseThrow(
+                () -> new RuntimeException("사용자 주문내역 없음")
+        );
+
+        // user order menu
+        List<UserOrderMenuEntity> userOrderMenuList = userOrderMenuService.getUserOrderMenuList(userOrderEntity.getId());
+
+        // user order menu > store menu
+        List<StoreMenuResponse> storeMenuReponseList = userOrderMenuList.stream()
+                .map(it -> {
+                    return storeMenuService.getStoreMenuWithThrow(it.getStoreMenuId());
+                })
+                .map(it -> {
+                    return storeMenuConverter.toResponse(it);
+                })
+                .collect(Collectors.toList());
+        UserOrderResponse userOrderResponse = userOrderConverter.toResponse(userOrderEntity);
+
+        // response
+        UserOrderDetailResponse push = UserOrderDetailResponse.builder()
+                .userOrderResponse(userOrderResponse)
+                .storeMenuResponses(storeMenuReponseList)
+                .build();
+
+        UserSseConnection userConnection = sseConnectionPool.getSession(userOrderEntity.getStoreId().toString());
+
+        // 주문 메뉴, 가격, 상태
+        // 사용자에게 Push
+        userConnection.sendMessage(push);
+
+    }
+
+}
+
+public class UserOrderConsumer {
+	private final UserOrderBusiness userOrderBusiness;
+
+	@RabbitListener(queues = "delivery.queue")
+	public void userOrderConsumer(
+					UserOrderMessage userOrderMessage
+	) {
+			log.info("message queue>> {}", userOrderMessage);
+			userOrderBusiness.pushUserOrder(userOrderMessage);
+	}
+}
+
+public class UserOrderDetailResponse {
+    private UserOrderResponse userOrderResponse;
+    private List<StoreMenuResponse> storeMenuResponses;
+}
+```
+> API에서 비동기로 보낸 UserOrderMessage 가지고 관리자 사용자에게 Push알림  
+> UserOrderEntity > UserOrderMenu > StoreMenu > UserOrderDetailResponse > push
