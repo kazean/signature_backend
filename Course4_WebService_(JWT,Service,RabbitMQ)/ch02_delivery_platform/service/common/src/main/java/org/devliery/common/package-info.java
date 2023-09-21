@@ -1,1 +1,1 @@
-package org.devliery.common.message.model;
+package org.devliery.common;

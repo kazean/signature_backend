@@ -1,4 +1,9 @@
 spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123!@#
   jpa:
     properties:
       hibernate:
@@ -17,3 +22,10 @@ logging:
 #    org.hibernate.type.descriptor.sql: TRACE
 #    org.hibernate.type.BasicTypeRegistry: WARN
 
+token:
+  secret:
+    key: SpringBootJWTHelperTokenSecretKeyValue123!@#
+  access-token:
+    plus-hour: 24
+  refresh-token:
+    plus-hour: 48
