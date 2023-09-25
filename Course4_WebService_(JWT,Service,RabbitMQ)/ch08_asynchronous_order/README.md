@@ -666,3 +666,4 @@ public class UserOrderDetailResponse {
 ```
 > API에서 비동기로 보낸 UserOrderMessage 가지고 관리자 사용자에게 Push알림  
 > UserOrderEntity > UserOrderMenu > StoreMenu > UserOrderDetailResponse > push
+>> userorder 주문하여 테스트
