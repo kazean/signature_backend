@@ -46,9 +46,12 @@ fun main() {
 }
 ```
 > Organize
+```
 - var 가변 객체, val 불변 객체
 - 다 Reference Type
 - ';'없다
+```
+
 
 # Ch01-03. Kotlin과 Java 코드 비교하며 배워보기 - 2) null 안정성과 엘비어스 연산자
 - Elvis 연산자
@@ -89,12 +92,13 @@ fun callFunction(i: Int? = 100) {
 }
 ```
 > Organize
+```
 - ?
 - ?.let{ ~ }
 - ?:run{ ~ }
 - fun callFunction(i: Int? = 100) >> null 일 경우 매개변수 초기화
 > callFunction() 가능
-
+```
 ```java
 public class Exam02 {
     private int a; // 0
@@ -178,11 +182,11 @@ class User(
 ```
 >Organize
 ```
-# 가변 mutableListOf<T>()(Element... e)
+- 가변 mutableListOf<T>()(Element... e)
 - 불변 listOf<T>
-# 기본적으로 listOf, 불변은 add/remove() 자체가 없다
+- 기본적으로 listOf, 불변은 add/remove() 자체가 없다
 > userList.forEach{...}/forEachIndexed{index, t -> ...}
-# cf, val list 
+- cf, val list 
 > list = userList (X)
 ```
 ```java
@@ -292,9 +296,9 @@ fun main() {
 ```
 > Orgnize
 ```
-mapOf(Pair([key], [value], [key] to [value])), mutableMapOf()
-mutableMap[[key]] = [value]
-Triple<T,R,V>)(
+- mapOf(Pair([key], [value], [key] to [value])), mutableMapOf()
+- mutableMap[[key]] = [value]
+- Triple<T,R,V>)(
     first = T,
     second = R,
     third = V
@@ -360,9 +364,9 @@ fun lambda(x: Int, y: Int, method: (Int, Int) -> Int) {
 ```
 > Organize
 ```
-listOf<T>(elements... e)
+- listOf<T>(elements... e)
 
-# Lambda, 익명함수
+- Lambda, 익명함수
 Predicate<T> { it % 2 == 0} // it Kotlin에서 lambda 매개변수로 사용
 val add = { x:Int, y:Int -> x + y} // 익명함수
 val _add = fun ( x:Int, y:Int) :Int {
@@ -464,10 +468,10 @@ class Dog(
 ```
 > Organize
 ```
-class Aniaml(생성자) : Bark {
+- class Aniaml(생성자) : Bark {
 
 }
-class Dog(T t) : Aniaml(t), Ifs {
+- class Dog(T t) : Aniaml(t), Ifs {
     // body
     override fun ~
 }
