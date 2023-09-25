@@ -503,9 +503,12 @@ fun main() {
     println(user2)
 }
 ```
-> data class User (var name:String?=null, var age:Int, ...) >> Lombok과 같은 기능인 `data class`  
-> val user =  User(name ="", age) >> 순서 상관없이 `named arguments`  
-> intellij plugins: Kotlin Fill Class
+> Organize
+```
+- data class User (var name:String?=null, var age:Int, ...) >> Lombok과 같은 기능인 `data class`  
+- val user =  User(name ="", age) >> 순서 상관없이 `named arguments`  
+- intellij plugins: Kotlin Fill Class
+```
 
 
 # Ch01-08. Kotlin과 Java 코드 비교하며 배워보기 - 7) default value
