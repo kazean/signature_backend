@@ -178,11 +178,11 @@ class User(
 ```
 >Organize
 ```
-가변 mutableListOf<T>()(Element... e)  
-불변 listOf<T>
-기본적으로 listOf, 불변은 add/remove() 자체가 없다
+# 가변 mutableListOf<T>()(Element... e)
+# 불변 listOf<T>
+# 기본적으로 listOf, 불변은 add/remove() 자체가 없다
 > userList.forEach{...}/forEachIndexed{index, t -> ...}
-cf, val list 
+# cf, val list 
 > list = userList (X)
 ```
 ```java
