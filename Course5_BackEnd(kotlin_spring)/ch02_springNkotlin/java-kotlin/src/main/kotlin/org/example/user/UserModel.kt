@@ -1,4 +1,7 @@
 package org.example.user
 
-class UserModel {
-}
+data class UserModel(
+    var name: String?=null,
+    var age: Int?=null,
+    var email: String?=null
+)
