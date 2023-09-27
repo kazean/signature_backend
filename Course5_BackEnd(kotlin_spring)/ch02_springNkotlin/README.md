@@ -1,6 +1,6 @@
 # Ch02. Spring과 Kotlin
-# Ch02-01. Spring에서 Kotlin 적용하기
-- Java > Koltin
+# Ch02-01. Java에서 Kotlin 적용하기
+## Java > Koltin
 - build.gradle
 ```gradle
 plugins {
@@ -34,3 +34,380 @@ compileTestKotlin {
 }
 ```
 > plugins, compileKotlin, compileTestKotlin, dependencies
+- UserService.kt
+```kotlin
+import org.example.model.UserDto
+import java.time.LocalDateTime
+
+class UserService {
+    fun logic(userDto: UserDto? = null) {
+
+        val userDto = UserDto(
+            null,
+            10,
+            "gmail.com",
+            "010-1111-2222",
+            LocalDateTime.now()
+        )
+        // 자바와 연동해서 kt에서 사용할땐 String! null 이 아니다로 인식될 수 있기에 Elvis 연산자 사용해야한다
+        userDto.name?.let { println(it.length) } ?: println("null")
+        println(userDto)
+
+    }
+}
+
+fun main() {
+    UserService().logic()
+}
+```
+> `!` 연산자, kt에서 null로 인식 안하는 문제
+>> Elvis연산자 사용
+## Kotlin > Java
+생략
+
+
+# Ch02-02. Spring에서 Kotlin 적용하기
+## service
+- service/build.gradle, api/build.gralde
+```gradle
+// service/build.gradle
+plugins {
+  id 'java'
+  id 'org.springframework.boot' version '2.7.13'
+  id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+  id 'org.jetbrains.kotlin.jvm' version '1.6.21'
+  id 'org.jetbrains.kotlin.plugin.spring' version '1.6.21'
+  id 'org.jetbrains.kotlin.plugin.jpa' version '1.6.21'
+}
+
+// api/build.gradle
+plugins {
+  id 'java'
+  id 'org.springframework.boot'
+  id 'io.spring.dependency-management'
+  id 'org.jetbrains.kotlin.jvm'
+  id 'org.jetbrains.kotlin.plugin.spring'
+  id 'org.jetbrains.kotlin.plugin.jpa'
+}
+
+dependencies {
+  // ~
+  // kotlin
+  implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+  implementation 'org.jetbrains.kotlin:kotlin-reflect'
+}
+
+tasks.withType(KotlinCompile) {
+    kotlinOptions {
+        freeCompilerArgs += '-Xjsr305=strict'
+        jvmTarget = '11'
+    }
+}
+```
+> plugins: kotlin.jvm, kotlin.plugin.spring/jpa  
+> dependencies: jackson-module-kotlin, kotlin-reflect  
+> tasks.withType(KotlinCompile) { ~ }
+- api/main/kotlin/org.delivery.api.domain.temp.TempApiController
+```kotlin
+@RestController
+@RequestMapping("/api/temp")
+class TempApiController {
+
+    @GetMapping("")
+    fun temp(): String {
+        return "hello kotlin spring boot"
+    }
+}
+```
+> Spring 과 사용법 같다
+
+
+# Ch02-02. 기존 프로젝트를 Kotlin으로 변경하기 - 1 kotlin 설정 추가하기_1
+## ApiApplication,Config - kotlin 변경
+```kotlin
+@SpringBootApplication
+class ApiApplication
+
+fun main(args: Array<String>) {
+  runApplication<ApiApplication>(*args)
+}
+
+@RestController
+@RequestMapping("/open-api")
+class HealthOpenApiController {
+  private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
+
+  @GetMapping("/health")
+  fun health() {
+    logger.info("health call")
+  }
+}
+
+@Configuration
+@EntityScan(basePackages = ["org.delivery.db"])
+@EnableJpaRepositories(basePackages = ["org.delivery.db"])
+class JpaConfig {
+}
+
+@Configuration
+class ObjectMapperConfig {
+  @Bean
+  fun objectMapper(): ObjectMapper {
+      // kotlin module
+      val kotlinModule = KotlinModule.Builder().apply {
+        withReflectionCacheSize(512)
+        configure(KotlinFeature.NullToEmptyCollection, false) // Collection: null  > null, true 일 경우 size = 0인 컬렉션
+        configure(KotlinFeature.NullToEmptyMap, false)
+        configure(KotlinFeature.NullIsSameAsDefault, false)
+        configure(KotlinFeature.SingletonSupport, false)
+        configure(KotlinFeature.StrictNullChecks, false)
+      }.build()
+
+      val objectMapper = ObjectMapper().apply {
+        registerModule(Jdk8Module())
+        registerModule(JavaTimeModule())
+        registerModule(kotlinModule)
+
+        configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+        configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+        disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+        propertyNamingStrategy = PropertyNamingStrategies.SNAKE_CASE
+      }
+      return  objectMapper
+  }
+}
+
+@Configuration
+class RabbitMqConfig {
+  ~
+}
+
+@Configuration
+class WebConfig(
+  private val authorizationInterceptor: AuthorizationInterceptor,
+  private val userSessionResolver: UserSessionResolver,
+): WebMvcConfigurer {
+  private val OPEN_API = listOf(
+    "/open-api/**"
+  )
+  private val DEFAULT_EXCLUDE = listOf(
+    "/",
+    "/favicon.ico",
+    "/error"
+  )
+  private val SWAGGER = listOf(
+    "/swagger-ui.html",
+    "/swagger-ui/**",
+    "/v3/api-docs/**"
+  )
+
+  override fun addInterceptors(registry: InterceptorRegistry) {
+    registry.addInterceptor(authorizationInterceptor)
+      .excludePathPatterns(OPEN_API)
+      .excludePathPatterns(DEFAULT_EXCLUDE)
+      .excludePathPatterns(SWAGGER)
+  }
+
+  override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
+    resolvers.add(userSessionResolver)
+  }
+}
+```
+> organize
+```
+# Logger
+private val logger: Logger = LoggerFactory.getLogger(this.javaClass)  
+
+# ObjectMapper
+// kotlin module
+- KotlinModule.Builder()
+- apply > configure(KotlinFeature.NullToEmptyCollection / NullToEmptyMap / NullIsSameAsDefault / SingletonSupport / StrictNullChecks)
+val kotlinModule = KotlinModule.Builder().apply {
+  withReflectionCacheSize(512)
+  configure(KotlinFeature.NullToEmptyCollection, false) // Collection: null  > null, true 일 경우 size = 0인 컬렉션
+  configure(KotlinFeature.NullToEmptyMap, false)
+  configure(KotlinFeature.NullIsSameAsDefault, false)
+  configure(KotlinFeature.SingletonSupport, false)
+  configure(KotlinFeature.StrictNullChecks, false)
+}.build()
+
+- objectMapper.registerModule(kotlinModule)
+val objectMapper = ObjectMapper().apply {
+  registerModule(Jdk8Module())
+  registerModule(JavaTimeModule())
+  registerModule(kotlinModule)
+  ~
+}
+
+# impl, @RequireArgumentConstructor
+@Configuration
+class WebConfig(
+    private val authorizationInterceptor: AuthorizationInterceptor,
+    private val userSessionResolver: UserSessionResolver,
+): WebMvcConfigurer {
+  override fun ~
+}
+```
+
+
+# Ch02-03. 기존 프로젝트를 Kotlin으로 변경하기 - 2 common 모듈 옮기기
+## common/org.delivery.common.api/error
+```kotlin
+data class Api<T>(
+  var result: Result?=null,
+  var body: T?=null,
+)
+
+class Result {
+}
+
+interface ErrorCodeIfs {
+  fun getHttpStatusCode(): Int
+  fun getErrorCode(): Int
+  fun getDescription(): String
+}
+enum class ErrorCode(
+  private val httpStatusCode: Int,
+  private val errorCode: Int,
+  private val description: String
+) : ErrorCodeIfs {
+  OK(200, 200, "성공"),
+  BAD_REQUEST(400, 400, "잘못된 요청"),
+  SERVER_ERROR(500, 500, "서버에러"),
+  NULL_POINT(500, 512, "Null point")
+  ;
+
+  override fun getHttpStatusCode(): Int {
+    return this.httpStatusCode
+  }
+
+  override fun getErrorCode(): Int {
+    return this.errorCode
+  }
+
+  override fun getDescription(): String {
+    return this.description
+  }
+}
+// TokenErrorCode, UserErrorCode.kt
+```
+> 
+```
+# enum Class
+enum class ErrorCode( ~ ) : ErrorCodeIfs {
+
+}
+```
+
+# Ch02-04. 기존 프로젝트를 Kotlin으로 변경하기 - 3 common 모듈 옮기기
+## common/org.delivery.common.exception/api/annotation
+```kotlin
+# exception
+interface ApiExceptionIfs {
+  val errorCodeIfs: ErrorCodeIfs?
+  val errorDescription: String?
+}
+
+class ApiException : RuntimeException, ApiExceptionIfs{
+  override val errorCodeIfs: ErrorCodeIfs
+  override val errorDescription: String
+
+  constructor(errorCodeIfs: ErrorCodeIfs): super(errorCodeIfs.getDescription()){
+    this.errorCodeIfs = errorCodeIfs
+    this.errorDescription = errorCodeIfs.getDescription()
+  }
+
+  constructor(
+    errorCodeIfs: ErrorCodeIfs,
+    errorDescription: String
+  ): super(errorDescription){
+    this.errorCodeIfs = errorCodeIfs
+    this.errorDescription = errorDescription
+  }
+
+  // ~
+}
+
+# api
+data class Result(
+  val resultCode: Int?=null,
+  val resultMessage: String?=null,
+  val resultDescription: String?=null
+){
+  companion object {
+    @JvmStatic
+    fun OK(): Result{
+      return Result(
+        resultCode = ErrorCode.OK.getErrorCode(),
+        resultMessage = ErrorCode.OK.getDescription(),
+        resultDescription = "성공"
+      )
+    }
+
+    // ~
+  }
+}
+
+data class Api<T>(
+  var result: Result?=null,
+  @field:Valid
+  var body: T?=null,
+){
+  companion object {
+    @JvmStatic
+    fun <T> OK(body: T?): Api<T> {
+      return Api(
+        result = Result.OK(),
+        body = body
+      )
+    }
+    // ~
+  }
+}
+
+# annotation
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+@Service
+annotation class Business(
+  @get:AliasFor(annotation = Service::class)
+  val value: String = ""
+)
+
+// Converter, UserSession
+```
+> organize
+```
+# interface
+- 생성자 매개변수 가능
+interface ApiExceptionIfs {
+  val errorCodeIfs: ErrorCodeIfs?
+  val errorDescription: String?
+}
+> 구현시
+class ApiException : RuntimeException, ApiExceptionIfs{
+  override val errorCodeIfs: ErrorCodeIfs
+  override val errorDescription: String
+  ~
+}
+
+# companion object : static 메서드 구현
+class ~ {
+  companion object {
+    @JvmStatic
+    fun ~
+  }
+}
+
+# annotation: Spring 관련
+> 해당 Jar만 build.gradle: dependencies 추가
+// validation
+implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
+// Spring context
+implementation 'org.springframework:spring-context:5.3.28'
+// Spring core
+implementation 'org.springframework:spring-core:5.3.28'
+```
+
+
+# Ch02-05. 기존 프로젝트를 Kotlin으로 변경하기 - 4 JPA 다루기
