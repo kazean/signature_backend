@@ -13,7 +13,6 @@ import org.delivery.db.userordermenu.enums.UserOrderMenuStatus;
 
 import javax.persistence.*;
 
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
@@ -30,4 +29,28 @@ public class UserOrderMenuEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(length = 50, nullable = false)
     private UserOrderMenuStatus status;
+
+    public UserOrderEntity getUserOrder() {
+        return userOrder;
+    }
+
+    public void setUserOrder(UserOrderEntity userOrder) {
+        this.userOrder = userOrder;
+    }
+
+    public StoreMenuEntity getStoreMenu() {
+        return storeMenu;
+    }
+
+    public void setStoreMenu(StoreMenuEntity storeMenu) {
+        this.storeMenu = storeMenu;
+    }
+
+    public UserOrderMenuStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(UserOrderMenuStatus status) {
+        this.status = status;
+    }
 }

@@ -1,3 +1,4 @@
+/*
 package org.delivery.api.domain.userorder.business;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -84,6 +85,8 @@ public class UserOrderBusiness {
         // 주문 1건씩 처리
         var userOrderDetailResponseList = userOrderEntityList.stream()
                 .map(userOrderEntity -> {
+*/
+/*
                     log.info("사용자 주문 {}", userOrderEntity);
                     try {
                         String jsonValue = objectMapper.writeValueAsString(userOrderEntity);
@@ -91,6 +94,7 @@ public class UserOrderBusiness {
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
+*//*
 
                     // 사용자 주문 메뉴
 //                    var userOrderMenuEntityList = userOrderMenuService.getUserOrderMenu(it.getId());
@@ -180,3 +184,4 @@ public class UserOrderBusiness {
 
     }
 }
+*/

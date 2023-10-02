@@ -409,6 +409,13 @@ implementation 'org.springframework:spring-context:5.3.28'
 implementation 'org.springframework:spring-core:5.3.28'
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
+- @get:AliasFor(annotation = Service::class)
+
+# validation
+Api<T>(
+  @field:Valid
+  var body: T? = null
+)
 ```
 
 
@@ -570,7 +577,7 @@ public List<UserOrderDetailResponse> current(User user) {
       // 사용자 주문 메뉴
 //    var userOrderMenuEntityList = userOrderMenuService.getUserOrderMenu(it.getId());
       var userOrderMenuEntityList = userOrderEntity.getUserOrderMenuList().stream()
-        ect(toList());
+        .collect(toList());
 
       var storeMenuEntityList = userOrderMenuEntityList.stream()
         // .map(userOrderMenuEntity -> {
@@ -656,3 +663,224 @@ public UserOrderDetailResponse read(User user, Long orderId) {
 
 
 # Ch02-09. 기존 프로젝트를 Kotlin으로 변경하기 - 7 Kotlin Entity
+## DB/ UserOrderEntity
+```kotlin
+@Entity
+@Table(name = "user_order")
+class UserOrderEntity (
+    @field:Id
+    @field:GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long?=null,
+    @field:Column(nullable = false)
+    var userId:Long?=null,
+    @field:JoinColumn(nullable = false)
+    @field:ManyToOne
+    var store:StoreEntity?=null,
+    @field:Enumerated(EnumType.STRING)
+    @field:Column(length = 50, nullable = false)
+    var status:UserOrderStatus?=null,
+    @field:Column(precision = 11, scale = 4, nullable = false)
+    var amount:BigDecimal?=null,
+    var orderedAt:LocalDateTime?=null,
+    var acceptedAt:LocalDateTime?=null,
+    var cookingStartedAt:LocalDateTime?=null,
+    var deliveryStartedAt:LocalDateTime?=null,
+    var receivedAt:LocalDateTime?=null,
+    @field:OneToMany(mappedBy = "userOrder")
+    @JsonIgnore
+    var userOrderMenuList: MutableList<UserOrderMenuEntity>?=null,
+) {
+    override fun toString(): String {
+        return "UserOrderEntity(id=$id, userId=$userId, store=$store, status=$status, amount=$amount, orderedAt=$orderedAt, acceptedAt=$acceptedAt, cookingStartedAt=$cookingStartedAt, deliveryStartedAt=$deliveryStartedAt, received=$receivedAt)"
+    }
+}
+```
+> kotlin 의 경우 data class X :@ToString.Exclude (Lombok)  
+> @JsonIgnore: jackson  
+> overrride toString 활용
+## API/ UserOrderConverter, UserOrderResponse, UserOrderBusiness
+```kotlin
+@Converter
+class UserOrderConverter {
+    fun toEntity(
+        user: User?,
+        storeEntity: StoreEntity?,
+        storeMenuEntityList: List<StoreMenuEntity>?,
+    ): UserOrderEntity {
+        val totalAmount = storeMenuEntityList
+            ?.mapNotNull { it -> it.amount }
+            ?.reduce { acc, bigDecimal -> acc.add(bigDecimal) }
+        return UserOrderEntity(
+            userId = user?.id,
+            store = storeEntity,
+            amount = totalAmount,
+        )
+    }
+
+    fun toResponse(
+        userOrderEntity: UserOrderEntity?
+    ) : UserOrderResponse {
+        return UserOrderResponse(
+            id = userOrderEntity?.id,
+            status = userOrderEntity?.status,
+            amount = userOrderEntity?.amount,
+            orderedAt = userOrderEntity?.orderedAt,
+            acceptedAt = userOrderEntity?.acceptedAt,
+            cookingStartedAt = userOrderEntity?.cookingStartedAt,
+            deliveryStartedAt = userOrderEntity?.deliveryStartedAt,
+            receivedAt = userOrderEntity?.receivedAt,
+
+        )
+    }
+}
+
+data class UserOrderResponse (
+    var id:Long?=null,
+    var status:UserOrderStatus?=null,
+    var amount:BigDecimal?=null,
+    var orderedAt:LocalDateTime?=null,
+    var acceptedAt:LocalDateTime?=null,
+    var cookingStartedAt:LocalDateTime?=null,
+    var deliveryStartedAt:LocalDateTime?=null,
+    var receivedAt:LocalDateTime?=null,
+){
+}
+
+data class UserOrderResponse (
+    var id:Long?=null,
+    var status:UserOrderStatus?=null,
+    var amount:BigDecimal?=null,
+    var orderedAt:LocalDateTime?=null,
+    var acceptedAt:LocalDateTime?=null,
+    var cookingStartedAt:LocalDateTime?=null,
+    var deliveryStartedAt:LocalDateTime?=null,
+    var receivedAt:LocalDateTime?=null,
+)
+
+//@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@EqualsAndHashCode
+@Builder
+public class User {
+  // ~
+}
+```
+> Elvis Op, UserOrderResponse: data class
+
+
+# Ch02-10. 기존 프로젝트를 Kotlin으로 변경하기 - 8 비지니스 로직 변경
+## Api/ UserOrderBusiness - common/Log, controller/model/UserOrderResponse, UserOrderDetailResponse, converter/UserOrderConverter
+```kotlin
+@Business
+class UserOrderBusiness (
+    private val userOrderService: UserOrderService,
+    private val userOrderConverter: UserOrderConverter,
+
+    private val storeMenuService: StoreMenuService,
+    private val storeMenuConverter: StoreMenuConverter,
+
+    private val userOrderMenuConverter: UserOrderMenuConverter,
+    private val userOrderMenuService: UserOrderMenuService,
+
+    private val storeService: StoreService,
+    private val storeConverter: StoreConverter,
+    private val userOrderProducer: UserOrderProducer,
+) {
+    companion object Log
+    fun userOrder(
+        user:User?,
+        body:UserOrderRequest?
+    ) : UserOrderResponse {
+        // 가게찾기
+        val storeEntity = storeService.getStoreWithThrow(body?.storeId);
+
+        // 주문한 메뉴 찾기
+        val storeMenuEntityList = body?.storeMenuIdList
+            ?.mapNotNull { storeMenuService.getStoreMenuWithThrow(it) }
+            ?.toList()
+
+        // 주문메뉴 변환, 주문
+        val userOrderEntity = userOrderConverter.toEntity(user, storeEntity, storeMenuEntityList)
+            .run { userOrderService.order(this) }
+//            .let { userOrderService.order(it) }
+        // 매핑 후 주문내역 기록 남기기, userOrderMenuList
+        storeMenuEntityList
+            ?.map { userOrderMenuConverter.toEntity(userOrderEntity, it) }
+            ?.forEach { userOrderMenuService.order(it) }
+
+        // 비동기로 가맹점에 주문 알리기
+        userOrderProducer.sendOrder(userOrderEntity)
+        return userOrderConverter.toResponse(userOrderEntity)
+    }
+
+    fun current(
+        user: User?
+    ) :List<UserOrderDetailResponse>? {
+        return userOrderService.current(user?.id)
+            .map { userOrderEntity ->
+                val storeMenuEntityList = userOrderEntity.userOrderMenuList
+                    ?.filter { UserOrderMenuStatus.REGISTERED == it.status }
+                    ?.map {
+                        it.storeMenu
+                    }
+                    ?.toList()
+
+                val storeEntity = userOrderEntity.store
+                UserOrderDetailResponse(
+                    userOrderResponse = userOrderConverter.toResponse(userOrderEntity),
+                    storeResponse = storeConverter.toResponse(storeEntity),
+                    storeMenuResponseList = storeMenuConverter.toResponse(storeMenuEntityList)
+
+                )
+            }
+    }
+
+    fun history(
+        user: User?
+    ) :List<UserOrderDetailResponse>? {
+        return userOrderService.history(user?.id)
+            .map { userOrderEntity ->
+                val storeMenuEntityList = userOrderEntity.userOrderMenuList
+                    ?.filter { UserOrderMenuStatus.REGISTERED == it.status }
+                    ?.map {
+                        it.storeMenu
+                    }
+                    ?.toList()
+
+                val storeEntity = userOrderEntity.store
+                UserOrderDetailResponse(
+                    userOrderResponse = userOrderConverter.toResponse(userOrderEntity),
+                    storeResponse = storeConverter.toResponse(storeEntity),
+                    storeMenuResponseList = storeMenuConverter.toResponse(storeMenuEntityList)
+
+                )
+            }
+    }
+    
+    fun read(
+        user:User?,
+        orderId:Long?
+    ): UserOrderDetailResponse {
+        val userOrderEntity = userOrderService.getUserOrderWithOutStatusWithThrow(orderId, user?.id)
+        val storeMenuEntityList = userOrderEntity.userOrderMenuList
+            ?.filter { UserOrderMenuStatus.REGISTERED == it.status }
+            ?.map(UserOrderMenuEntity::getStoreMenu)
+            ?.toList()
+            ?: listOf()
+        return UserOrderDetailResponse(
+            userOrderResponse = userOrderConverter.toResponse(userOrderEntity),
+            storeResponse = storeConverter.toResponse(userOrderEntity.store),
+            storeMenuResponseList = storeMenuConverter.toResponse(storeMenuEntityList
+            )
+
+        )
+    }
+}
+
+interface Log {
+    val log: Logger get() = LoggerFactory.getLogger(this.javaClass)
+}
+```
+> stream() 대신 kotlin Collection 사용: map() 즉시로딩 주의
