@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot'
     id 'io.spring.dependency-management'
+    id 'org.jetbrains.kotlin.jvm'
 }
 
 group 'org.delivery'
@@ -42,7 +43,9 @@ dependencies {
     // swagger
     implementation 'org.springdoc:springdoc-openapi-ui:1.7.0'
 
-
+    // kotlin
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
 }
 
 test {

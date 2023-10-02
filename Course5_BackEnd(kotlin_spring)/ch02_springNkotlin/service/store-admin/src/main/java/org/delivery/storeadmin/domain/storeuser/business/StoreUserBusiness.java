@@ -24,7 +24,7 @@ public class StoreUserBusiness {
     public StoreUserResponse register(
             StoreUserRegisterRequest request
     ) {
-        Optional<StoreEntity> storeEntity = storeRepository.findFirstByNameAndStatusOrderByIdDesc(request.getStoreName(), StoreStatus.REGISTERED);
+        Optional<StoreEntity> storeEntity = Optional.ofNullable(storeRepository.findFirstByNameAndStatusOrderByIdDesc(request.getStoreName(), StoreStatus.REGISTERED));
         StoreUserEntity entity = storeUserConverter.toEntity(request, storeEntity.get());
         StoreUserEntity newEntity = storeUserService.register(entity);
         StoreUserResponse response = storeUserConverter.toResponse(newEntity, storeEntity.get());

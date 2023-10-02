@@ -122,7 +122,7 @@ class TempApiController {
 > Spring 과 사용법 같다
 
 
-# Ch02-02. 기존 프로젝트를 Kotlin으로 변경하기 - 1 kotlin 설정 추가하기_1
+# Ch02-03. 기존 프로젝트를 Kotlin으로 변경하기 - 1 kotlin 설정 추가하기_1
 ## ApiApplication,Config - kotlin 변경
 ```kotlin
 @SpringBootApplication
@@ -250,7 +250,7 @@ class WebConfig(
 ```
 
 
-# Ch02-03. 기존 프로젝트를 Kotlin으로 변경하기 - 2 common 모듈 옮기기
+# Ch02-04. 기존 프로젝트를 Kotlin으로 변경하기 - 2 common 모듈 옮기기
 ## common/org.delivery.common.api/error
 ```kotlin
 data class Api<T>(
@@ -299,7 +299,7 @@ enum class ErrorCode( ~ ) : ErrorCodeIfs {
 }
 ```
 
-# Ch02-04. 기존 프로젝트를 Kotlin으로 변경하기 - 3 common 모듈 옮기기
+# Ch02-05. 기존 프로젝트를 Kotlin으로 변경하기 - 3 common 모듈 옮기기
 ## common/org.delivery.common.exception/api/annotation
 ```kotlin
 # exception
@@ -407,7 +407,252 @@ implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
 implementation 'org.springframework:spring-context:5.3.28'
 // Spring core
 implementation 'org.springframework:spring-core:5.3.28'
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
 ```
 
 
-# Ch02-05. 기존 프로젝트를 Kotlin으로 변경하기 - 4 JPA 다루기
+# Ch02-06. 기존 프로젝트를 Kotlin으로 변경하기 - 4 JPA 다루기
+## db: java to kotlin
+- build.gradle
+```gradle
+plugins {
+  // ~
+  id 'org.jetbrains.kotlin.jvm'
+  id 'org.jetbrains.kotlin.plugin.jpa'
+}
+
+tasks.withType(KotlinCompile) {
+  kotlinOptions {
+    freeCompilerArgs += '-Xjsr305=strict'
+    jvmTarget = '11'
+  }
+}
+```
+```kotlin
+interface UserRepository : JpaRepository<UserEntity, Long> {
+  fun findFirstByIdAndStatusOrderByIdDesc(userId: Long, userStatus: UserStatus): UserEntity?
+  fun findFirstByEmailAndPasswordAndStatusOrderByIdDesc(
+    userEmail: String?,
+    password: String?,
+    status: UserStatus?
+  ): UserEntity?
+}
+
+// UserOrderRepository, UserOrderMenuRepository
+// StoreRepository, StoreMenuRepository, StoreUserRepository
+```
+> kt 는 Optional 대신 Elvis 연산자 사용
+> > cf, api: service 일단 kt로 코드바꾸기전 Optional.ofNullable() 처리  
+> > store-admin: sercice 마찬가지, build.gradle & impl kotlin-reflect
+
+
+# Ch02-07. 기존 프로젝트를 Kotlin으로 변경하기 - 5 JPA 연관관계 설정
+## 연관관계 설정
+- userorder - userordermenu 
+- userordermenu > storemenu
+- storemenu > store
+- userorder > store
+> user - userorder 와 같이 많은 데이터량은 페이징 쿼리 이용
+```kotlin
+public class UserOrderEntity extends BaseEntity {
+  // ~
+  @JoinColumn(nullable = false)
+  @ManyToOne
+  private StoreEntity store;
+
+  @OneToMany(mappedBy = "userOrder")
+  List<UserOrderMenuEntity> userOrderMenuList;
+}
+
+public class UserOrderMenuEntity extends BaseEntity {
+  // ~
+  @JoinColumn(nullable = false)
+  @ManyToOne
+  private UserOrderEntity userOrder;
+
+  @JoinColumn(nullable = false)
+  @ManyToOne
+  private StoreMenuEntity storeMenu;
+}
+
+public class StoreMenuEntity extends BaseEntity {
+  // ~
+  @JoinColumn
+  @ManyToOne
+  private StoreEntity store;
+}
+
+> effect
+public class UserOrderConverter {
+  public UserOrderEntity toEntity(
+        User user,
+        //Long storeId,
+        StoreEntity storeEntity,
+        List<StoreMenuEntity> storeMenuEntityList
+  ) {
+    BigDecimal totalAmount = storeMenuEntityList.stream()
+          .map(it -> it.getAmount())
+          .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+    return UserOrderEntity.builder()
+          .userId(user.getId())
+//                .storeId(storeId)
+          .store(storeEntity)
+          .amount(totalAmount)
+          .build();
+  }
+}
+public class UserOrderBusiness {
+  public UserOrderResponse userOrder(User user, UserOrderRequest body) {
+    // add
+    StoreEntity storeEntity = storeService.getStoreWithThrow(body.getStoreId());
+    List<StoreMenuEntity> storeMenuEntityList = body.getStoreMenuIdList().stream()
+                .map(it -> storeMenuService.getStoreMenuWithThrow(it))
+                .collect(toList());
+    UserOrderEntity userOrderEntity = userOrderConverter.toEntity(user, storeEntity, storeMenuEntityList);
+    // ~
+  }
+}
+```
+> UserOrderConverter, UserOrderMenuConverter, StoreMenuConverter  
+> UserOrderBusiness, StoreMenuBusiness
+
+
+# Ch02-08. 기존 프로젝트를 Kotlin으로 변경하기 - 6 Entity
+## ToString.Exclude, @JsonIgnore
+```java
+public class UserOrderEntity extends BaseEntity {
+  // ~
+  @OneToMany(mappedBy = "userOrder")
+  @ToString.Exclude
+  @JsonIgnore
+  List<UserOrderMenuEntity> userOrderMenuList;
+}
+```
+- db:build.gradle
+```gradle
+dependencies {
+  // kotlin
+  implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+}
+```
+## store-admin
+- build.gradle
+```gradle
+plugins {
+  id 'org.jetbrains.kotlin.jvm'
+}
+
+dependencies {
+  // kotlin
+  implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+  implementation 'org.jetbrains.kotlin:kotlin-reflect'
+}
+```
+> UserOrderBusiness, UserOrderConverter
+
+## api/UserOrderBusiness.current/history/read() Refactoring
+```java
+public List<UserOrderDetailResponse> current(User user) {
+  var userOrderEntityList = userOrderService.current(user.getId());
+  // 주문 1건씩 처리
+  var userOrderDetailResponseList = userOrderEntityList.stream()
+  .map(userOrderEntity -> {
+      log.info("사용자 주문 {}", userOrderEntity);
+      try {
+        String jsonValue = objectMapper.writeValueAsString(userOrderEntity);
+        log.info("사용자 주문 JSON_VALUE {}", jsonValue);
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(e);
+      }
+
+      // 사용자 주문 메뉴
+//    var userOrderMenuEntityList = userOrderMenuService.getUserOrderMenu(it.getId());
+      var userOrderMenuEntityList = userOrderEntity.getUserOrderMenuList().stream()
+        ect(toList());
+
+      var storeMenuEntityList = userOrderMenuEntityList.stream()
+        // .map(userOrderMenuEntity -> {
+        //     var storeMenuEntity = storeMenuService.getStoreMenuWithThrow(userOrderMenuEntity.getStoreMenu().getId());
+        //     return storeMenuEntity;
+        // })
+        .map(UserOrderMenuEntity::getStoreMenu)
+        .collect(toList());
+
+      // 사용자가 주문한 스토어 TODO 리팩토링 필요
+      // var storeEntity = storeService.getStoreWithThrow(storeMenuEntityList.stream().findFirst().get().getStore().getId());
+      var storeEntity = userOrderEntity.getStore();
+
+      return UserOrderDetailResponse.builder()
+        .userOrderResponse(userOrderConverter.toResponse(userOrderEntity))
+        .storeMenuResponseList(storeMenuConverter.toResponse(storeMenuEntityList))
+        .storeResponse(storeConverter.toResponse(storeEntity))
+        .build();
+  }).collect(toList());
+
+  return userOrderDetailResponseList;
+}
+
+public List<UserOrderDetailResponse> history(User user) {
+  var userOrderEntityList = userOrderService.history(user.getId());
+  // 주문 1건씩 처리
+  var userOrderDetailResponseList = userOrderEntityList.stream()
+    .map(userOrderEntity -> {
+      // 사용자 주문 메뉴
+      // var userOrderMenuEntityList = userOrderMenuService.getUserOrderMenu(it.getId());
+      var userOrderMenuEntityList = userOrderEntity.getUserOrderMenuList().stream()
+        .filter(it -> UserOrderMenuStatus.REGISTERED.equals(it.getStatus()))
+        .collect(toList());
+      var storeMenuEntityList = userOrderMenuEntityList.stream()
+        // .map(userOrderMenuEntity -> {
+        //     var storeMenuEntity = storeMenuService.getStoreMenuWithThrow(userOrderMenuEntity.getStoreMenu().getId());
+        //     return storeMenuEntity;
+        // })
+        .map(UserOrderMenuEntity::getStoreMenu)
+        .collect(toList());
+
+      // 사용자가 주문한 스토어 TODO 리팩토링 필요
+      // var storeEntity = storeService.getStoreWithThrow(storeMenuEntityList.stream().findFirst().get().getStore().getId());
+      var storeEntity = userOrderEntity.getStore();
+
+      return UserOrderDetailResponse.builder()
+        .userOrderResponse(userOrderConverter.toResponse(userOrderEntity))
+        .storeMenuResponseList(storeMenuConverter.toResponse(storeMenuEntityList))
+        .storeResponse(storeConverter.toResponse(storeEntity))
+        .build();
+    }).collect(toList());
+
+  return userOrderDetailResponseList;
+}
+
+public UserOrderDetailResponse read(User user, Long orderId) {
+  UserOrderEntity userOrderEntity = userOrderService.getUserOrderWithOutStatusWithThrow(orderId, user.getId());
+
+  // var userOrderMenuEntityList = userOrderMenuService.getUserOrderMenu(userOrderEntity.getId());
+  var userOrderMenuEntityList = userOrderEntity.getUserOrderMenuList().stream()
+    .filter(it -> UserOrderMenuStatus.REGISTERED.equals(it.getStatus()))
+    .collect(toList());
+
+  var storeMenuEntityList = userOrderMenuEntityList.stream()
+    // .map(userOrderMenuEntity -> {
+    //     var storeMenuEntity = storeMenuService.getStoreMenuWithThrow(userOrderMenuEntity.getStoreMenu().getId());
+    //     return storeMenuEntity;
+    // })
+    .map(UserOrderMenuEntity::getStoreMenu)
+    .collect(toList());
+
+  // 사용자가 주문한 스토어 TODO 리팩토링 필요
+  // var storeEntity = storeService.getStoreWithThrow(storeMenuEntityList.stream().findFirst().get().getStore().getId());
+  var storeEntity = userOrderEntity.getStore();
+
+  return UserOrderDetailResponse.builder()
+    .userOrderResponse(userOrderConverter.toResponse(userOrderEntity))
+    .storeMenuResponseList(storeMenuConverter.toResponse(storeMenuEntityList))
+    .storeResponse(storeConverter.toResponse(storeEntity))
+    .build();
+}
+```
+
+
+# Ch02-09. 기존 프로젝트를 Kotlin으로 변경하기 - 7 Kotlin Entity

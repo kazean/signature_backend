@@ -23,7 +23,7 @@ public class AuthorizationService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Optional<StoreUserEntity> storeUserEntity = storeUserService.getRegisterUser(username);
-        Optional<StoreEntity> storeEntity = storeRepository.findFirstByIdAndStatusOrderByIdDesc(storeUserEntity.get().getStoreId(), StoreStatus.REGISTERED);
+        Optional<StoreEntity> storeEntity = Optional.ofNullable(storeRepository.findFirstByIdAndStatusOrderByIdDesc(storeUserEntity.get().getStoreId(), StoreStatus.REGISTERED));
 
         return storeUserEntity.map(it -> {
                     UserSession userSession = UserSession.builder()

@@ -5,6 +5,7 @@ import org.delivery.common.error.ErrorCode;
 import org.delivery.common.exception.ApiException;
 import org.delivery.api.domain.storemenu.controller.model.StoreMenuRegisterRequest;
 import org.delivery.api.domain.storemenu.controller.model.StoreMenuResponse;
+import org.delivery.db.store.StoreEntity;
 import org.delivery.db.storemenu.StoreMenuEntity;
 import org.delivery.db.storemenu.enums.StoreMenuStatus;
 
@@ -16,11 +17,15 @@ import static java.util.stream.Collectors.*;
 
 @Converter
 public class StoreMenuConverter {
-    public StoreMenuEntity toEntity(StoreMenuRegisterRequest request) {
+    public StoreMenuEntity toEntity(
+            StoreEntity storeEntity,
+            StoreMenuRegisterRequest request
+    ) {
         return Optional.ofNullable(request)
                 .map(it -> {
                     return StoreMenuEntity.builder()
-                            .storeId(it.getStoreId())
+//                            .storeId(request.getStoreId())
+                            .store(storeEntity)
                             .name(it.getName())
                             .amount(it.getAmount())
                             .thumbnailUrl(it.getThumbnailUrl())
@@ -35,7 +40,8 @@ public class StoreMenuConverter {
                 .map(it -> {
                     return StoreMenuResponse.builder()
                             .id(it.getId())
-                            .storeId(it.getStoreId())
+//                            .storeId(it.getStoreId())
+                            .storeId(entity.getStore().getId())
                             .name(it.getName())
                             .amount(it.getAmount())
                             .status(it.getStatus())
