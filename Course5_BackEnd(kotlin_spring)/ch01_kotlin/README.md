@@ -99,41 +99,6 @@ fun callFunction(i: Int? = 100) {
 - fun callFunction(i: Int? = 100) >> null 일 경우 매개변수 초기화
 > callFunction() 가능
 ```
-```java
-public class Exam02 {
-	private int a; // 0
-
-	Exam02() {
-		// 코드 작성
-		var b = 20; // 타입 추론
-//        var c = null; // X
-		int c = 30;
-//        int d;
-		Integer e = new Integer(100);
-		Integer f = 20;
-		Integer g = null;
-
-		callFunction(a);
-		callFunction(b);
-		callFunction(c);
-//        callFunction(d);
-		callFunction(e);
-		callFunction(f);
-		callFunction(g); //NPE
-		callFunction(null);
-
-	}
-
-	public void callFunction(Integer i) {
-		var _i = (i == null) ? Integer.valueOf(100) : Integer.valueOf(i);
-		var temp = _i;
-		System.out.println(temp * 20);
-	}
-	public static void main(String[] args) {
-		new Exam02();
-	}
-}
-```
 
 
 # Ch01-04. Kotlin과 Java 코드 비교하며 배워보기 - 3) 가변, 불변 컬렉션
@@ -189,80 +154,6 @@ class User(
 - cf, val list 
 > list = userList (X)
 ```
-```java
-import java.util.ArrayList;
-import java.util.Arrays;
-
-public class Exam03 {
-
-	Exam03() {
-		// 코드 작성
-		var userList = new ArrayList<User>();
-		userList.add(new User("1", 10));
-		userList.add(new User("2", 10));
-		userList.add(new User("3", 10));
-
-		var list = Arrays.asList(
-						new User("4", 20),
-						new User("5", 20),
-						new User("6", 20)
-		);
-
-		userList.forEach(System.out::println);
-
-		for (int i = 0; i < userList.size(); i++) {
-				var dto = userList.get(i);
-				System.out.println("index : " + i + " username : " + dto.getName());
-		}
-
-		for (User element : userList) {
-				System.out.println(element);
-		}
-/*
-		var immutable = Collections.unmodifiableCollection(userList);
-		immutable.add(new User("5", 60)); // java.lang.UnsupportedOperationException
-
-		var imList = List.of("");
-		imList.add("b"); // java.lang.UnsupportedOperationException
-*/
-
-	}
-
-	public static void main(String[] args) {
-		new Exam03();
-	}
-}
-
-class User {
-	private String name;
-	private int age;
-
-	public User() {
-	}
-
-	public User(String name, int age) {
-		this.name = name;
-		this.age = age;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	public int getAge() {
-		return age;
-	}
-
-	public void setAge(int age) {
-		this.age = age;
-	}
-}
-
-```
 
 
 # Ch01-05. Kotlin과 Java 코드 비교하며 배워보기 - 4) 고차함수 (Collection(Map), Lambda, FunctionInterface)
@@ -305,29 +196,6 @@ fun main() {
 )
 ```
 
-```java
-public class Exam04 {
-
-	Exam04() {
-		// 코드 작성
-		var hashMap = new HashMap<String, Object>();
-		hashMap.put("key", "value");
-		hashMap.put("key2", 10);
-
-		var map = Map.of(
-			"key1", "",
-			"key2", "",
-			"key3", ""
-		);
-
-		hashMap.get("key");
-	}
-
-	public static void main(String[] args) {
-		new Exam04();
-	}
-}
-```
 ## Lambda
 ```kotlin
 import java.util.function.Predicate
@@ -377,43 +245,6 @@ val _add = fun ( x:Int, y:Int) :Int {
 # 매개변수로 익명함수 받기
 fun lambda( x:Int, y:Int, method: (Int, Int) -> Int) {
 
-}
-```
-```java
-public class Exam05 {
-	// @FunctionalInterface
-	private Predicate<String> stringPredicate = new Predicate<String>() {
-		@Override
-		public boolean test(String s) {
-			return s.equals("?");
-		}
-	};
-
-	public Exam05() {
-			// 고차함수
-		var strList = List.of(
-			"1",
-			"2",
-			"홍길동",
-			"함수",
-			"메소드"
-		);
-
-		var result = strList.stream()
-			.filter(it -> it.equals("?")) // 람다식
-//                .filter(stringPredicate)
-			/*.filter(new Predicate<String>() {
-					@Override
-					public boolean test(String s) {
-							return s.equals("?");
-					}
-			})*/
-			.collect(Collectors.toList());
-	}
-
-	public static void main(String[] args) {
-		new Exam05();
-	}
 }
 ```
 
@@ -634,7 +465,7 @@ when( 매개변수 ) {
 
 	}
 	is -> {
-		
+
 	}
 }
 
