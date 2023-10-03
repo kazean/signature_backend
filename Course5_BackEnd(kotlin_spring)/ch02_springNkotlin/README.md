@@ -746,15 +746,10 @@ data class UserOrderResponse (
 ){
 }
 
-data class UserOrderResponse (
-    var id:Long?=null,
-    var status:UserOrderStatus?=null,
-    var amount:BigDecimal?=null,
-    var orderedAt:LocalDateTime?=null,
-    var acceptedAt:LocalDateTime?=null,
-    var cookingStartedAt:LocalDateTime?=null,
-    var deliveryStartedAt:LocalDateTime?=null,
-    var receivedAt:LocalDateTime?=null,
+data class UserOrderDetailResponse (
+    var userOrderResponse: UserOrderResponse? = null,
+    var storeResponse: StoreResponse? = null,
+    var storeMenuResponseList: List<StoreMenuResponse>? = null,
 )
 
 //@Data
