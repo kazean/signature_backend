@@ -1,7 +1,8 @@
 rootProject.name = 'service'
 include 'api'
+include 'agigw'
+include 'common'
 include 'db'
 include 'store-admin'
-include 'common'
-include 'apigw'
+include 'account'
 

@@ -2,23 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/api/ch03_msa.service.api.main.iml" filepath="$PROJECT_DIR$/.idea/modules/api/ch03_msa.service.api.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common/ch03_msa.service.common.main.iml" filepath="$PROJECT_DIR$/.idea/modules/common/ch03_msa.service.common.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/db/ch03_msa.service.db.main.iml" filepath="$PROJECT_DIR$/.idea/modules/db/ch03_msa.service.db.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/store-admin/ch03_msa.service.store-admin.main.iml" filepath="$PROJECT_DIR$/.idea/modules/store-admin/ch03_msa.service.store-admin.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/api/org.delivery.service.api.main.iml" filepath="$PROJECT_DIR$/.idea/modules/api/org.delivery.service.api.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common/org.delivery.service.common.main.iml" filepath="$PROJECT_DIR$/.idea/modules/common/org.delivery.service.common.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/db/org.delivery.service.db.main.iml" filepath="$PROJECT_DIR$/.idea/modules/db/org.delivery.service.db.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/store-admin/org.delivery.service.store-admin.main.iml" filepath="$PROJECT_DIR$/.idea/modules/store-admin/org.delivery.service.store-admin.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/api/service.api.iml" filepath="$PROJECT_DIR$/.idea/modules/api/service.api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/account/service.account.main.iml" filepath="$PROJECT_DIR$/.idea/modules/account/service.account.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/api/service.api.main.iml" filepath="$PROJECT_DIR$/.idea/modules/api/service.api.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/apigw/service.apigw.iml" filepath="$PROJECT_DIR$/.idea/modules/apigw/service.apigw.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/apigw/service.apigw.main.iml" filepath="$PROJECT_DIR$/.idea/modules/apigw/service.apigw.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common/service.common.iml" filepath="$PROJECT_DIR$/.idea/modules/common/service.common.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/common/service.common.main.iml" filepath="$PROJECT_DIR$/.idea/modules/common/service.common.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/db/service.db.iml" filepath="$PROJECT_DIR$/.idea/modules/db/service.db.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/db/service.db.main.iml" filepath="$PROJECT_DIR$/.idea/modules/db/service.db.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/store-admin/service.store-admin.iml" filepath="$PROJECT_DIR$/.idea/modules/store-admin/service.store-admin.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/store-admin/service.store-admin.main.iml" filepath="$PROJECT_DIR$/.idea/modules/store-admin/service.store-admin.main.iml" />
     </modules>
   </component>

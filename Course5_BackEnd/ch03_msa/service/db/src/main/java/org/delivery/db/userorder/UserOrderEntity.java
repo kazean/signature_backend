@@ -1,4 +1,4 @@
-/*
+package org.delivery.db.userorder;/*
 package org.delivery.db.userorder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;

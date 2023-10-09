@@ -1,4 +1,4 @@
-/*
+package org.delivery.api.domain.userorder.controller.model;/*
 package org.delivery.api.domain.userorder.controller.model;
 
 import lombok.AllArgsConstructor;
