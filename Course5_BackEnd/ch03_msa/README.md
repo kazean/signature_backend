@@ -274,11 +274,11 @@ token:
 class AccountApplication {
 }
 
-# org.delivery.account.token
 fun main(args: Array<String>) {
   runApplication<AccountApplication>(*args)
 }
 
+# org.delivery.account.token
 data class TokenDto(
   var token: String?=null,
   var expiredAt: LocalDateTime?=null
@@ -297,6 +297,7 @@ class JwtTokenHelper: TokenHelperIfs{
   private val accessTokenPlusHour: Long=1
   @Value("\${token.refresh-token.plus-hour}")
   private val refreshTokenPlusHour: Long=12
+
   override fun issueAccessToken(data: Map<String, Any>?): TokenDto? {
     val expiredLocalDatetime = LocalDateTime.now().plusHours(accessTokenPlusHour)
     val expiredAt = Date.from(expiredLocalDatetime.atZone(ZoneId.systemDefault()).toInstant())
@@ -513,7 +514,8 @@ data class TokenDto(
 )
 // > @JsonNaming TokenValidationReq, Res 
 ```
-> WebFlux 는 WebClinet로 요청 (MVC: RestAPI)
+> WebFlux 는 WebClinet로 요청 (MVC: RestAPI)  
+> organize
 ```
 # 헤더 가져오기
 val headers = exchange.request.headers["authorization-token"]?: listOf()
@@ -648,7 +650,7 @@ class GlobalExceptionHandler(
 ```
 > organize
 ```
-- : GlobalExceptionHandler  
+- : ErrorWebExceptionHandler
 - override handle(exchange: ServerWebExchange, ex: Throwable)  
 - response
 response.isCommitted, Mono.error  
