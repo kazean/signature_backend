@@ -30,11 +30,6 @@ class GlobalExceptionHandler(
         }
 
         val dataBuffer = response.bufferFactory()
-        response.writeWith(
-            Mono.fromSupplier {
-                dataBuffer.wrap()
-            }
-        )
         return response.writeWith(
             Mono.fromSupplier {
                 dataBuffer.wrap(errorResponseByteArray)

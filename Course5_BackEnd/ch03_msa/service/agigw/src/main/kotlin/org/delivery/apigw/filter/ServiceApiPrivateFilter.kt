@@ -86,7 +86,6 @@ class ServiceApiPrivateFilter: AbstractGatewayFilterFactory<ServiceApiPrivateFil
                     val requestBuild = exchange.mutate().request(proxyRequest).build()
 
                     val mono = chain.filter(requestBuild)
-                    chain.fil
                     mono
                 }
                 .onErrorMap { e ->

@@ -1,4 +1,39 @@
+server:
+  name: delivery-api
+
+management:
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+      statsd:
+        enabled: true
+        flavor: telegraf
+        polling-frequency: 5s
+        host: localhost
+        port: 8125
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    prometheus:
+      enabled: true
+    health:
+      show-details: always
+
+logging:
+  config: classpath:logback-dev.xml
+  file:
+    name: logFile.log
+
+
 spring:
+  boot:
+    admin:
+      client:
+        url:
+          - http://localhost:8085
   rabbitmq:
     host: localhost
     port: 5672
@@ -15,10 +50,10 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: root1234!!
-logging:
-  level:
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+#logging:
+#  level:
+#    org.hibernate.SQL: DEBUG
+#    org.hibernate.orm.jdbc.bind: TRACE
 #    org.hibernate.type.descriptor.sql: TRACE
 #    org.hibernate.type.BasicTypeRegistry: WARN
 

@@ -52,7 +52,7 @@ public class LoggerFilter implements Filter {
         });
         String responseBody = new String(res.getContentAsByteArray());
 
-        log.info("<<<< uri : {}, method : {}, header : {}, body : {}", uri, method, responseHeaderValues, responseBody);
+//        log.info("<<<< uri : {}, method : {}, header : {}, body : {}", uri, method, responseHeaderValues, responseBody);
 
         res.copyBodyToResponse();
     }

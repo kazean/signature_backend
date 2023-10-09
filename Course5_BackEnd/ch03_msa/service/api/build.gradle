@@ -26,6 +26,10 @@ repositories {
     mavenCentral()
 }
 
+ext{
+    set('springBootAdminVersion', '2.7.4')
+}
+
 dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -48,6 +52,25 @@ dependencies {
     // kotlin
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
     implementation 'org.jetbrains.kotlin:kotlin-reflect'
+
+    // logstash
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
+    // admin
+    implementation 'de.codecentric:spring-boot-admin-starter-client'
+    // actuator
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // micrometer-prometheus
+    implementation 'io.micrometer:micrometer-registry-prometheus:1.11.1'
+    // statsd
+    implementation 'io.micrometer:micrometer-registry-statsd:1.11.1'
+    implementation 'io.micrometer:micrometer-core:1.11.1'
+
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("de.codecentric:spring-boot-admin-dependencies:${property("springBootAdminVersion")}")
+    }
 }
 
 tasks.withType(KotlinCompile) {
