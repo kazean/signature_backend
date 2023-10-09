@@ -295,7 +295,7 @@ fun main(args: Array<String>) {
 - build.gradle
 ```gradle
 ext{
-    set('springBootAdminVersion', '2.7.4')
+	set('springBootAdminVersion', '2.7.4')
 }
 
 dependencies {
@@ -355,3 +355,192 @@ spring:
           - http://localhost:8085
 ```
 > management.endpoints/endpoint, loggig.config/file, spring.boot.admin.client.url
+
+
+# Ch04-05. Prometheus Grafana 를 통한 모니터링
+## Prometheus
+시스템 모니터링 및 경고를 위해 설계되었으며, 메트릭을 수집하고 저장하도록 설계된 플랫폼  
+본래 컨테이너화 된 환경을 위해 개발 K8s와 잘맞음
+## Grafana
+시계열 분석을 위한 오픈 소스 플랫폼, 대시보드 생성, 경고 설정
+> 다양한 데이터 소스 지원 (Prometheus, Graphite, Elasticsearch, InfluxDB)
+
+- docker-compose
+```yaml
+version: '3.3'
+
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - 9090:9090
+
+    volumes:
+      - type: bind
+        source: ./prometheus/prometheus.yaml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+        
+  grapana:
+    image: grafana/grafana:9.5.6
+    container_name: grafana
+
+    ports:
+      - 3000:3000
+
+    links:
+      - prometheus
+```
+- prometheus/prometheus.yaml
+```yaml
+global:
+  scrape_interval:     5s # 5초마다 Metric을 Pulling
+  evaluation_interval: 5s
+scrape_configs:
+  - job_name: 'spring-server'
+    metrics_path: '/actuator/prometheus' # 위에서 작성한 Spring Application에서 노출시킨 메트릭 경로를 입력한다.
+    static_configs:
+      - targets: ['host.docker.internal:8080'] # 해당 타겟의 도메인과 포트를 입력한다.
+```
+> global.scrape_interval/evaluation_interval  
+> scrape_config.job_name  
+>   metrics_path    
+>   static_config/targets
+
+## api - actuator, prometheus
+- build.gradle
+> implementation 'org.springframework.boot:spring-boot-starter-actuator'  
+implementation 'io.micrometer:micrometer-registry-prometheus:1.11.1'
+- application.yaml
+```yaml
+management:
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    prometheus:
+      enabled: true
+```
+> management  
+>   metrics.export.prometheus.enabled: true  
+>   endpoint.prometheus.enabled: true  
+>   endpoints.web.exposure.include: "*"
+
+
+# Ch04-06. TICK Stack을 통한 모니터링
+## Telegraf
+InfluxData 에서 개발한 플러그인 기반 서버 에이전트, 데이터를 수집하고 변환하고, 여러 소스로 보내는 역할(= logStash)
+## InfluxDB
+TICK 스택의 핵심 요소로, 고성능의 시계열 데이터베이스, 고속 쿼리를 지원
+## Chronograf
+InfluxDB 데이터를 시각화하고 대시보드를 만드는 도구, 경고 설정
+## Kapacitor
+데이터 처리 엔진, 경고를 생성 하는 역할
+## TICK(Telegraf, InfluxDB, Chorograf Kapacitor)
+서버 모니터링, IoT 데이터 분석, 실시간 애플리케이션 모니터링
+
+- docker-compose.yaml
+```yaml
+version: '3'
+
+services:
+  influxdb:
+    image: influxdb:1.8
+    container_name: influxdb
+    ports:
+      - 8086:8086
+
+  telegraf:
+    image: telegraf:1.27
+    container_name: telegraf
+    ports:
+      - 8092:8092/udp
+      - 8094:8094
+      - 8125:8125/udp
+    links:
+      - influxdb
+    volumes:
+      - ./config/telegraf.config:/etc/telegraf/telegraf.conf:ro
+
+  chronograf:
+    image: chronograf:1.10
+    container_name: chronograf
+    ports:
+      - 8888:8888
+    links:
+      - influxdb
+
+  kapacitor:
+    image: kapacitor:1.6
+    container_name: kapacitor
+    environment:
+      KAPACITOR_HOSTNAME: kapacitor
+      KAPACITOR_INFLUXDB_0_URLS_0: http://influxdb:8086
+    links:
+      - influxdb
+    ports:
+      - "9092:9092"    
+```
+- config/telegraf.config
+```
+[global_tags]
+
+[agent]
+  interval = "5s"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  collection_jitter = "0s"
+  flush_interval = "5s"
+  flush_jitter = "0s"
+  precision = ""
+  hostname = ""
+  omit_hostname = false
+  debug = true
+
+[[outputs.influxdb]]
+  urls = ["http://influxdb:8086"]
+
+  database = "springboot"
+
+[[inputs.statsd]]
+	protocol = "udp"
+	max_tcp_connections = 250
+    tcp_keep_alive = false
+    service_address = ":8125"
+    delete_gauges = true
+    delete_counters = true
+    delete_sets = true
+    delete_timings = true
+    percentiles = [90.0]
+    metric_separator = "_"
+    parse_data_dog_tags = false
+    datadog_extensions = false
+    allowed_pending_messages = 10000
+    percentile_limit = 1000
+```
+## api
+### micrometer-statsd
+micrometer telegraf 형식에 맞춘 변환기
+- build.gradle
+> implementation 'io.micrometer:micrometer-registry-statsd:1.11.1'  
+> implementation 'io.micrometer:micrometer-core:1.11.1'
+- application.yaml
+```yaml
+management:
+  metrics:
+    export:
+      statsd:
+        enabled: true
+        flavor: telegraf
+        polling-frequency: 5s
+        host: localhost
+        port: 8125
+```
+> management.metrics.export.statsd.enabled/flavor/polling-frequency/host/port
