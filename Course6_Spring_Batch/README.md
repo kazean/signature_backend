@@ -699,7 +699,13 @@ class DormantBatchJobTest {
     }
 }
 ```
-> - mock  
-> mock(class)  
-> verify(T mock, mode: VerificationMode)  
+> organize
+```
+# mock  
+- mock(class)  
+> final EmailProvider mockEmailProvider = mock(EmailProvider.class);
+  this.preDormantBatchItemWriter = new PreDormantBatchItemWriter(mockEmailProvider);
+
+- verify(T mock, mode: VerificationMode)  
 > verify(mockEmailProvider, atLeastOnce()).send(any(), any(), any())
+```
