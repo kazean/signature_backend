@@ -699,7 +699,7 @@ class DormantBatchJobTest {
     }
 }
 ```
-> - mock
+> - mock  
 > mock(class)  
 > verify(T mock, mode: VerificationMode)  
 > verify(mockEmailProvider, atLeastOnce()).send(any(), any(), any())
