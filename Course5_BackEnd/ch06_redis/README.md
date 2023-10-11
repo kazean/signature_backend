@@ -120,6 +120,11 @@ class RedisConfig {
 Entity or Dto 사용
 - code
 ```kotlin
+data class NoticeDto (
+    var id: Long?= 1, // auto increment
+    var notice: String?= null // notice
+): Serializable
+
 @Service
 class NoticeService(
     private val noticeRepository: NoticeRepository
