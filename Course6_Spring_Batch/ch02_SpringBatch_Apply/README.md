@@ -26,7 +26,7 @@
 - BATCH_JOB_INSTANCE 테이블에 저장
 ### JobParameters
 - Job을 실행할때 함께 사용되는 파라미터 도메인
-- 하나의 Job에 존재할 수 있는 여러개의 JobInstancefmf rnqns
+- 하나의 Job에 존재할 수 있는 여러개의 JobInstance를 구분
 - BATCH_JOB_EXECUTION_PARAMS 저장
 ### JobExeuction
 - Job의 단일 실행에 대한 도메인
