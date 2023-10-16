@@ -42,7 +42,7 @@
 - Batch의 세션 역할을 하는 도메인
 - Job, Step의 상태를 가진다
 - Key-Value 구조
-- Batch_JOB_EXECUTION_CONTEXT, STEP_JOB_EXECUTION_CONTEXT 저장
+- BATCH_JOB_EXECUTION_CONTEXT, STEP_JOB_EXECUTION_CONTEXT 저장
 ### JobRepsitory
 - Job 저장소 도메인
 - 배치의 상태를 DB에 저장함으로써 다양한 기능에 활용할 수 있음
@@ -356,7 +356,7 @@ public class JobConfiguration {
   }
 }
 ```
-> faultTolerant()/.skip(~.class), skipLimit(count)/ .skipPolicy(t, skipCount)/ noRollback(~.class)/ retry(~.class), retrylimit(count)
+> faultTolerant()/.skip(.class), skipLimit(count)/ .skipPolicy(t, skipCount)/ noRollback(.class)/ retry(.class), retrylimit(count)
 - code3 - `@JobScope`, `@Value(<SPEL>)`
 ```java
 @Slf4j
