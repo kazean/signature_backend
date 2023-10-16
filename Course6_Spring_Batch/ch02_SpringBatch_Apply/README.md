@@ -69,7 +69,7 @@ dependencies {
 	testImplementation 'org.springframework.batch:spring-batch-test'
 }
 ```
-> spring-boot-starter-batch, data-jpa, lombok, h2, mysql
+> `spring-boot-starter-batch`, data-jpa, lombok, h2, mysql
 - application.yaml
 ```yaml
 spring:
@@ -83,9 +83,9 @@ spring:
     username: root
     password: root1234!!
 ```
-> spring.batch.initialize-schema: always  
+> `spring.batch.initialize-schema`: always  
 > spring.datasource
-- JobConfiguration
+- `JobConfiguration`
 ```java
 @Slf4j
 @Configuration
@@ -110,7 +110,7 @@ public class JobConfiguration {
     }
 }
 ```
-> @Bean Job, Step: JobBuilder, StepBuilder
+> `@Bean Job, Step: JobBuilder, StepBuilder`
 - cf, BatchAutoConfiguration
 > @Bean JobLauncherApplicationRunner, DataSourceInitializerConfiguration, SpringBootBatchConfiguration  
 > Job 실행, Database Schema, jobRepository
@@ -296,7 +296,8 @@ public class JobConfiguration {
 }
 ```
 > 기본 Step  
-> allowStartIfComplete, startLimit: default = 0
+> allowStartIfComplete, startLimit: default = 0  
+> 5번까지 성공했어도 재실행 허용
 - code2 - skip,skipLimit/ noRollback/ retry,retryLimit
 ```java
 @Slf4j
@@ -353,9 +354,9 @@ public class JobConfiguration {
       .retryLimit(5)
       .build();
   }
-
 }
 ```
+> faultTolerant()/.skip(~.class), skipLimit(count)/ .skipPolicy(t, skipCount)/ noRollback(~.class)/ retry(~.class), retrylimit(count)
 - code3 - `@JobScope`, `@Value(<SPEL>)`
 ```java
 @Slf4j
@@ -518,6 +519,15 @@ public interface ItemReader<T> {
 ### `FlatFileItemReader`
 - example Code
 ```java
+return new FlatFileItemReaderBuilder<User>()
+                .name("flatFileItemReader")
+                .resource(new ClassPathResource("users.txt"))
+                .linesToSkip(2)
+                .delimited().delimiter("|") // default ','
+                .names("name", "age", "region", "telephone") // field
+                .targetType(User.class)
+                .strict(true) // default: true, false > 읽지안고 정상적으로 종료
+                .build();
 ```
 - LineMapper<T>
 > LineTokenizer, FieldSetMapper<T>
@@ -546,6 +556,7 @@ public JsonItemReader<User> jsonItemReader() {
     .build()
 }
 ```
+> JsomItemReaderBuilder
 ### JSONObjectReader<T>
 > `JacksonJsonObjectReader<T>`, `GsonJsonObjectReader<T>`
 
@@ -577,6 +588,19 @@ public ItemReader<User> jpaPagingItemReader(
 ### JpaCursorItemReader
 - pageSize가 없다
 - JpaCursorItemReaderBuilder
+- example Code
+```java
+@Bean
+  public ItemReader<User> jpaCursorItemReader(
+        EntityManagerFactory entityManagerFactory
+  ) {
+    return new JpaCursorItemReaderBuilder<User>()
+          .name("jpaCursorItemReader")
+          .entityManagerFactory(entityManagerFactory)
+          .queryString("SELECT u From User u Order By u.id")
+          .build();
+  }
+```
 
 
 # Ch02-04-02. ItemReader - File
@@ -656,8 +680,8 @@ public class ItemReaderJobConfiguration {
 ```
 - File: FlatFileItemReder > FlatFileItemReaderBuilder
 > name, resource(new ClassPathResource("useres.txt")), linesToSkip(int)  
-> delimited().delimiter(","), names(String... field) 
-> or fixedLength(), columns(new Ragne[]{ ~ }) 
+> delimited().delimiter(","), names(String... field)  
+> or fixedLength(), columns(new Ragne[]{ ~ })  
 > targetType(~.class), strict(true): false 경우 읽지않고 정상진행
 - Json File: JsonItemReader > JsonItemReaderBuilder
 > name(), resource(), .jsonObjectReader(new JacksonJsonObjectReader<>(~.class)/Gson~).build()
@@ -726,15 +750,773 @@ public class ItemReaderJobConfiguration {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-05-01. ItemWriter
+- ItemWriter
+```java
+@FunctionalInterface
+public interface ItemWriter<T> {
+
+	/**
+	 * Process the supplied data element. Will not be called with any null items in normal
+	 * operation.
+	 * @param chunk of items to be written. Must not be {@code null}.
+	 * @throws Exception if there are errors. The framework will catch the exception and
+	 * convert or rethrow it as appropriate.
+	 */
+	void write(@NonNull Chunk<? extends T> chunk) throws Exception;
+
+}
+```
+## 출력하기
+- File(Flat, JSON, XML)
+- Database
+- HTTP API
+- Mesage Queue
+- ETC
+### FlatFileItemWriter
+- example Code
+```java
+@Bean
+public ItemWriter<User> flatFileItemWriter() {
+  return new FlatFileItemWriterBuilder<User>()
+    .name("flatFileItemWriter")
+    .resource(new PathResource("src/main/resources/new_user.txt"))
+    .delimited().delimiter("|")
+    .names("name", "age", "region", "telephone")
+    .build()
+}
+
+@Bean
+public JsonFileItemWriter<User> jsonFileItemWriter() {
+  return new JsonFileItemWriterBuilder<User>()
+    .name("jsonFileItemWriter")
+    .resource(new PathResource("src/main/resources/new_user.txt"))
+    .jsonObjectMarshaller(new JacksonJsonObjectMarshaller<>())
+    .build
+}
+```
+> `FlatFileItemWriterBuilder<T>, JsonFileItemWriter<T>`  
+> JsonFileItemWriter .jsonObjectMArshaller(new JacksonJsonObjectMarshaller)
+#### FlatFileItemWriterBuilder
+- lineAggregator(LineAggregator<T>): FlatFileItemWriterBuilder
+- footerCallback
+- shoudDeleteIfEmpty(boolean)
+- ...
+#### LineAggregator
+객체를 받아 라인을 그림
+
+### 데이터베이스 쓰기
+- JpaItemWriter
+> Jpa 이용  
+> 한 건씩 insert, update
+- JdbcBatchItemWriter
+> 벌크 insert, update 제공(Sql을 plain 하게 사용)
+- example Code
+```java
+@Bean
+public JpaItemWriter<User> jpaItemWriter(EntityManagerFactory entityManagerFactory) {
+  return new JpaItemWriterBuilder<User>()
+        .entityManagerFactory(entityManagerFactory)
+        .build();
+}
+
+@Bean
+public JdbcBatchItemWriter<User> jdbcBatchItemWriter(DataSource dataSource) {
+  return new JdbcBatchItemWriterBuilder<User>()
+        .dataSource(dataSource)
+        .sql("""
+                INSERT INTO
+                    USER(name, age, region, telephone)
+                VALUES
+                    (:name, :age, :region, :telephone)
+                """)
+        .beanMapped()
+        .build();
+}
+```
+
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-05-02. ItemWriter - 적용
+```java
+@Configuration
+public class ItemWriterJobConfiguration {
+  @Bean
+  public Job job(
+        JobRepository jobRepository,
+        Step step
+  ) {
+    return new JobBuilder("itemReaderJob", jobRepository)
+          .incrementer(new RunIdIncrementer())
+          .start(step)
+          .build();
+  }
+
+  @Bean
+  public Step step(
+        JobRepository jobRepository,
+        PlatformTransactionManager platformTransactionManager,
+        ItemReader<User> flatFileItemReader,
+        ItemWriter<User> jdbcBatchItemWriter
+  ) {
+    return new StepBuilder("step", jobRepository)
+          .<User, User>chunk(2, platformTransactionManager)
+          .reader(flatFileItemReader)
+          .writer(jdbcBatchItemWriter)
+          .build();
+  }
+
+  @Bean
+  public FlatFileItemWriter<User> flatFileItemWriter() {
+    return new FlatFileItemWriterBuilder<User>()
+          .name("flatFileItemWriter")
+          .resource(new PathResource("src/main/resources/new_users.txt"))
+          .delimited().delimiter("__")
+          .names("name", "age", "region", "telephone")
+          .build();
+  }
+
+  @Bean
+  public FlatFileItemWriter<User> formattedFlatFileItemWriter() {
+    return new FlatFileItemWriterBuilder<User>()
+          .name("formattedFlatFileItemWriter")
+          .resource(new PathResource("src/main/resources/new_formatted_users.txt"))
+          .formatted()
+          .format("%s의 나이는 %s입니다. 사는곳은 %s, 전화번호는 %s 입니다")
+          .names("name", "age", "region", "telephone")
+//                .shouldDeleteIfExists(false)
+//                .append(true)
+//                .shouldDeleteIfEmpty(true)
+          .build();
+  }
+
+  @Bean
+  public JsonFileItemWriter<User> jsonFileItemWriter() {
+    return new JsonFileItemWriterBuilder<User>()
+          .name("jsonFileItemWriter")
+          .resource(new PathResource("src/main/resources/new_users.json"))
+          .jsonObjectMarshaller(new JacksonJsonObjectMarshaller<>())
+          .build();
+  }
+
+  @Bean
+  public JpaItemWriter<User> jpaItemWriter(EntityManagerFactory entityManagerFactory) {
+    return new JpaItemWriterBuilder<User>()
+          .entityManagerFactory(entityManagerFactory)
+          .build();
+  }
+
+  @Bean
+  public JdbcBatchItemWriter<User> jdbcBatchItemWriter(DataSource dataSource) {
+    return new JdbcBatchItemWriterBuilder<User>()
+          .dataSource(dataSource)
+          .sql("""
+                  INSERT INTO
+                      USER(name, age, region, telephone)
+                  VALUES
+                      (:name, :age, :region, :telephone)
+                  """)
+          .beanMapped()
+          .build();
+  }
+
+  @Bean
+  public FlatFileItemReader<User> flatFileItemReader() {
+    return new FlatFileItemReaderBuilder<User>()
+          .name("flatFileItemReader")
+          .resource(new ClassPathResource("users.txt"))
+          .linesToSkip(2)
+          .delimited().delimiter(",") // default ','
+          .names("name", "age", "region", "telephone")
+          .targetType(User.class)
+          .strict(true) // default: true, false > 읽지안고 정상적으로 종료
+          .build();
+  }
+}
+```
+> organize
+```
+# File
+## FlatFileItemWriterBuilder<T>
+.name(String... field), .resources(WritableResource)
+> .deliemited().delimiter("__")
+> .formatted().format(format: Str)
+.build()
+
+# Json
+## JsonFileItemWriterBuilder<T>
+.name().resource()
+.jsonObjectMarshaller(JsonObjectMarshaller)
+.build()
+
+# DB
+## JpaItemWriterBuilder<T>
+  .entityManagerFactory(emf)
+  .build()
+## JdbcBatchItemWriterBuilder<T>
+  .datasource
+  .sql(""" 
+    INSERT INTO t VALUES (:name)
+    """)
+  .beanMapped()
+  .build()
+```
+> jsonObjectMarshaller, """ """ 향상된 String  
+> Jpa는 1건씩 JdbcBatch는 벌크 DML
+
+
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-06. ItemProcessor
+## ItemProcessor 주 기능
+- 읽은 데이터를 쓰기 데이터로 가공(비지니스 로직)
+- 필터링(null)
+- 입력 유효성 검증
+```java
+@FunctionalInterface
+public interface ItemProcessor<I, O> {
+
+	/**
+	 * Process the provided item, returning a potentially modified or new item for
+	 * continued processing. If the returned result is {@code null}, it is assumed that
+	 * processing of the item should not continue.
+	 * <p>
+	 * A {@code null} item will never reach this method because the only possible sources
+	 * are:
+	 * <ul>
+	 * <li>an {@link ItemReader} (which indicates no more items)</li>
+	 * <li>a previous {@link ItemProcessor} in a composite processor (which indicates a
+	 * filtered item)</li>
+	 * </ul>
+	 * @param item to be processed, never {@code null}.
+	 * @return potentially modified or new item for continued processing, {@code null} if
+	 * processing of the provided item should not continue.
+	 * @throws Exception thrown if exception occurs during processing.
+	 */
+	@Nullable
+	O process(@NonNull I item) throws Exception;
+
+}
+```
+## Bean Validation(JSR-303)
+- NotEmpty, NotBlank
+## 관심사가 다른 ItemProcessor - CompisiteItemProcessor<I,O>
+```java
+public class CompositeItemProcessor<I, O> implements ItemProcessor<I, O>, InitializingBean {
+
+	private List<? extends ItemProcessor<?, ?>> delegates;
+  
+  public CompositeItemProcessor(ItemProcessor<?, ?>... delegates) {
+		this(Arrays.asList(delegates));
+	}
+}
+```
+
+## code
+```java
+@Configuration
+public class ItemProcessorJobConfiguration {
+    @Bean
+    public Job job(
+            JobRepository jobRepository,
+            Step step
+    ) {
+        return new JobBuilder("itemReaderJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(step)
+                .build();
+    }
+
+    @Bean
+    public Step step(
+            JobRepository jobRepository,
+            PlatformTransactionManager platformTransactionManager,
+            ItemReader<User> flatFileItemReader
+    ) {
+        final List<ItemProcessor<User, User>> list = Arrays.asList(processor1(), processor2(), processor3());
+        return new StepBuilder("step", jobRepository)
+//                .<User, String>chunk(2, platformTransactionManager)
+                .<User, User>chunk(2, platformTransactionManager)
+                .reader(flatFileItemReader)
+//                .processor(customProcessor())
+                .processor(new CompositeItemProcessor<>(list))
+                .writer(System.out::println)
+                .build();
+    }
+
+    private static ItemProcessor<User, String> customProcessor() {
+        return user -> {
+            if (user.getName().equals("민수")) return null;
+
+            return "%s의 나이는 %s입니다. 사는 곳은 %s, 전화번호는 %s 입니다".formatted(
+                    user.getName(), user.getAge(), user.getRegion(), user.getTelephone()
+            );
+        };
+    }
+
+    private static ItemProcessor<User, User> processor1() {
+        return user -> {
+            user.setName(user.getName() + user.getName());
+            return user;
+        };
+    }
+
+    private static ItemProcessor<User, User> processor2() {
+        return user -> {
+            user.setAge(user.getAge() + user.getAge());
+            return user;
+        };
+    }
+
+    private static ItemProcessor<User, User> processor3() {
+        return user -> {
+            user.setRegion(user.getRegion() + user.getRegion());
+            return user;
+        };
+    }
+
+    @Bean
+    public FlatFileItemReader<User> flatFileItemReader() {
+        return new FlatFileItemReaderBuilder<User>()
+                .name("flatFileItemReader")
+                .resource(new ClassPathResource("users.txt"))
+                .linesToSkip(2)
+                .delimited().delimiter(",") // default ','
+                .names("name", "age", "region", "telephone")
+                .targetType(User.class)
+                .strict(true) // default: true, false > 읽지안고 정상적으로 종료
+                .build();
+    }
+}
+```
+> new StepBuilder().processor(itemProcessor)  
+> new CompositeItemProcessor<>(itemProcessors)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-07-01. 확장을 통한 성능 개선
+## 확장
+- Multi-threaded Step
+- Parallel Steps
+- Partitioning
+- Remote Chunking(MQ)
+## Multi-threaded Step
+Step > Multi-threaded Step(Chunk, Chunk, Chunk) > Step
+> 단, Race-Condition
+### Thread-safe
+- ItemReader 구현시 - impl is thread-safe
+### Multi-threaded Step
+```java
+@Bean
+public Step sampleStep(
+  TaskExecutor taskExecutor,
+  JobRepository jobRepository,
+  PlatformTransactionManager transacitonManager
+) {
+  return new StepBuilder("sampleStep", jobRepository)
+    .<String, String>chunk(10, transactionManager)
+    .reader(itemReader())
+    .writer(itemWriter())
+    .taskExecutor(new SimpleAsyncTaskExecutor())
+    .build()
+}
+```
+> StepBuilder .taskExecutor(new SimpleAsyncTaskExecutor()) - ItemReader Race-condition 방지구현필요
+> > !실패지점에서 재실행하는 것이 불가능
+
+
+## Parallel Steps
+Step1 > Step2, Step3>Step4 > Step5
+> Step을 Parallel하게 실행
+> > FlowStep을 사용해서 구현: FlowBuilder
+```java
+@Bean
+public Job job(JobRepository, jobRepository, Step step4, Flow splitFlow) {
+  return new JobBuilder("job", jobRepository)
+    .start(splitFlow)
+    .next(step4)
+    .build()
+    .build();
+}
+
+@Bean
+public Flow splitFlow(Flow flow1, Flow2) {
+  return new FlowBuilder<SimpleFlow>("splitFlow")
+    .split(new SimpleAsyncTaskExecutor())
+    .add(flow1, flow2)
+    .build();
+}
+```
+
+
+## Partitioning
+Step - Manager(Worker, Worker, ...) - Step
+> 재시작 지원
+### Master Step
+- Partitioner
+- PartitionHandler
+> Worker Step, WorkStep, ...
+> > 구간별 파티셔닝
+#### PartitionHandler
+```java
+@FunctionalInterface
+public interface PartitionHandler {
+
+	/**
+	 * Main entry point for {@link PartitionHandler} interface. The splitter creates all
+	 * the executions that need to be farmed out, along with their input parameters (in
+	 * the form of their {@link ExecutionContext}). The manager step execution is used to
+	 * identify the partition and group together the results logically.
+	 * @param stepSplitter a strategy for generating a collection of {@link StepExecution}
+	 * instances
+	 * @param stepExecution the manager step execution for the whole partition
+	 * @return a collection of completed {@link StepExecution} instances
+	 * @throws Exception if anything goes wrong. This allows implementations to be liberal
+	 * and rely on the caller to translate an exception into a step failure as necessary.
+	 */
+	Collection<StepExecution> handle(StepExecutionSplitter stepSplitter, StepExecution stepExecution) throws Exception;
+
+}
+```
+> impl TaskExecutorPartitionHandler, MessageChannelPartitionHandler
+#### Partitioner
+```java
+@FunctionalInterface
+public interface Partitioner {
+
+	/**
+	 * Create a set of distinct {@link ExecutionContext} instances together with a unique
+	 * identifier for each one. The identifiers should be short, mnemonic values, and only
+	 * have to be unique within the return value (e.g. use an incrementer).
+	 * @param gridSize the size of the map to return
+	 * @return a map from identifier to input parameters
+	 */
+	Map<String, ExecutionContext> partition(int gridSize);
+
+}
+```
+### code
+```java
+@Bean
+public PartitionHandler partitionHandler() {
+  TaskExecutorPartitionHandler partitionHandler = new TaskExecutorPartitionHandler();
+  partitionHandler.setTaskExecutor(new SimpleAsyncTaskExecutor());
+  partitionHandler.setStep(step());
+  partitionHandler.setGridSize(10);
+  return partitionHandler;
+}
+
+//Partitioner
+@Override
+public Map<String, ExecutionContext> partition(int gridSize) {
+  Map<String, ExecutionContext> result = new HashMap<>();
+  // ...
+
+  return result;
+}
+
+@Bean
+@StepScope
+public JpaPagingItemReader<User> itemReader(
+  @Value("#{stepExecutionContext[minValue]}") Long minValue,
+  @Value("#{stepExecutionContext[maxValue]}") Long maxValue
+) {
+  Map<String, Object> params = new HashMap<>();
+  params.put("minValue", minValue);
+  params.put("maxValue", maxValue);
+
+  return new JpaPagingItemReaderBuilder<User>()
+    .name("itemReader")
+    // .~
+    .parameterValues(params)
+    .build();
+}
+```
+> @Bean PartitionHandler, Partitionner, @Bean ItemReaderBuilder.parameterValues(params)
+
+
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-07-02. 확장을 통한 성능 개선 - Multi-threaded, Parallel 
+## MutliThread
+### code
+```java
+@Slf4j
+@Configuration
+public class MultiThreadJobConfig {
+
+    @Bean
+    public Job job(
+            JobRepository jobRepository,
+            Step step
+    ) {
+        return new JobBuilder("multiThreadJob", jobRepository)
+                .start(step)
+                .incrementer(new RunIdIncrementer())
+                .build();
+    }
+
+    @Bean
+    public Step step(
+            JobRepository jobRepository,
+            PlatformTransactionManager platformTransactionManager,
+            JpaPagingItemReader pagingItemReader
+    ) {
+        return new StepBuilder("step", jobRepository)
+                .<User, User>chunk(5, platformTransactionManager)
+                .reader(pagingItemReader)
+                .writer(result -> log.info(result.toString()))
+                .taskExecutor(new SimpleAsyncTaskExecutor())
+                .build();
+    }
+
+    @Bean
+    public JpaPagingItemReader<User> pagingItemReader(
+            EntityManagerFactory entityManagerFactory
+    ) {
+        return new JpaPagingItemReaderBuilder<User>()
+                .name("pagingItemReader")
+                .entityManagerFactory(entityManagerFactory)
+                .pageSize(2)
+                .saveState(false) // 실패시 재시작 지점을 알 수 없기에 false 권장
+                .queryString("SELECT u FROM User u ORDER BY u.id")
+                .build();
+    }
+}
+```
+> StepBuilder . taskExecutor(new SimpleAsyncTaskExecutor)  
+> JpaPagingItemReaderBuilder<>() .saveState(false) // 실패시 재시작 X
+
+
+## ParallelStep
+### Code
+```java
+@Slf4j
+@Configuration
+public class ParallelStepJobConfig {
+
+    /*
+    flow1(step1, step2)
+                            > step4
+    flow2(step3)
+     */
+    @Bean
+    public Job job(
+            JobRepository jobRepository,
+            Step step4,
+            Flow splitFlow
+    ) {
+        return new JobBuilder("job", jobRepository)
+                .start(splitFlow)
+                .next(step4)
+                .build()
+                .build();
+    }
+
+    @Bean
+    public Flow splitFlow(Flow flow1, Flow flow2) {
+        return new FlowBuilder<SimpleFlow>("splitFlow")
+                .split(new SimpleAsyncTaskExecutor())
+                .add(flow1, flow2)
+                .build();
+    }
+
+    @Bean
+    public Flow flow1(Step step1, Step step2) {
+        return new FlowBuilder<SimpleFlow>("flow1")
+                .start(step1)
+                .next(step2)
+                .build();
+    }
+
+    @Bean
+    public Flow flow2(Step step3) {
+        return new FlowBuilder<SimpleFlow>("flow2")
+                .start(step3)
+                .build();
+    }
+
+    @Bean
+    public Step step1(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+        return new StepBuilder("step1", jobRepository)
+                .tasklet((a, b) -> {
+                    Thread.sleep(500);
+                    log.info("step1");
+                    return RepeatStatus.FINISHED;
+                }, transactionManager)
+                .build();
+    }
+    // step2~4
+}
+```
+> JobBuilder .start(splitFlow) .next(step4)  
+> FlowBuilder<SimpleFlow>(name) .split(new SimpleAsyncTaskExecutor()) .add(flow...)  
+> StepBuilder
+> > add 부분이 병렬 실행!
+
+
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-07-03. 확장을 통한 성능 개선 - Partitioning
+## Code
+```java
+@Slf4j
+@Configuration
+public class PartitionJobConfiguration {
+
+    // 하나의 Step 을 각 WorkerStep
+    @Bean
+    public Job job(
+            JobRepository jobRepository,
+            Step managerStep
+    ) {
+        return new JobBuilder("partitionJob", jobRepository)
+                .start(managerStep)
+                .incrementer(new RunIdIncrementer())
+                .build();
+    }
+
+    @Bean
+    public Step managerStep(
+            JobRepository jobRepository,
+            Step step,
+            PartitionHandler partitionHandler,
+            DataSource dataSource
+    ) {
+        return new StepBuilder("managerStep", jobRepository)
+                .partitioner("delegateStep", new ColumnRangePartitioner(dataSource))
+                .step(step)
+                .partitionHandler(partitionHandler)
+                .build();
+    }
+
+    @Bean
+    public PartitionHandler partitionHandler(Step step) {
+        final TaskExecutorPartitionHandler taskExecutorPartitionHandler = new TaskExecutorPartitionHandler();
+        taskExecutorPartitionHandler.setStep(step);
+        taskExecutorPartitionHandler.setTaskExecutor(new SimpleAsyncTaskExecutor());
+        taskExecutorPartitionHandler.setGridSize(3);
+        return taskExecutorPartitionHandler;
+    }
+
+    @Bean
+    public Step step(
+            JobRepository jobRepository,
+            JpaPagingItemReader<User> jpaPagingItemReader,
+            PlatformTransactionManager transactionManager
+    ) {
+        return new StepBuilder("step", jobRepository)
+                .<User, User>chunk(2, transactionManager)
+                .reader(jpaPagingItemReader)
+                .writer(result -> log.info(result.toString()))
+                .build();
+    }
+
+    @Bean
+    @StepScope
+    public JpaPagingItemReader<User> jpaPagingItemReader(
+            @Value("#{stepExecutionContext[minValue]}") Long minValue,
+            @Value("#{stepExecutionContext[maxValue]}") Long maxValue,
+            EntityManagerFactory entityManagerFactory
+    ) {
+        log.info("minValue : {}, maxValue : {}", minValue, maxValue);
+        final Map<String, Object> params = new HashMap<>();
+        params.put("minValue", minValue);
+        params.put("maxValue", maxValue);
+
+        return new JpaPagingItemReaderBuilder<User>()
+                .name("jpaPagingItemReader")
+                .entityManagerFactory(entityManagerFactory)
+                .pageSize(2)
+                .queryString("""
+                            SELECT u FROM User u
+                            WHERE u.id BETWEEN :minValue AND :maxValue
+                        """)
+                .parameterValues(params)
+                .build();
+    }
+}
+
+public class ColumnRangePartitioner implements Partitioner {
+    private final JdbcTemplate jdbcTemplate;
+
+    public ColumnRangePartitioner(DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
+
+    @Override
+    public Map<String, ExecutionContext> partition(int gridSize) { // 3
+        final Integer min = jdbcTemplate.queryForObject("SELECT min(id) FROM USER", Integer.class); // 11
+        final Integer max = jdbcTemplate.queryForObject("SELECT max(id) FROM USER", Integer.class); // 15
+        int targetSize = (max - min) / gridSize + 1; // 2
+
+        final Map<String, ExecutionContext> result = new HashMap<>();
+        int number = 0;
+        int start = min;
+        int end = start + targetSize - 1;
+
+        while (start <= max) {
+            final ExecutionContext value = new ExecutionContext();
+            result.put("partition" + number, value);
+
+            if (end >= max) {
+                end = max;
+            }
+
+            value.putInt("minValue", start);
+            value.put("maxValue", end);
+
+            start += targetSize;
+            end += targetSize;
+            number++;
+        }
+
+        return result;
+    }
+}
+```
+> Organize
+```
+- @Bean Job
+new JobBuilder()
+  .start(managerStep: Step)
+
+- @Bean Step managerStep
+new StepBuilder()
+  .partitioner("name", Partitioner)
+  .partitionerHandler(partitionHandler)
+  .step(step)
+
+- @Bean partitionerHandler(Step step)
+new TaskExecutorPartitionHandler()
+  .setStep(step)
+  .setTaskExecutor(new SimpleAsyncTaskExecutor())
+  .setGridSize(size)
+  
+- @Bean Step step
+new StepBuilder
+  .reader(jpaPagingItemReader)
+  
+- * @Bean @StepScope JpaPagingItemReader<User>(
+  @Value("#{stepExecutionContext[minValue]}") Long minValue, ...
+)
+  Map<String, Object> params = new HashMap<>();
+  params.put("minValue", minValue)
+  new JpaPagingItemReaderbuilder<>()
+    .name(), .entityManagerFactory(emf), pageSize(size)
+    .queryString( ~  BETWEEN :minValue AND :maxValue)
+    .parameterValue(params)
+    .build()
+
+- * ComlumnRangePartitioner impl Partitioner{
+  @Over
+  Map<String, ExecutionContext> partition(int gridSize){
+    Map<String, ExecutionContext> result = new HashMap<>();
+
+    while(){
+      value = new ExecutionContext();
+      ...
+      value.put("minValue", start)
+      value.put("maxValue", end)
+      result.put("partition" + number, value)
+    }
+
+    return result;
+  }
+}
+```
