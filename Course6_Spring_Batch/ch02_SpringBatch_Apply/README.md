@@ -1,20 +1,24 @@
 # Ch02. Spring Batch 적용
-# [Spring Batch 도메인 용어 익히기](#ch02-01-01-spring-batch-도메인-용어-익히기)
-# [Spring Batch 도메인 용어 익히기 - 적용](#ch02-01-02-spring-batch-도메인-용어-익히기---적용)
-# [Job](#ch02-02-job)
-# [Step](#ch02-03-01-step)
-# [Step-기본적용](#ch02-03-02-step---기본적용)
-# [Step - flow](#ch02-03-03-step---flow-적용)
-# [ItemReader](#ch02-04-01-itemreader)
-# [ItemReader - File](#ch02-04-02-itemreader---file)
-# [ItemReader - File](#ch02-04-02-itemreader---file-1)
-# [ItemReader - Database](#ch02-04-03-itemreader---database)
-# [ItemWriter](#ch02-05-01-itemwriter)
-# [ItemWriter - 적용](#ch02-05-02-itemwriter---적용)
-# [ItemProcessor](#ch02-06-itemprocessor)
-# [확장을 통한 성능 개선](#ch02-07-01-확장을-통한-성능-개선)
-# [확장 - MultiThread, Parallel](#ch02-07-02-확장을-통한-성능-개선---multi-threaded-parallel)
-# [확장 - Partitioning](#ch02-07-03-확장을-통한-성능-개선---partitioning)
+- [Spring Batch 도메인 용어 익히기](#ch02-01-01-spring-batch-도메인-용어-익히기)
+- [Spring Batch 도메인 용어 익히기 - 적용](#ch02-01-02-spring-batch-도메인-용어-익히기---적용)
+- [Job](#ch02-02-job)
+- [Step](#ch02-03-01-step)
+- [Step-기본적용](#ch02-03-02-step---기본적용)
+- [Step - flow](#ch02-03-03-step---flow-적용)
+- [ItemReader](#ch02-04-01-itemreader)
+- [ItemReader - File](#ch02-04-02-itemreader---file)
+- [ItemReader - File](#ch02-04-02-itemreader---file-1)
+- [ItemReader - Database](#ch02-04-03-itemreader---database)
+- [ItemWriter](#ch02-05-01-itemwriter)
+- [ItemWriter - 적용](#ch02-05-02-itemwriter---적용)
+- [ItemProcessor](#ch02-06-itemprocessor)
+- [확장을 통한 성능 개선](#ch02-07-01-확장을-통한-성능-개선)
+- [확장 - MultiThread, Parallel](#ch02-07-02-확장을-통한-성능-개선---multi-threaded-parallel)
+- [확장 - Partitioning](#ch02-07-03-확장을-통한-성능-개선---partitioning)
+# [확장 - ](#)
+---------------------------------------------------------------------------------------------------------------------------
+
+
 # Ch02-01-01. Spring Batch 도메인 용어 익히기
 ## 배치 도메인
 - Job
