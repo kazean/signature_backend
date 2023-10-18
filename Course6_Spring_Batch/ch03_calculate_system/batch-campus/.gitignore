@@ -1,4 +1,4 @@
-/src/main/**/resources/datas/**
+/src/main/resources/datas/**
 HELP.md
 .gradle
 build/
