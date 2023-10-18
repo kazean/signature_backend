@@ -1,9 +1,9 @@
+/src/main/**/resources/datas/
 HELP.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
-!**/src/main/**/resources/datas/**
 !**/src/test/**/build/
 
 ### STS ###
