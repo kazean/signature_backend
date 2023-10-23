@@ -170,10 +170,11 @@ public enum ServicePolicy {
 - FlatFileItemWriterBuilder
 ## ItemReader
 - Boolean read()
-> totalCount 만큼 읽기
+> totalCount 만큼 읽기  
+> null 이면 stop
 ## ItemProcessor<Boolean, ApiOrder>
 > ApiOrder 생성
-> `ThreadLocalRandom`
+> `ThreadLocalRandom` nextInt(int Range)
 ## ItemWriter
 - FlatFileItemWriterbuilder<ApiOrder>
 > ApiOrder 쓰기
@@ -432,6 +433,7 @@ record Key(Long customerId, Long serviceId) implements Serializable {
     return new Key(item.getCustomerId(), serviceId);
   }
 > customerId(0 ~ 19), serviceId(1 ~ 26)
+> return null (filter)
 
 # ItemWriter - PreSettleDetailWriter implements ItemWriter<Key>, StepExecutionListener
 this.stepExecution = stepExecution;
@@ -443,15 +445,15 @@ public void write(Chunk<? extends Key> chunk) throws Exception
 public void beforeStep(StepExecution stepExecution)
 - beforeStep: StepExecutionListener 
 > ConcurrentHashMap<Key, Long> snapshotMap 
-> StepExecutionContext.put("snapshots", snapshotMap)
+> StepExecutionContext.getExecutionContext().put("snapshots", snapshotMap)
 
 - ItemWriter: write(Chunk<? extends Key> chunk)
-> snapshotMap = setExecution.getExecutionContext.get("snapshots")
+> snapshotMap = stepExecution.getExecutionContext.get("snapshots")
 > chunk.forEach(key -> snapshotMap.compute(key, (k, v) -> (v == null) ? 1 : v+1 ))
 > > key customerId, serviceId
 
 # ExecutionContextPromotionListener
-- new ExecutionContextPromotionListener
+- listener = new ExecutionContextPromotionListener
 > listener.setKeys(new String[]{"snapshots"})
 ```
 
@@ -821,13 +823,15 @@ public class SettleGroupItemMailWriter implements ItemWriter<List<SettleGroup>> 
 ```
 - SettleGroupItemReader
 > 고객정보를 받는다
-> * ItemProcessor return null 일때까지 진행
+> * ItemReader return null 일때까지 진행
 - SettleGroupItemProcessor 
 > 고객정보를 기반으로 SettleDetail테이블에서 조건 startDate, endDate, customerId과 customerId, serviceId 기준으로 Group By
 > List<SettleGroup> Return
-- SettleGroupItemDbWriter
-> settleGroupRepository.saveAll(settleGroup)
-- SettleGroupItemMailWriter
+- CompositeItemWriter
+> new CompositeItemWriter<>(writer...)
+> SettleGroupItemDbWriter
+> > settleGroupRepository.saveAll(settleGroup)
+> SettleGroupItemMailWriter
 ```
 ## Code - ref
 ```java
