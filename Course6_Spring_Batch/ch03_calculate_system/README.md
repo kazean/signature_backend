@@ -31,9 +31,9 @@ public class ApiOrderGenerateJobConfiguration {
     private final PlatformTransactionManager platformTransactionManager;
 
     @Bean
-    public Job apiOrderGenerateJob(Step step) {
+    public Job apiOrderGenerateJob(Step apiOrderGenerateStep) {
         return new JobBuilder("apiOrderGenerateJob", jobRepository)
-                .start(step)
+                .start(stapiOrderGenerateStepp)
                 .incrementer(new RunIdIncrementer())
                 .validator(
                         new DefaultJobParametersValidator(
@@ -44,11 +44,11 @@ public class ApiOrderGenerateJobConfiguration {
     }
 
     @Bean
-    public Step apiOOrderGenerateStep(
+    public Step apiOrderGenerateStep(
             ApiOrderGenerateReader apiOrderGenerateReader,
             ApiOrderGenerateProcessor apiOrderGenerateProcessor
     ) {
-        return new StepBuilder(("apiOOrderGenerateStep"), jobRepository)
+        return new StepBuilder(("apiOrderGenerateStep"), jobRepository)
                 .<Boolean, ApiOrder>chunk(10000, platformTransactionManager)
                 .reader(apiOrderGenerateReader)
                 .processor(apiOrderGenerateProcessor)
@@ -173,6 +173,7 @@ public enum ServicePolicy {
 > totalCount 만큼 읽기
 ## ItemProcessor<Boolean, ApiOrder>
 > ApiOrder 생성
+> `ThreadLocalRandom`
 ## ItemWriter
 - FlatFileItemWriterbuilder<ApiOrder>
 > ApiOrder 쓰기
@@ -213,20 +214,20 @@ public class ApiOrderGeneratePartitionJobConfiguration {
     public Step managerStep(
         PartitionHandler partitionHandler,
         @Value("#{jobParameters['targetDate']}") String targetDate,
-        Step apiOOrderGenerateStep
+        Step apiOrderGenerateStep
     ) {
         return new StepBuilder("managerStep", jobRepository)
                 .partitioner("delegateStep", getPartitioner(targetDate))
-                .step(apiOOrderGenerateStep)
+                .step(apiOrderGenerateStep)
                 .partitionHandler(partitionHandler)
                 .build();
     }
 
     // 매니저 스텝이 워커 스텝을 어떻게 다룰지 정의
     @Bean
-    public PartitionHandler partitionHandler(Step apiOOrderGenerateStep) {
+    public PartitionHandler partitionHandler(Step apiOrderGenerateStep) {
         final TaskExecutorPartitionHandler taskExecutorPartitionHandler = new TaskExecutorPartitionHandler();
-        taskExecutorPartitionHandler.setStep(apiOOrderGenerateStep);
+        taskExecutorPartitionHandler.setStep(apiOrderGenerateStep);
         taskExecutorPartitionHandler.setGridSize(7);
         taskExecutorPartitionHandler.setTaskExecutor(new SimpleAsyncTaskExecutor());
         return taskExecutorPartitionHandler;
@@ -251,11 +252,11 @@ public class ApiOrderGeneratePartitionJobConfiguration {
     }
 
     @Bean
-    public Step apiOOrderGenerateStep(
+    public Step apiOrderGenerateStep(
             ApiOrderGenerateReader apiOrderGenerateReader,
             ApiOrderGenerateProcessor apiOrderGenerateProcessor
     ) {
-        return new StepBuilder(("apiOOrderGenerateStep"), jobRepository)
+        return new StepBuilder(("apiOrderGenerateStep"), jobRepository)
                 .<Boolean, ApiOrder>chunk(10000, platformTransactionManager)
                 .reader(apiOrderGenerateReader)
                 .processor(apiOrderGenerateProcessor)
