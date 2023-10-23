@@ -1,7 +1,7 @@
 # Ch02. Redis
-- [1. in-memory dataabse]()
-- [2. Redis 소개]()
-- [3. Redis 설치]()
+- [1. in-memory dataabse](#ch02-01-in-memory-dataabse)
+- [2. Redis 소개](#ch02-02-redis-소개)
+- [3. Redis 설치](#ch02-03-redis-설치)
 - [4. Redis CLI를 통한 접속]()
 - [5. Data types에 대한 이해]()
 - [6. Data types String 실습]()
