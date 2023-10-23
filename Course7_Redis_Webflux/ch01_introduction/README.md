@@ -25,8 +25,8 @@ macOS 패키지 관리자
 - Homebrew 설치
 ## OpenJDK17
 > $ brew tap homebrew/cask versions  
-> brew install --cask temurin17
+> $ brew install --cask temurin17
 ## Intellij
 ## Docker Desktop
 ## Redis:6.2
-> docker pull redis:6.2
+> $ docker pull redis:6.2
