@@ -74,3 +74,230 @@ Strings, Lists, Hashes, Sorted sets, ...
 > $ docker run --rm -it -d -p 6379:6379 redis:6.2
 - Redis 컨테이너 종료
 > $ docker kill [container Id]
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-04. Redis CLI을 통한 접속
+## CLI 실행
+> $ docker ps
+> $ docker exec -it [container Id] redis-cli [GET name]
+## 유용한 명령어
+- redis-cli monitor
+- slowlog get
+> 10 ms 이상
+- info 
+- --stat
+- SELECT 0
+> 1, 2 기본적으로 0번 데이터베이스 사용
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-05. Data types에 대한 이해
+Key/Value
+## Strings
+- 대표 기본 타입으로 바이너리, 문자 데이터를 저장
+> maximum 512MB
+- 증가 감소에 대한 원자적 연산
+> increment/decrement
+### command
+- SET, SETNX, GET, MGET, INC, DEC
+
+## Key 주요 명령어
+### TTL(Time To Live)
+- EXPIRE [KEY] [SECOND]
+- TTL [KEY]
+### DEL command (sync)
+### UNLINK command (async)
+### MEMORY USAGE
+
+## Lists
+- Linked List(strings)
+- Queue, Stack
+### command
+- LPUSH, RPUSH ,LPOP, RPOP, LLEN, LRANGE
+
+## Sets
+- Unordered collection
+- Unique item
+### command
+- SADD, SREM, SISMEMBER, SMEMBERS(O(N)), SINTER(O(N^2)), SCARD
+## Sorted Sets
+- ordered collection
+- Leader board, Rate limit
+### command
+- ZADD, ZREM, ZRANGE, ZCARD, ZRANK / ZREVERANK, ZINCRBY
+
+## Hashes
+### command
+- HSET, HGET, HMGET, HGETALL, HDEL, HINCRBY
+
+## Geospatial
+- Coordinate(Latitude and Longitude)
+### command
+- GEOADD, GEOSEARCH, GEODIST, GEOPOS
+
+## Bitmap
+### command
+- SETBIT, GETBIT, BITCOUNT
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-06. Data types String 실습
+## Strings 실습
+```sh
+$ docker exec -it [container Id] redis-cli
+$ SET users:400:email greg@fastcampus.co.kr
+$ GET users:400:email
+
+$ SET users:400:name greg
+$ MGET users:400:email users:400:name
+
+$ SET users:401:email greg2@fastcampus.co.kr NX
+# SETNX 대체
+
+$ INCR counter
+$ DECR counter
+$ INCRBY counter 10
+```
+
+## Sample Project
+```java
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello world!");
+
+        try (var jedisPool = new JedisPool("127.0.0.1", 6379);) {
+            try (Jedis jedis = jedisPool.getResource()) {
+                /*
+                jedis.set("users:300:email", "kim@fastcampus.co.kr");
+                jedis.set("users:300:name", "kim 00");
+                jedis.set("users:300:age", "100");
+
+                var userEmail = jedis.get("users:300:email");
+                System.out.println(userEmail);
+
+                List<String> userInfo = jedis.mget("users:300:email", "users:300:name", "users:300:age");
+                userInfo.forEach(System.out::println);
+
+                long counter = jedis.incr("counter");
+                System.out.println(counter);
+
+                counter = jedis.incrBy("counter", 10L);
+                System.out.println(counter);
+
+                counter = jedis.decr("counter");
+                System.out.println(counter);
+
+                counter = jedis.decrBy("counter", 20L);
+                System.out.println(counter);
+                */
+
+                Pipeline pipelined = jedis.pipelined();
+                pipelined.set("users:400:email", "grep@fastcampus.co.kr");
+                pipelined.set("users:400:name", "grep");
+                pipelined.set("users:400:age", "15");
+                List<Object> objects = pipelined.syncAndReturnAll();
+                objects.forEach(i -> System.out.println(i.toString()));
+
+            }
+        }
+    }
+}
+```
+> organize
+```
+- JedisPool(host, port)
+- jeisPool.getResource: Jedis
+- jedis.set/get/mget/incr/incrBy
+- jeis.pipelined: Pipelined
+> pipelined.set
+> > pipelined.syncAndResutAll(): List<Object>
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-07. Data types List, Set 실습
+## List
+### Block command
+- BLPOP
+- BRPOP
+> MQ 처럼 사용
+## Set
+## 실습
+```java
+try (var jedisPool = new JedisPool("127.0.0.1", 6379)) {
+  try (Jedis jedis = jedisPool.getResource()) {
+    // list
+    // 1. stack
+    jedis.rpush("stack1", "aaa");
+    jedis.rpush("stack1", "bbb");
+    jedis.rpush("stack1", "ccc");
+
+//                List<String> stack1 = jedis.lrange("stack1", 0, -1);
+//                stack1.forEach(System.out::println);
+
+    System.out.println(jedis.rpop("stack1"));
+    System.out.println(jedis.rpop("stack1"));
+    System.out.println(jedis.rpop("stack1"));
+
+    // 2. queue
+    jedis.rpush("queue2", "zzz");
+    jedis.rpush("queue2", "yyy");
+    jedis.rpush("queue2", "xxx");
+
+    System.out.println(jedis.lpop("queue2"));
+    System.out.println(jedis.lpop("queue2"));
+    System.out.println(jedis.lpop("queue2"));
+    
+    // 3. block brpop, blpop
+    List<String> blpop = jedis.blpop(10, "queue:blocking");
+    if (blpop != null) {
+        blpop.forEach(System.out::println);
+    }
+
+    // 4. set
+    jedis.sadd("users:500:follow", "100", "200", "300");
+    jedis.srem("users:500:follow", "100");
+
+    Set<String> smembers = jedis.smembers("users:500:follow");
+    smembers.forEach(System.out::println);
+
+    System.out.println(jedis.sismember("users:500:follow", "200"));
+    System.out.println(jedis.sismember("users:500:follow", "120"));
+
+    // s inter
+    System.out.println(jedis.sinter("users:500:follow", "users:100:follow"));
+    // s card
+    System.out.println(jedis.scard("users:500:follow"));
+  }
+}
+```
+> organize
+```
+- Stack
+> jedis.rpush/rpop
+- Queue
+> jedis.rpush/lpop
+- Block
+> jedis.brpop/blpop
+- Set
+> sadd/srem/smembers/sismember/sinter/scard
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-08. Data types Hash 실습
+
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-09. Data types Sorted Set 실습
+
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-10. Data types Geospatial 실습
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-11. Data types Bitmap 실습
