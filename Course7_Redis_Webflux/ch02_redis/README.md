@@ -2,14 +2,14 @@
 - [1. in-memory dataabse](#ch02-01-in-memory-dataabse)
 - [2. Redis 소개](#ch02-02-redis-소개)
 - [3. Redis 설치](#ch02-03-redis-설치)
-- [4. Redis CLI를 통한 접속]()
-- [5. Data types에 대한 이해]()
-- [6. Data types String 실습]()
-- [7. Data types List, Set 실습]()
-- [8. Data types Hash 실습]()
-- [9. Data types Sorted Set 실습]()
-- [10. Data types Geospatial 실습]()
-- [11. Data types Bitmap 실습]()
+- [4. Redis CLI를 통한 접속](#ch02-04-redis-cli을-통한-접속)
+- [5. Data types에 대한 이해](#ch02-05-data-types에-대한-이해)
+- [6. Data types String 실습](#ch02-06-data-types-string-실습)
+- [7. Data types List, Set 실습](#ch02-07-data-types-list-set-실습)
+- [8. Data types Hash 실습](#ch02-08-data-types-hash-실습)
+- [9. Data types Sorted Set 실습](#ch02-09-data-types-sorted-set-실습)
+- [10. Data types Geospatial 실습](#ch02-10-data-types-geospatial-실습)
+- [11. Data types Bitmap 실습](#ch02-11-data-types-bitmap-실습)
 - [12. Transactions]()
 - [13. Keys, Scan 명령어]()
 - [14. Cache 이론]()
@@ -79,7 +79,7 @@ Strings, Lists, Hashes, Sorted sets, ...
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-04. Redis CLI을 통한 접속
 ## CLI 실행
-> $ docker ps
+> $ docker ps  
 > $ docker exec -it [container Id] redis-cli [GET name]
 ## 유용한 명령어
 - redis-cli monitor
@@ -165,7 +165,6 @@ $ INCRBY counter 10
 public class Main {
     public static void main(String[] args) {
         System.out.println("Hello world!");
-
         try (var jedisPool = new JedisPool("127.0.0.1", 6379);) {
             try (Jedis jedis = jedisPool.getResource()) {
                 /*
@@ -287,17 +286,224 @@ try (var jedisPool = new JedisPool("127.0.0.1", 6379)) {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-08. Data types Hash 실습
+## Hashes
+### command
+- HSET, HGET, HMGET, HGETALL, HDEL, HINCRBY
+### 실습
+```java
+try (JedisPool jedisPool = new JedisPool("127.0.0.1", 6379)) {
+    try (Jedis jedis = jedisPool.getResource()) {
+        // hash
+        // hset
+        jedis.hset("users:2:info", "name", "greg2");
 
+        HashMap<String, String> userInfo = new HashMap<>();
+        userInfo.put("email", "greg3@fastcampus.co.kr");
+        userInfo.put("phone", "010-xxxx-yyyy");
+        jedis.hset("users:2:info", userInfo);
+
+        // hdel
+        jedis.hdel("users:2:info", "phone");
+
+        // get, getall
+        System.out.println(jedis.hget("users:2:info", "email"));
+        Map<String, String> user2Info = jedis.hgetAll("users:2:info");
+        user2Info.forEach((k, v) -> System.out.printf("%s %s%n", k,v));
+
+        // hincr
+        jedis.hincrBy("users:2:info", "visits", 30);
+    }
+}
+```
+> organize
+```
+- HSET : insert/update
+> key field value ...
+> key Map
+- HDEL
+- HGET HGETALL
+- HINCRBY
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-09. Data types Sorted Set 실습
+## Sorted Sets
+- ordered collection(unique strings)
+- Leader board
+- Rate Limit
+### commands
+- ZADD, ZREM, ZRANGE, ZCARD, ZRANK/ZREVRANK, ZINCRBY
+> ZRANGE(6.2 REV, BYSCORE, BYLEX and LIMIT opt)
+## 실습
+```sh
+$ ZADD key [NX|XX] [GT|LT] [CH] [INCR] score member [score member ...]
+$ ZADD game1:scores 100 user1 200 user2 300 user3
 
+$ ZRANGE key min max [BYSCORE|BYLEX] [REV] [LIMIT offset count] [WITHSCORES]
+$ ZRANGE game1:scores 0 +inf BYSCORE LIMIT 0 10 WITHSCORES
+$ ZRANGE game1:scores +inf 0 BYSCORE REV LIMIT 0 10 WITHSCORES
+
+$ ZREM game1:scores user3
+
+$ ZINCRBY game1:scores 500 user4
+```
+```java
+try (var jedisPool = new JedisPool("127.0.0.1", 6379)) {
+    try (var jedis = jedisPool.getResource()) {
+        //sorted set
+        var scores = new HashMap<String, Double>();
+        scores.put("user1", 100D);
+        scores.put("user2", 30D);
+        scores.put("user3", 50D);
+        scores.put("user4", 80D);
+        scores.put("user5", 15D);
+        jedis.zadd("game2:scores", scores);
+
+        List<String> zrange = jedis.zrange("game2:scores", 0, Long.MAX_VALUE);
+        zrange.forEach(System.out::println);
+
+//                List<Tuple> tuples = jedis.zrangeWithScores("game2:scores", 0, Long.MAX_VALUE);
+//                tuples.forEach(i -> System.out.println("%s %f".formatted(i.getElement(), i.getScore())));
+        System.out.println(jedis.zcard("game2:scores"));
+
+        jedis.zincrby("game2:scores", 100.0, "user5");
+        List<Tuple> tuples = jedis.zrangeWithScores("game2:scores", 0, Long.MAX_VALUE);
+        tuples.forEach(i -> System.out.println("%s %f".formatted(i.getElement(), i.getScore())));
+    }
+}
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-10. Data types Geospatial 실습
+## Geospatial
+### command
+- GEOADD, GEOSEARCH, GEODIST, GEOPOS
+## 실습
+```sh
+$ GEOADD stores:geo 127.02985530619755 37.49911212874 awesomPlace1
+$ GEOADD stores:geo 127.0333352287619 37.491921163986234 awesomPlace2
+$ GEOSEARCH stores:geo FROMLONLAT 127.033 37.495 BYRADIUS 500 m
+$ GEOPOS stores:geo awesomPlace1
+```
+```java
+try (var jedisPool = new JedisPool("127.0.0.1", 6379)) {
+    try (var jedis = jedisPool.getResource()) {
+        // geo add
+        jedis.geoadd("stores2:geo", 127.02985530619755, 37.49911212874, "some1");
+        jedis.geoadd("stores2:geo", 127.0333352287619, 37.491921163986234, "some2");
+
+        // geo dist
+        Double geodist = jedis.geodist("stores2:geo", "some1", "some2");
+        System.out.println("geodist =" + geodist);
+
+        // gei search
+        List<GeoRadiusResponse> radiusResponseList = jedis.geosearch(
+                "stores2:geo",
+                new GeoCoordinate(127.033, 37.495),
+                500,
+                GeoUnit.M
+        );
+
+        radiusResponseList.forEach(response ->
+                System.out.println("search = " + response.getMemberByString())
+        );
+
+        List<GeoRadiusResponse> radiusResponseList2 = jedis.geosearch(
+                "stores2:geo",
+                new GeoSearchParam()
+                        .fromLonLat(new GeoCoordinate(127.033, 37.495))
+                        .byRadius(500, GeoUnit.M)
+                        .withCoord()
+        );
+
+        radiusResponseList2.forEach(response ->
+                System.out.println("%s %f %f"
+                        .formatted(
+                                response.getMemberByString(),
+                                response.getCoordinate().getLatitude(),
+                                response.getCoordinate().getLongitude())
+                )
+        );
+
+        jedis.unlink("stores2:geo");
+    }
+}
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-11. Data types Bitmap 실습
+## Bitmap
+### command
+- SETBIT, GETBIT, BITCOUNT
+## 실습
+```sh
+$ SETBIT key offset valu
+$ GETBIT key offset
+$ BITCOUNT key [start end]
+```
+```java
+try (var jedisPool = new JedisPool("127.0.0.1", 6379)) {
+    try (var jedis = jedisPool.getResource()) {
+        jedis.setbit("request-somepage2-20230305", 100, true);
+        jedis.setbit("request-somepage2-20230305", 200, true);
+        jedis.setbit("request-somepage2-20230305", 300, true);
+
+        System.out.println(jedis.getbit("request-somepage2-20230305", 100));
+        System.out.println(jedis.getbit("request-somepage2-20230305", 50));
+
+        System.out.println(jedis.bitcount("request-somepage2-20230305"));
+
+        // bitmap vs set
+        Pipeline pipelined = jedis.pipelined();
+        IntStream.rangeClosed(0, 100000).forEach(i -> {
+            pipelined.sadd("request-somepage2-set-20230306", String.valueOf(i));
+            pipelined.setbit("request-somepage2-bit-20230306", i, true);
+
+            if (i % 1000 == 0) {
+                pipelined.sync();
+            }
+        });
+        pipelined.sync();
+
+    }
+}
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-12. Transactions
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-13. Keys, Scan 명령어
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-14. Cache 이론
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-15. Cache 실습
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-16. Spring Boot Cache
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-17. Spring Boot Session Store
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-18. Spring Boot Pub Sub
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-19. Monitoring
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch02-20. Replication 
