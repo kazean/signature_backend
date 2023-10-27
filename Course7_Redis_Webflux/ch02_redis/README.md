@@ -204,7 +204,7 @@ public class Main {
 }
 ```
 > organize
-```
+```java
 - JedisPool(host, port)
 - jeisPool.getResource: Jedis
 - jedis.set/get/mget/incr/incrBy
@@ -272,7 +272,7 @@ try (var jedisPool = new JedisPool("127.0.0.1", 6379)) {
 }
 ```
 > organize
-```
+```java
 - Stack
 > jedis.rpush/rpop
 - Queue
@@ -280,7 +280,7 @@ try (var jedisPool = new JedisPool("127.0.0.1", 6379)) {
 - Block
 > jedis.brpop/blpop
 - Set
-> sadd/srem/smembers/sismember/sinter/scard
+> jedis.sadd/srem/smembers/sismember/sinter/scard
 ```
 
 
@@ -781,7 +781,7 @@ public interface RedisHashUserRepository extends CrudRepository<RedisHashUser, L
 }
 ```
 > organize
-```
+```java
 # RedisTemplate - Jackson2JsonRedisSerializer
 - RedisConfig
 @Bean
@@ -934,7 +934,7 @@ public class UserService {
 }
 ```
 > organize
-```
+```java
 - CacheConfig
 @Bean
 RedisCacheManagerbuilderCustomerzer(){
