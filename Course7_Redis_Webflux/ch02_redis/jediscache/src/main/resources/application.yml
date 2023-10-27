@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/fastsns?userSSL=false&useUnicode=true&PublicKeyRetrieval=true
+    username: root
+    password: root1234!!
+  jpa:
+    hibernate:
+      ddl-auto: create
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE

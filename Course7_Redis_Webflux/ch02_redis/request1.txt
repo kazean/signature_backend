@@ -1,0 +1,4 @@
+GET http://localhost:8080/users/1
+GET http://localhost:8080/users/2
+GET http://localhost:8080/users/3
+

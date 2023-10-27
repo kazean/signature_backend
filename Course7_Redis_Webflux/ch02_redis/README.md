@@ -475,22 +475,500 @@ try (var jedisPool = new JedisPool("127.0.0.1", 6379)) {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-12. Transactions
+- HTTP TRANSACTION
+- DB TRANSACTION
+> ACID
+## Redis TRANSACTION
+Command, Queued
+> RDB와 다르게 조회 불가능
+### 특징
+- 오류시 전체롤백
+- 인자를 잘못주었을땐 롤백 X
+### Command
+- MULTI
+> 트랜잭션의 시작
+- EXEC
+> 실행
+- DISCARD
+> 취소
+- WATCH
+> 동시의 같은 키를 수정하는 상황을 일어났을때 트랜잭션을 취소
+## 실습
+```sh
+# 정상
+$ MULTI
+$ SET key 100
+$ EXEC
+# 롤백
+$ MULTI
+$ SET key 200
+$ DISCARd
+# 오류시 롤백
+$ MULTI
+$ SETas key 300
+$ EXEC
+(error) ERR unknown command `SETasd`, with args beginning with:
+# 인자 오류시에는 해당 값 제외 commit
+1) OK
+2) OK
+3) (error) ERR syntax error
+# WATCH
+# TRANS1
+$ WATCH key
+$ MULTI
+$ SET key 500
+# TRANS 2
+$ SET key 10
+# TRANS 1
+$ EXEC
+(nil) # 전체롤백
+```
+## 마무리
+- MULTI - EXEC/DISCARD
+- Isolation
+- WATCH  with MULTI
+> 동시성: 전체롤백
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-13. Keys, Scan 명령어
+## Single thread
+- O(1)
+- O(N)
+> 주의
+## command
+- KEYS
+> O(N)
+- Data tyle
+- LINSERT
+> 특정 Index에 INSERT
+- HKEYS, HGETALL
+- SMEMBERS
+## 대안
+- KEYS > SCAN
+- SCAN cursor [MATCH pattern] [COUNT count] [Type type]
+## 실습
+```sh
+$ docker exec -it [container id] /bin/bash
+$ for i in {0000000..9999999}; do echo set key$i $i >> redis-string.txt; done
+$ cat redis-string.txt | redis-cli --pipe
+
+$ docker exec -it [container id] redis-cli monitor
+$ SCAWN 0 MATCH * COUNT 100
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-14. Cache 이론
+## Cache 란
+빠른 처리를 위한 임시 저장소
+- CPU - Memory
+> (CPU) L1, L2 Cache
+## Cache hit/miss
+## Cache 이론
+### `Cache pattern - read performance`
+- cache aside pattern
+> 캐시먼저 후 DB  
+> Cache with TTL: 용량, 일관성  
+> DB write > cache invalidation
+### `Cache pattern - write performance`
+- write-back pattern
+> cache에 먼저 저장후 다량이 쓰기가 모아지면 DB에 write  
+> > 유실문제, join등 복잡도가 높은 데이터
+### Cache pattern (+)
+#### Local/ 분산 캐시
+- Server
+> local cache
+- Cache(분산 Redis)
+> > 1차적으로 분산 캐시에 저장하고 각 Application이 local cache를 활용
+#### 여러개의 캐시 서버
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-15. Cache 실습
+Cache aside pattern
+
+## Mysql, Redis
+## Project: jediscache
+- jedis, data-jpa, mysql, lombok, web, devtools, spring-boot-configuration-processor
+```java
+@Entity
+public class User{ }
+
+public interface UserRepository extends JpaRepository<User, Long> {}
+
+@Component
+public class RedisConfig {
+
+    @Bean
+    public JedisPool createJedisPool() {
+        return new JedisPool("127.0.0.1", 6379);
+    }
+}
+
+@RequiredArgsConstructor
+@RestController
+public class UserController {
+    private final UserRepository userRepository;
+    private final JedisPool jedisPool;
+
+    @GetMapping("/users/{id}/email")
+    public String getUserEmail(@PathVariable Long id) {
+        try (Jedis jedis = jedisPool.getResource()) {
+            var userEmailRedisKey = "users:%d:email".formatted(id);
+
+            String userEmail = jedis.get(userEmailRedisKey.formatted(id));
+            if (userEmail != null) {
+                return userEmail;
+            }
+            userEmail = userRepository.findById(id).orElse(User.builder().build()).getEmail();
+//                jedis.set(userEmailRedisKey, userEmail);
+            jedis.setex(userEmailRedisKey, 30, userEmail);
+            return userEmail;
+        }
+    }
+}
+```
+> @Bean JedisPool  
+> jedisPool 활용하여 jedis 활용
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-16. Spring Boot Cache
+## Spring Data Redis
+### Spring Data
+- Spring data JPA/ Redis/ MongoDB
+### Redis Clients
+1. Lettuce (default)
+2. Jedis
+> 추상화
+### Redis Template
+- [특징] abstraction, connection, serializer
+> RedisTemplate - Lettuce - Redis
+- application.yaml
+> spring.data.redis.host/port
+- StringRedisTemplate
+- LettuceConnectionFactory
+### Redis Repository
+- @RedisHash("people"), @Id String id
+> HMSET people:{Id} id xxx firstname yyy  
+> SADD people:{id}
+- @Indexed String firstname
+> SADD people:firstname:{firstname} {id}  
+> SADD people:{id}:idx {firstname}
+> > PersonRepository extends CrudRepository 만을 상속받아서 사용할 수 있다
+
+## 실습1
+1. RedisTemplate 사용
+2. RedisHash 사용
+### cache Project
+1. RedisTemplate 사용
+- spring-boot-starter-data-redis/jpa/web/lombok, devtools, configuration-processor, lombok
+```java
+@EntityListeners(AuditingEntityListener.class)
+@Entity
+public class User{ }
+
+public interface UserRepository extends JpaRepository<User, Long> { }
+
+@Configuration
+public class RedisConfig {
+    @Bean
+    public RedisTemplate<String, User> userRedisTemplate(RedisConnectionFactory connectionFactory) {
+        var objectMapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        var template = new RedisTemplate<String, User>();
+        template.setConnectionFactory(connectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new Jackson2JsonRedisSerializer<>(objectMapper, User.class));
+        return template;
+    }
+
+    @Bean
+    public RedisTemplate<String, Object> objectRedisTemplate(RedisConnectionFactory connectionFactory) {
+        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator
+                .builder()
+                .allowIfSubType(Object.class)
+                .build();
+
+        var objectMapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .registerModule(new JavaTimeModule())
+                .activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        var template = new RedisTemplate<String, Object>();
+        template.setConnectionFactory(connectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer(objectMapper));
+        return template;
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+    private final RedisHashUserRepository redisHashUserRepository;
+    private final RedisTemplate<String, User> userRedisTemplate;
+    private final RedisTemplate<String, Object> objectRedisTemplate;
+
+    public User getUser(final Long id) {
+        // 1. cache get
+        var key = "users:%d".formatted(id);
+        var cachedUser = objectRedisTemplate.opsForValue().get(key);
+        if (cachedUser != null) {
+            return (User) cachedUser;
+        }
+
+        // 2. else db -> cache set
+        User user = userRepository.findById(id).orElseThrow();
+        objectRedisTemplate.opsForValue().set(key, user, Duration.ofSeconds(30));
+        return user;
+    }
+
+    public RedisHashUser getUser2(final Long id) {
+        // redis 값이 있으면 리턴
+        var cachedUser = redisHashUserRepository.findById(id).orElseGet(() -> {
+            User user = userRepository.findById(id).orElseThrow();
+            return redisHashUserRepository.save(RedisHashUser.builder()
+                    .id(user.getId())
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .createdAt(user.getCreatedAt())
+                    .updatedAt(user.getUpdatedAt())
+                    .build());
+        });
+        return cachedUser;
+    }
+}
+
+@RestController
+@RequiredArgsConstructor
+public class UserController {
+    private final UserService userService;
+
+    @GetMapping("/users/{id}")
+    public User getUser(@PathVariable Long id) {
+        return userService.getUser(id);
+    }
+
+    @GetMapping("/redishash-users/{id}")
+    public RedisHashUser getUser2(@PathVariable Long id) {
+        return userService.getUser2(id);
+    }
+}
+
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@RedisHash(value = "redishash-user", timeToLive = 30L)
+public class RedisHashUser {
+    @Id
+    private Long id;
+    private String name;
+    @Indexed
+    private String email;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+}
+
+public interface RedisHashUserRepository extends CrudRepository<RedisHashUser, Long> {
+}
+```
+> organize
+```
+# RedisTemplate - Jackson2JsonRedisSerializer
+- RedisConfig
+@Bean
+RedisTemplate<String, User> userRedisTemplate(RedisConnectionFactory connectionFactory){
+    var objectMapper = new ObjectMapper()
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false) // json > domain 변환시 알지 못하는 속성시 변환하지 않는다
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS); // LocalDate > TimeSTAMP
+
+    var template = new RedisTemplate<String, User>();
+    template.setConnectionFactory(connectionFactory)
+    template.setKeySerializer(new StringRedisSerializer())
+    template.setValueSerializer(new Jackson2JsonRedisSerializer(objectMapper, User.class))
+    return template
+}
+> new objectMapper() .configure/.registerModule/.disable()
+> new RedisTemplate .setconnectionFactory/.setKeySerializer/.setValueSerializer
+
+- UserService
+private final RedisTemplate<String, User> userRedisTemplate;
+
+User getUser(final Long id) {
+    var cachedUser = userRedisTemplate.opsForValue().get(key);
+    User user = userRepository.findById(id).orElseThrow();
+    userRedisTemplate.opsForValue().set(key, user, Duration.ofSeconds(30));
+}
+
+# RedisTemplate - Jackson2JsonRedisSerializer
+- RedisConfig
+@Bean
+RedisTemplate<String, Object> objectRedisTemplate(RedisConnectionFactory connectionFactory) {
+    PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator // BasicPolymorphicTypeValidator
+            .builder()
+            .allowIfSubType(Object.class)
+            .build();
+
+    var objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .registerModule(new JavaTimeModule())
+            .activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL) // package.object 정보 저장
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+    var template = new RedisTemplate<String, Object>();
+    template.setConnectionFactory(connectionFactory);
+    template.setKeySerializer(new StringRedisSerializer());
+    template.setValueSerializer(new GenericJackson2JsonRedisSerializer(objectMapper)); //GenericJackson2JsonRedisSerializer
+    return template;
+}
+> PolymorphicTypeValidator
+
+- UserService
+private final RedisTemplate<String, Object> objectRedisTemplate;
+
+User getUser(final Long id) {
+    var cachedUser = objectRedisTemplate.opsForValue().get(key);
+    if (cachedUser != null) {
+        return (User) cachedUser;
+    }
+
+    // 2. else db -> cache set
+    User user = userRepository.findById(id).orElseThrow();
+    objectRedisTemplate.opsForValue().set(key, user, Duration.ofSeconds(30));
+    return user;
+}
+> RedisTemplate: opsForValue() OperationString For Value > get/set()
+> (User 변환 필요)
+
+
+# RedisHash
+- RedisHashUser
+@RedisHash(value ="redishash-user", timeToLive = 30L)
+class RedisHashUser{ }
+- UserService
+public RedisHashUser getUser2(final Long id) {
+    // redis 값이 있으면 리턴
+    var cachedUser = redisHashUserRepository.findById(id).orElseGet(() -> {
+        User user = userRepository.findById(id).orElseThrow();
+        return redisHashUserRepository.save(RedisHashUser.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build());
+    });
+    return cachedUser;
+}
+```
+
+## Spring Cache
+- spring-boot-strater
+> @EnableCaching, @Cacheable("users")  
+> @CacheEvict(cacheNames="cache1", key ="'users:'" + #id)
+
+## 실습2
+3. Spring-boot-cache
+> implementation 'org.springframework.boot:spring-boot-starter-cache'
+```java
+@EnableCaching
+@Configuration
+public class CacheConfig {
+    public static final String CACHE1 = "cache1";
+    public static final String CACHE2 = "cache2";
+    @AllArgsConstructor
+    @Getter
+    public static class CacheProperty {
+        private String name;
+        private Integer ttl;
+    }
+
+    @Bean
+    public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer() {
+        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator
+                .builder()
+                .allowIfSubType(Object.class)
+                .build();
+        var objectMapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .registerModule(new JavaTimeModule())
+                .activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        List<CacheProperty> properties = List.of(
+                new CacheProperty(CACHE1, 300),
+                new CacheProperty(CACHE2, 30)
+        );
+
+        return (builder -> {
+            properties.forEach(i -> {
+                builder.withCacheConfiguration(i.getName(), RedisCacheConfiguration
+                        .defaultCacheConfig()
+                        .disableCachingNullValues()
+                        .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                        .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(objectMapper)))
+                        .entryTtl(Duration.ofSeconds(i.getTtl())));
+            });
+        });
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+
+    @Cacheable(cacheNames = CACHE1, key = "'user:' + #id")
+    public User getUser3(final Long id) {
+        return userRepository.findById(id).orElseThrow();
+    }
+}
+```
+> organize
+```
+- CacheConfig
+@Bean
+RedisCacheManagerbuilderCustomerzer(){
+    BasicPolymorphicTypeValidator
+    new ObjectMapper
+
+    return (builder -> {
+        builder.withCacheConfiguration(name, 
+            RedisCacheConfiguration
+                .defaultCacheConfig()
+                .disableCacheNullValues()
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(objectMapper)))
+                .entryTtl(Duration.ofSeconds(ttl))
+            )
+    })
+}
+- UserService
+@Cacheable(cacheNames = name, key ="'key:'' + #id")
+User getUser(final Long id){ }
+```
+
+## 실습3 - 부하테스트
+Cache와 DB Resource 사용량 비교
+- request1.txt
+```txt
+GET http://localhost:8080/users/1
+GET http://localhost:8080/users/2
+GET http://localhost:8080/users/3
+```
+```sh
+$ brew vegeta
+$ vegeta attack -timeout=30s -duration=15s -rate=5000/1s -targets=request1.txt -workers=100 | tee v_result.bin | vegeta report
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------

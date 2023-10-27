@@ -1,0 +1,1 @@
+for i in {0000000..9999999}; do echo set key$i $i >> redis-string.txt; done
