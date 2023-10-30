@@ -5,4 +5,4 @@
 - Ch04. 백엔드 개발자의 N가지 성장전략
 ## 실행환경
 ### Mysql
-docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/docker-compose.yaml up -d
+> $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/docker-compose.yaml up -d
