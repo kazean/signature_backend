@@ -1,0 +1,8 @@
+version: '3.7'
+services:
+  redis:
+    container_name: redis-6-2
+    image: redis:6.2
+    command: redis-server
+    ports:
+      - 6379:6379

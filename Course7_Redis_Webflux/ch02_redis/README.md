@@ -22,7 +22,7 @@
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch02-01. in-memory dataabse
+# Ch02-01. in-memory database
 ## 용어
 - in-memory database
 ## 주요 특징
@@ -440,7 +440,7 @@ try (var jedisPool = new JedisPool("127.0.0.1", 6379)) {
 - SETBIT, GETBIT, BITCOUNT
 ## 실습
 ```sh
-$ SETBIT key offset valu
+$ SETBIT key offset value
 $ GETBIT key offset
 $ BITCOUNT key [start end]
 ```
@@ -502,7 +502,7 @@ $ EXEC
 # 롤백
 $ MULTI
 $ SET key 200
-$ DISCARd
+$ DISCARD
 # 오류시 롤백
 $ MULTI
 $ SETas key 300
@@ -539,7 +539,7 @@ $ EXEC
 ## command
 - KEYS
 > O(N)
-- Data tyle
+- Data style
 - LINSERT
 > 특정 Index에 INSERT
 - HKEYS, HGETALL
@@ -554,7 +554,7 @@ $ for i in {0000000..9999999}; do echo set key$i $i >> redis-string.txt; done
 $ cat redis-string.txt | redis-cli --pipe
 
 $ docker exec -it [container id] redis-cli monitor
-$ SCAWN 0 MATCH * COUNT 100
+$ SCAN 0 MATCH * COUNT 100
 ```
 
 
@@ -809,7 +809,7 @@ User getUser(final Long id) {
     userRedisTemplate.opsForValue().set(key, user, Duration.ofSeconds(30));
 }
 
-# RedisTemplate - Jackson2JsonRedisSerializer
+# RedisTemplate - GenericJackson2JsonRedisSerializer
 - RedisConfig
 @Bean
 RedisTemplate<String, Object> objectRedisTemplate(RedisConnectionFactory connectionFactory) {
@@ -973,15 +973,278 @@ $ vegeta attack -timeout=30s -duration=15s -rate=5000/1s -targets=request1.txt -
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-17. Spring Boot Session Store
+- Session
+- HTTP Session
+- Spring Session
+## Spring Session
+1. HTTP Session
+2. WebSocket
+3. WebSession(WebFlux)
+- gradle.build
+> spring-session-core
+> > spring-boot-starter-data-redis
+> > spring-session-data-redis
+### 활용
+1. Redis
+2. JDBC
+3. Hazelcast
+4. Monogodb
+### Project setting
+- application.yml
+> spring.session.store-type: redis  
+> spring.data.redis(default 127.0.0.1:6379)
+### Code
+- httpSession.setAttribute/getAttribute()
+
+## 실습
+### session
+- build.gradle
+> spring-session-data-redis'
+```java
+@RestController
+@SpringBootApplication
+public class SessionApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SessionApplication.class, args);
+	}
+
+	@GetMapping("/")
+	public Map<String, String> home(HttpSession session) {
+		Integer visitCount = (Integer) session.getAttribute("visits");
+		if (visitCount == null) {
+			visitCount = 0;
+		}
+		session.setAttribute("visits", ++visitCount);
+		return Map.of("session id", session.getId(), "visits", visitCount.toString());
+	}
+}
+```
+```sh
+# redis monitor
+1698633659.395743 [0 172.23.0.1:64358] "HMSET" "spring:session:sessions:f3dd881c-317f-48c0-a03a-82e01258f485" "lastAccessedTime" "\xac\xed\x00\x05sr\x00\x0ejava.lang.Long;\x8b\xe4\x90\xcc\x8f#\xdf\x02\x00\x01J\x00\x05valuexr\x00\x10java.lang.Number\x86\xac\x95\x1d\x0b\x94\xe0\x8b\x02\x00\x00xp\x00\x00\x01\x8b~t\xb2\x9c" "maxInactiveInterval" "\xac\xed\x00\x05sr\x00\x11java.lang.Integer\x12\xe2\xa0\xa4\xf7\x81\x878\x02\x00\x01I\x00\x05valuexr\x00\x10java.lang.Number\x86\xac\x95\x1d\x0b\x94\xe0\x8b\x02\x00\x00xp\x00\x00\a\b" "creationTime" "\xac\xed\x00\x05sr\x00\x0ejava.lang.Long;\x8b\xe4\x90\xcc\x8f#\xdf\x02\x00\x01J\x00\x05valuexr\x00\x10java.lang.Number\x86\xac\x95\x1d\x0b\x94\xe0\x8b\x02\x00\x00xp\x00\x00\x01\x8b~t\xb2\x9c" "sessionAttr:visits" "\xac\xed\x00\x05sr\x00\x11java.lang.Integer\x12\xe2\xa0\xa4\xf7\x81\x878\x02\x00\x01I\x00\x05valuexr\x00\x10java.lang.Number\x86\xac\x95\x1d\x0b\x94\xe0\x8b\x02\x00\x00xp\x00\x00\x00\x01"
+1698633659.400280 [0 172.23.0.1:64358] "PEXPIREAT" "spring:session:sessions:f3dd881c-317f-48c0-a03a-82e01258f485" "1698635459036"
+1698633659.410053 [0 172.23.0.1:64358] "EXISTS" "spring:session:sessions:f3dd881c-317f-48c0-a03a-82e01258f485"
+1698633664.941308 [0 172.23.0.1:64358] "HGETALL" "spring:session:sessions:f3dd881c-317f-48c0-a03a-82e01258f485"
+
+# redis-cli
+127.0.0.1:6379> KEYS *
+1) "spring:session:sessions:0ca658d5-5d2e-442b-8880-d7d013b8e16c"
+2) "spring:session:sessions:f3dd881c-317f-48c0-a03a-82e01258f485"
+127.0.0.1:6379> TYPE spring:session:sessions:f3dd881c-317f-48c0-a03a-82e01258f485
+hash
+127.0.0.1:6379> HGETALL spring:session:sessions:f3dd881c-317f-48c0-a03a-82e01258f485
+1) "creationTime"
+2) "\xac\xed\x00\x05sr\x00\x0ejava.lang.Long;\x8b\xe4\x90\xcc\x8f#\xdf\x02\x00\x01J\x00\x05valuexr\x00\x10java.lang.Number\x86\xac\x95\x1d\x0b\x94\xe0\x8b\x02\x00\x00xp\x00\x00\x01\x8b~t\xb2\x9c"
+3) "sessionAttr:visits"
+4) "\xac\xed\x00\x05sr\x00\x11java.lang.Integer\x12\xe2\xa0\xa4\xf7\x81\x878\x02\x00\x01I\x00\x05valuexr\x00\x10java.lang.Number\x86\xac\x95\x1d\x0b\x94\xe0\x8b\x02\x00\x00xp\x00\x00\x00\x02"
+5) "lastAccessedTime"
+6) "\xac\xed\x00\x05sr\x00\x0ejava.lang.Long;\x8b\xe4\x90\xcc\x8f#\xdf\x02\x00\x01J\x00\x05valuexr\x00\x10java.lang.Number\x86\xac\x95\x1d\x0b\x94\xe0\x8b\x02\x00\x00xp\x00\x00\x01\x8b~t\xc9\xaf"
+7) "maxInactiveInterval"
+8) "\xac\xed\x00\x05sr\x00\x11java.lang.Integer\x12\xe2\xa0\xa4\xf7\x81\x878\x02\x00\x01I\x00\x05valuexr\x00\x10java.lang.Number\x86\xac\x95\x1d\x0b\x94\xe0\x8b\x02\x00\x00xp\x00\x00\a\b"
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-18. Spring Boot Pub Sub
+## Publish/Subscribe
+Server -publish- Redis -subscribe-< Server/Server
+- Loose coupling
+> Broker: Redis
+> > 가용성, 대량의 메세지필요한 상황이면 kafka와 같은 것을 사용하는 것이 유용
+### Pub/Sub 사례
+1. Event
+2. Notification
+3. Realtime message
+4. ...
+### Redis Pub/Sub
+```sh
+$ PUBLISH uesrs:unregister 100
+> 
+$ SUBSCRIBE users:unregister
+## 현재 시스템내에서 등록된 채널
+$ PUBSUB channels
+### 몇개의 클라이언트가 구독하고 있는지: numsub
+$ PUBSUB numsub users:unregister
+## 수신등록: SUb(Hash O(1)/패턴기반(List O(N))
+$ PSUBSCRIBE users:*
+```
+## 실습
+```sh
+# TRANS1
+127.0.0.1:6379> SUBSCRIBE users:unregister
+# TRANS2
+127.0.0.1:6379> PUBSUB channels
+1) "users:unregister"
+127.0.0.1:6379> PUBLISH userse:unregister 100
+(integer) 0
+# > TRANS1 
+
+# TRANS3
+127.0.0.1:6379> SUBSCRIBE users:unregister
+# TRANS2
+127.0.0.1:6379> PUBLISH users:unregister 200
+(integer) 1
+# > TRANS1, 3
+
+# TRANS1
+127.0.0.1:6379> PSUBSCRIBE users:*
+# TRANS2
+127.0.0.1:6379> PUBLISH users:asdsad hi
+(integer) 1
+# TRANS2
+127.0.0.1:6379> PUBSUB numsub users:unregister
+1) "users:unregister"
+2) (integer) 1
+```
+## 실습 - Spring boot
+- Spring Data Redis
+### Sub Project
+- @Service impl MessageListener
+- @Bean MessageListenerAdapter
+> new MessageListenerAdapter(messageListenService())
+- @Bean RedisMessageListenerContainer
+> new ().setConnectionFactory(con).addMessageListener(adapter, ChannelTopic.of("users:unregister"))
+- 발행
+> redisTemplate.convertAndSend()
+
+### pubsub
+- build.gradle
+> spring-boot-starter-data-redis
+```java
+@Slf4j
+@Service
+public class MessageListenService implements MessageListener {
+    @Override
+    public void onMessage(Message message, byte[] pattern) {
+        log.info("Received {} channel: {}", new String(message.getChannel()), new String(message.getBody()));
+    }
+}
+
+@Configuration
+public class RedisConfig {
+    @Bean
+    public MessageListenerAdapter messageListenerAdapter(MessageListener messageListenService) {
+        return new MessageListenerAdapter(messageListenService);
+    }
+
+    @Bean
+    public RedisMessageListenerContainer redisMessageListenerContainer(
+            RedisConnectionFactory connectionFactory,
+            MessageListenerAdapter listenerAdapter
+    ) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        container.addMessageListener(listenerAdapter, ChannelTopic.of("users:unregister"));
+        return container;
+    }
+}
+
+@RestController
+@RequiredArgsConstructor
+public class PublishController {
+    private final RedisTemplate<String, String> redisTemplate;
+
+    @PostMapping("events/users/deregister")
+    public void publishUserDeregisterEvent() {
+        redisTemplate.convertAndSend("users:unregister", "500");
+    }
+}
+```
+> organize
+> > [Subcribe]  
+> > Service impl MessageListener  
+> > @Bean MessageListenerAdapter, ReidsMeesageListenerContainer  
+> > [Publisher]  
+> > redisTemplate.convertAndSend(channel, message)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-19. Monitoring
+- redis-cli monitor
+- redis-cli --stat
+- redis-cli --bigkeys
+- redis-cli --memkeys
+- redis-cli --latency
+## Prometheus/Grafana
+- redis - redis exporter - prometheus - grafana
+## Memory Eviction
+1. maxmemory
+- maxmemory 0 / 4G
+2. maxmemory-policy
+a. noeviction  
+b. allkeys-lru  
+c. allkeys-lfu  
+d. volatile-lru (expire 설정된 키)  
+e. volatile-lfu  
+f. allkeys-random  
+g. volatile-random  
+h. volatile-ttl
+## 실습
+- docker-compose
+> prometheus, grafana  
+> redis, redis-exporter
+- docker-compose/prometheus_grafana_redis
+> docker-compose.yaml
+> > prometheus/config/prometheus.yml: scrape 설정
+- prometheus :9090
+- grafana :3000
+- redis-exporter :9121
+### Grafana
+- [redis-exporter Dashboard](https://grafana.com/oss/prometheus/exporters/redis-exporter/?tab=dashboards)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-20. Replication 
+## RDB 에서 Replication
+- Write(Master), Read(Slave)
+## Redis Replication
+1. Redis Replication  
+    a. master-replicas  
+    b. command stream  
+    c. resync  
+2. Redis Sentinel  
+    a. monitoring  
+    b. automatic `failover`  
+3. Redis Cluster  
+    a. multiple master
+> hash algorithm
+
+## 실습
+### docker-compose/redis_replication/replica
+- docker-compose.yaml
+```yaml
+version: '3.8'
+networks:
+  replica:
+    driver: bridge
+
+services:
+  redis:
+    container_name: redis
+    image: redis:6.2
+    ports:
+      - 6379:6379
+    networks:
+      - replica
+    restart: always
+
+  replica:
+    container_name: replica
+    image: redis:6.2
+    ports:
+      - 6378:6379
+    networks:
+      - replica
+    volumes:
+      - ./conf:/usr/local/etc/redis/
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: always
+```
+- /conf/redis.conf
+```conf
+replicaof redis 6379 
+slaveof redis 6379 # sentinel
+```
+> offset 동기화
+> slave는 READONLY
