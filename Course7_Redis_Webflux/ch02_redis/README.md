@@ -1000,6 +1000,17 @@ $ vegeta attack -timeout=30s -duration=15s -rate=5000/1s -targets=request1.txt -
 ### session
 - build.gradle
 > spring-session-data-redis'
+- application.yaml
+```yaml
+spring:
+  session:
+    store-type: redis
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+```
+- code
 ```java
 @RestController
 @SpringBootApplication
