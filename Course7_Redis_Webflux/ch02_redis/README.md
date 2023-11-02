@@ -617,7 +617,7 @@ public class UserController {
         try (Jedis jedis = jedisPool.getResource()) {
             var userEmailRedisKey = "users:%d:email".formatted(id);
 
-            String userEmail = jedis.get(userEmailRedisKey.formatted(id));
+            String userEmail = jedis.get(userEmailRedisKey);
             if (userEmail != null) {
                 return userEmail;
             }
@@ -663,7 +663,7 @@ public class UserController {
 2. RedisHash 사용
 ### cache Project
 1. RedisTemplate 사용
-- spring-boot-starter-data-redis/jpa/web/lombok, devtools, configuration-processor, lombok
+- `spring-boot-starter-data-redis`/jpa/web/lombok, devtools, configuration-processor, lombok
 ```java
 @EntityListeners(AuditingEntityListener.class)
 @Entity
@@ -872,9 +872,9 @@ public RedisHashUser getUser2(final Long id) {
 ```
 
 ## Spring Cache
-- spring-boot-strater
-> @EnableCaching, @Cacheable("users")  
-> @CacheEvict(cacheNames="cache1", key ="'users:'" + #id)
+- `spring-boot-strater-cache`
+> `@EnableCaching`, `@Cacheable("users")`  
+> `@CacheEvict(cacheNames="cache1", key ="'users:'" + #id)`
 
 ## 실습2
 3. Spring-boot-cache
@@ -982,8 +982,8 @@ $ vegeta attack -timeout=30s -duration=15s -rate=5000/1s -targets=request1.txt -
 3. WebSession(WebFlux)
 - gradle.build
 > spring-session-core
-> > spring-boot-starter-data-redis
-> > spring-session-data-redis
+> > spring-boot-starter-data-redis  
+> > `spring-session-data-redis`
 ### 활용
 1. Redis
 2. JDBC
@@ -991,7 +991,7 @@ $ vegeta attack -timeout=30s -duration=15s -rate=5000/1s -targets=request1.txt -
 4. Monogodb
 ### Project setting
 - application.yml
-> spring.session.store-type: redis  
+> `spring.session.store-type`: redis  
 > spring.data.redis(default 127.0.0.1:6379)
 ### Code
 - httpSession.setAttribute/getAttribute()
@@ -1111,10 +1111,10 @@ $ PSUBSCRIBE users:*
 ## 실습 - Spring boot
 - Spring Data Redis
 ### Sub Project
-- @Service impl MessageListener
-- @Bean MessageListenerAdapter
+- @Service `impl MessageListener`
+- @Bean `MessageListenerAdapter`
 > new MessageListenerAdapter(messageListenService())
-- @Bean RedisMessageListenerContainer
+- @Bean `RedisMessageListenerContainer`
 > new ().setConnectionFactory(con).addMessageListener(adapter, ChannelTopic.of("users:unregister"))
 - 발행
 > redisTemplate.convertAndSend()
@@ -1181,23 +1181,54 @@ public class PublishController {
 - redis - redis exporter - prometheus - grafana
 ## Memory Eviction
 1. maxmemory
-- maxmemory 0 / 4G
-2. maxmemory-policy
-a. noeviction  
-b. allkeys-lru  
-c. allkeys-lfu  
-d. volatile-lru (expire 설정된 키)  
-e. volatile-lfu  
-f. allkeys-random  
-g. volatile-random  
-h. volatile-ttl
+- maxmemory 0(default) / 4G
+2. maxmemory-policy  
+    a. noeviction  
+    b. allkeys-lru  
+    c. allkeys-lfu  
+    d. volatile-lru (expire 설정된 키)  
+    e. volatile-lfu  
+    f. allkeys-random  
+    g. volatile-random  
+    h. volatile-ttl
 ## 실습
 - docker-compose
 > prometheus, grafana  
 > redis, redis-exporter
-- docker-compose/prometheus_grafana_redis
-> docker-compose.yaml
-> > prometheus/config/prometheus.yml: scrape 설정
+- docker-compose/prometheus_grafana_redis/docker.compose.yaml
+```yaml
+services:
+    redis-exporter:
+        container_name: redis-exporter
+        image: oliver006/redis_exporter:latest
+        environment:
+        - REDIS_ADDR=redis://redis:6379
+        ports:
+        - 9121:9121
+        depends_on:
+        - prometheus
+        networks:
+        - monitor
+        restart: always
+```
+- prometheus.yml
+```yaml
+global:
+  scrape_interval: 1m
+
+scrape_configs:
+  - job_name: 'prometheus'
+    scrape_interval: 1m
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'redis-exporter'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['redis-exporter:9121']
+```
+> prometheus/config/prometheus.yml: scrape 설정
+- redis: 6379
 - prometheus :9090
 - grafana :3000
 - redis-exporter :9121

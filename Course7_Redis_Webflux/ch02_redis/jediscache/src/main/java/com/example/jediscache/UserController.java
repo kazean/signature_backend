@@ -18,7 +18,7 @@ public class UserController {
         try (Jedis jedis = jedisPool.getResource()) {
             var userEmailRedisKey = "users:%d:email".formatted(id);
 
-            String userEmail = jedis.get(userEmailRedisKey.formatted(id));
+            String userEmail = jedis.get(userEmailRedisKey);
             if (userEmail != null) {
                 return userEmail;
             }
