@@ -94,7 +94,7 @@ Kernel에 I/O Request 시 대기
 ### Servlet Stack
 synchronous blocking I/O  
 > Servlet Containers, Servlet API  
-- Spring Securiy, Spring Mvc, Spring Data Repositories
+- Spring Security, Spring Mvc, Spring Data Repositories
 #### Servlet Tomcat
 Client, Queue, Thread Pool
 ### Reative Stack
@@ -116,15 +116,15 @@ Event Queue(concurrency request) - Event Loop(Single thread) - handler
 # Ch03-05. Reactor 이론
 ## Reactive Stream
 ### 구성요소
-1. stream
-  a. Publisher  
-  b. Subscriber  
-  c. Subscription  
-  d. Processor
+1. stream  
+  a. Publisher(subscribe(s))  
+  b. Subscriber(onSubscribe(Subscription s)/onNext(t)/onError(t)/onComplete())  
+  c. Subscription(request(l)/cancel())  
+  d. Processor extedns Publisher, Subscriber
 2. asynchronous
 3. back pressure
 ### Project reactor
-- Reactvie Core
+- Reactive Core
 - Typed sequences
 - Non-blocking io
 
@@ -151,12 +151,12 @@ dependencies {
 
 ```
 ## Publisher
-1. Flux
+1. Flux  
   a. 0-N개의 아이템을 가질 수 있는 데이터 스트림  
-  b.
-2. Mono
+  b. onNext(n), onComplete, onError
+2. Mono  
   a. 0개 또는 1개의 아이템을 가지는 데이터 스트림  
-  b.
+  b. onNext(0-1), onComplete, onError
 ## Flux, Mono 실습
 ```java
 public class Publisher {
@@ -253,14 +253,14 @@ class PublisherTest {
 > merge 여러 publisher를 합침  
 > zip 쌍으로 합침
 
-# Operator(3)
+## Operator(3)
 1. count
 2. distinct
 3. reduce
 4. groupby
 > groupby 조건후 각각 실행
 
-# Operator(4)
+## Operator(4)
 1. limitRate(n)
 > request(n)
 2. sample(duration)
@@ -466,3 +466,361 @@ class Scheduler1Test {
 ```
 > subscribeOn: run Subscribe  
 > publishOn: Run OnNext, thread conetxt
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-07. Spring Webflux 실습(1)
+## 실습 단계
+1. Controller  
+    a. functional endpoint  
+    b. annotation endpoint
+2. Service
+3. Repository
+## Project - webflux1
+### 1. Controller 
+- functional endpoint
+```java
+@Configuration
+@RequiredArgsConstructor
+public class RouteConfig {
+    private final SampleHandler sampleHandler;
+
+    @Bean
+    public RouterFunction<ServerResponse> route() {
+        return RouterFunctions.route()
+                .GET("/hello-functional", sampleHandler::getString)
+                .build();
+    }
+}
+
+@Component
+public class SampleHandler {
+    public Mono<ServerResponse> getString(ServerRequest request) {
+        return ServerResponse.ok().bodyValue("hello, function endpoint");
+    }
+}
+```
+> @Bean `RouterFunction` RouterFunctions.route().GET(pattern, handler).build()
+- annotation endpoint
+```java
+@RestController
+public class SampleController {
+
+    @GetMapping("sample/hello")
+    public Mono<String> getHello() {
+        
+        return Mono.just("hello rest controller with webflux");
+    }
+}
+```
+> return Mono  
+> reactor
+> > publisher <---> subscriber  
+> > spring webflux 에서 따로 publisher 에 대한 것을 구독
+
+### CRUD - 2. Service 3. Repository
+```java
+public interface UserRepository {
+    // CRUD
+    // Create Update
+    Mono<User> save(User user);
+
+    // Read
+    Flux<User> findAll();
+
+    Mono<User> findById(Long id);
+
+    // Delete
+    Mono<Integer> deleteById(Long id);
+}
+
+@Repository
+public class UserRepositoryImpl implements UserRepository {
+    private final ConcurrentHashMap<Long, User> userHashMap = new ConcurrentHashMap<>();
+    private AtomicLong sequence = new AtomicLong(1L);
+
+    @Override
+
+    public Mono<User> save(User user) {
+        var now = LocalDateTime.now();
+
+        // create, update
+        if (user.getId() == null) {
+            user.setId(sequence.getAndAdd(1));
+            user.setCreatedAt(now);
+        }
+        user.setUpdatedAt(now);
+        userHashMap.put(user.getId(), user);
+        return Mono.just(user);
+    }
+
+    @Override
+    public Flux<User> findAll() {
+        return Flux.fromIterable(userHashMap.values());
+    }
+
+    @Override
+    public Mono<User> findById(Long id) {
+        return Mono.justOrEmpty(userHashMap.getOrDefault(id, null));
+    }
+
+    @Override
+    public Mono<Integer> deleteById(Long id) {
+        User user = userHashMap.getOrDefault(id, null);
+        if (user == null) {
+            return Mono.just(0);
+        }
+        userHashMap.remove(id, user);
+        return Mono.just(1);
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+
+    // Mono Return 하는 이유 Spring webflux 에서 subscriber 를 하기 때문에 Publisher 되는 내용으로 Return
+    public Mono<User> create(String name, String email) {
+        return userRepository.save(User.builder().name(name).email(email).build());
+    }
+
+    public Flux<User> findAll() {
+        return userRepository.findAll();
+    }
+
+    public Mono<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    public Mono<Integer> deleteById(Long id) {
+        return userRepository.deleteById(id);
+    }
+
+    public Mono<User> update(Long id, String name, String email) {
+        // 1. 해당 사용자를 찾는다
+        // 2. 데이터를 변경하고 저장한다
+        // map을 하지않은 이유 map 을 하게 되면 Mono<Mono<User>>
+        return userRepository.findById(id)
+                .flatMap(u -> {
+                    u.setName(name);
+                    u.setEmail(email);
+                    return userRepository.save(u);
+                });
+    }
+}
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/users")
+public class UserController {
+    private final UserService userService;
+
+    @PostMapping("")
+    public Mono<?> createUser(@RequestBody UserCreateRequest request) {
+        return userService.create(request.getName(), request.getEmail())
+                .map(UserResponse::of);
+    }
+
+    @GetMapping("")
+    public Flux<UserResponse> findAllUsers() {
+        return userService.findAll()
+                .map(UserResponse::of);
+    }
+
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<UserResponse>> findUser(@PathVariable Long id) {
+        return userService.findById(id)
+                .map(u -> ResponseEntity.ok(UserResponse.of(u)))
+                .switchIfEmpty(Mono.just(ResponseEntity.notFound().build()));
+    }
+
+    @DeleteMapping("/{id}")
+    public Mono<ResponseEntity<?>> deleteUser(@PathVariable Long id) {
+        // 204(no content)
+        return userService.deleteById(id).then(Mono.just(ResponseEntity.noContent().build()));
+    }
+
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<UserResponse>> updateUser(@PathVariable Long id, @RequestBody UserUpdateRequest request) {
+        // user (x): 404 not found
+        // user (o): 200
+        return userService.update(id, request.getName(), request.getEmail())
+                .map(u -> ResponseEntity.ok(UserResponse.of(u)))
+                .switchIfEmpty(Mono.just(ResponseEntity.notFound().build()));
+    }
+}
+```
+- testCode
+```java
+@WebFluxTest(UserController.class)
+@AutoConfigureWebTestClient
+class UserControllerTest {
+    @Autowired
+    private WebTestClient webTestClient;
+
+    @MockBean
+    private UserService userService;
+
+    @Test
+    void createUser() {
+        when(userService.create("greg", "greg@fastcampus.co.kr")).thenReturn(
+                Mono.just(new User(1L, "greg", "greg@fastcampus.co.kr", LocalDateTime.now(), LocalDateTime.now()))
+        );
+
+        webTestClient.post().uri("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new UserCreateRequest("greg", "greg@fastcampus.co.kr"))
+                .exchange()
+                .expectStatus().is2xxSuccessful()
+                .expectBody(UserResponse.class)
+                .value(res -> {
+                    assertEquals("greg", res.getName());
+                    assertEquals("greg@fastcampus.co.kr", res.getEmail());
+                });
+    }
+
+    @Test
+    void findAllUsers() {
+        when(userService.findAll()).thenReturn(
+                Flux.just(
+                        new User(1L, "greg", "greg@fastcampus.co.kr", LocalDateTime.now(), LocalDateTime.now()),
+                        new User(2L, "greg", "greg@fastcampus.co.kr", LocalDateTime.now(), LocalDateTime.now()),
+                        new User(3L, "greg", "greg@fastcampus.co.kr", LocalDateTime.now(), LocalDateTime.now())
+                ));
+
+        webTestClient.get().uri("/users")
+                .exchange()
+                .expectStatus().is2xxSuccessful()
+                .expectBodyList(UserResponse.class)
+                .hasSize(3);
+    }
+
+    @Test
+    void findUser() {
+        when(userService.findById(1L)).thenReturn(
+                Mono.just(new User(1L, "greg", "greg@fastcampus.co.kr", LocalDateTime.now(), LocalDateTime.now())
+                ));
+
+        webTestClient.get().uri("/users/1")
+                .exchange()
+                .expectStatus().is2xxSuccessful()
+                .expectBody(UserResponse.class)
+                .value(res -> {
+                    assertEquals("greg", res.getName());
+                    assertEquals("greg@fastcampus.co.kr", res.getEmail());
+                });
+    }
+
+    @Test
+    void notFoundUser() {
+        when(userService.findById(1L)).thenReturn(Mono.empty());
+
+        webTestClient.get().uri("/users/1")
+                .exchange()
+                .expectStatus().is4xxClientError();
+    }
+
+    @Test
+    void deleteUser() {
+        when(userService.deleteById(1L)).thenReturn(Mono.just(1));
+
+        webTestClient.delete().uri("/users/1")
+                .exchange()
+                .expectStatus().is2xxSuccessful();
+    }
+
+    @Test
+    void updateUser() {
+        when(userService.update(1L, "greg1", "greg1@fastcampus.co.kr")).thenReturn(
+                Mono.just(new User(1L, "greg1", "greg1@fastcampus.co.kr", LocalDateTime.now(), LocalDateTime.now()))
+        );
+
+        webTestClient.put().uri("/users/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new UserCreateRequest("greg1", "greg1@fastcampus.co.kr"))
+                .exchange()
+                .expectStatus().is2xxSuccessful()
+                .expectBody(UserResponse.class)
+                .value(res -> {
+                    assertEquals("greg1", res.getName());
+                    assertEquals("greg1@fastcampus.co.kr", res.getEmail());
+                });
+    }
+}
+```
+> organize
+> `@WebFluxTest(class)`, `@AutoConfigureWebTestclient`  
+> WebTestclient, @MockBean 
+```
+# class
+- @WebFluxTest(class)
+- @AutoConfigureWebTestclient`
+
+# Code
+- WebTestClient
+    .post()/get()...
+    .uri()
+    .contentType()
+    .bodyValue(obj)
+    .exchange(): ResponseSpec
+    .expectBody(class)
+    .expectStatus()
+        .is2xxSuccessful()
+    .value(res ->)
+```
+- Repository Test
+```java
+class UserRepositoryTest {
+    private final UserRepository userRepository = new UserRepositoryImpl();
+
+    @Test
+    void save() {
+        var user = User.builder().name("greg").email("greg@fastcampus.co.kr").build();
+        StepVerifier.create(userRepository.save(user))
+                .assertNext(u -> {
+                    assertEquals(1L, u.getId());
+                    assertEquals("greg", u.getName());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void findAll() {
+        userRepository.save(User.builder().name("greg").email("greg@fastcampus.co.kr").build());
+        userRepository.save(User.builder().name("greg2").email("greg2@fastcampus.co.kr").build());
+        userRepository.save(User.builder().name("greg3").email("greg3@fastcampus.co.kr").build());
+
+        StepVerifier.create(userRepository.findAll())
+                .expectNextCount(3)
+                .verifyComplete();
+    }
+
+    @Test
+    void findById() {
+        userRepository.save(User.builder().name("greg").email("greg@fastcampus.co.kr").build());
+        userRepository.save(User.builder().name("greg2").email("greg2@fastcampus.co.kr").build());
+
+        StepVerifier.create(userRepository.findById(2L))
+                .assertNext(u -> {
+                    assertEquals(2L, u.getId());
+                    assertEquals("greg2", u.getName());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void deleteById() {
+        userRepository.save(User.builder().name("greg").email("greg@fastcampus.co.kr").build());
+        userRepository.save(User.builder().name("greg2").email("greg2@fastcampus.co.kr").build());
+
+        StepVerifier.create(userRepository.deleteById(2L))
+                .expectNextCount(1)
+                .verifyComplete();
+    }
+}
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-08. Spring Webflux 실습(2)
