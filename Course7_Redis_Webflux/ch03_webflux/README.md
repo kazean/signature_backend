@@ -477,6 +477,11 @@ class Scheduler1Test {
 2. Service
 3. Repository
 ## Project - webflux1
+- build.gralde
+> implementation 'org.springframework.boot:spring-boot-starter-webflux'  
+> `spring-boot-starter-webflux`
+
+
 ### 1. Controller 
 - functional endpoint
 ```java
