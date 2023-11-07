@@ -829,3 +829,339 @@ class UserRepositoryTest {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-08. Spring Webflux 실습(2)
+비동기 요청 `WebClient`
+## Project - mvc 
+- build.gradle
+> spring-boot-starter-web
+### Spring Webflux WebClient
+### Spring Webflux Aggregation
+### 실습
+- mvc
+```java
+@SpringBootApplication
+@RestController
+public class MvcApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(MvcApplication.class, args);
+	}
+
+	@GetMapping("/posts/{id}")
+	public Map<String, String> getPosts(@PathVariable Long id) throws Exception {
+		Thread.sleep(300);
+		if (id > 10L) {
+			throw new Exception("Too long");
+		}
+		return Map.of("id", id.toString(), "content", "Post content is %d".formatted(id));
+	}
+}
+```
+```yaml
+server:
+  port: 8090
+```
+- webflux1
+```java
+@Configuration
+public class WebClientConfig {
+
+    @Bean
+    public WebClient webClient() {
+        return WebClient.builder().build();
+    }
+}
+
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/posts")
+public class PostController {
+    private final PostService postService;
+
+    @GetMapping("/{id}")
+    public Mono<PostResponse> getPostContent(@PathVariable Long id) {
+        return postService.getPostContent(id);
+    }
+
+    @GetMapping("/search")
+    public Flux<PostResponse> getMultiplePostContent(@RequestParam(name = "ids") List<Long> idList) {
+//        return postService.getMultiplePostContent(idList);
+        return postService.getParallelMultiplePostContent(idList);
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+public class PostService {
+    // webclient mvc server request
+    private final PostClient postClient;
+
+    public Mono<PostResponse> getPostContent(Long id) {
+        return postClient.getPost(id)
+                .onErrorResume(error -> Mono.just(new PostResponse(id.toString(), "Fallback data %d".formatted(id))));
+    }
+
+    public Flux<PostResponse> getMultiplePostContent(List<Long> idList) {
+        return Flux.fromIterable(idList)
+                .flatMap(this::getPostContent)
+                .log();
+    }
+
+    public Flux<PostResponse> getParallelMultiplePostContent(List<Long> idList) {
+        return Flux.fromIterable(idList)
+                .parallel()
+                .runOn(Schedulers.parallel())
+                .flatMap(this::getPostContent)
+                .log()
+                .sequential();
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+public class PostClient {
+    private final WebClient webClient;
+    private final String url = "http://127.0.0.1:8090";
+
+    // webclient -> mvc("/posts/{id}")
+    public Mono<PostResponse> getPost(Long id) {
+        String uriString = UriComponentsBuilder.fromHttpUrl(url)
+                .path("/posts/%d".formatted(id))
+                .buildAndExpand()
+                .toUriString();
+
+        return webClient.get()
+                .uri(uriString)
+                .retrieve()
+                .bodyToMono(PostResponse.class);
+    }
+}
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class PostResponse {
+    private String id;
+    private String content;
+}
+```
+> organize
+```java
+@Bean WebCleint.builder().build
+UriComponentsBuilder.fromHttpUrl(url).path(path).buildAndExpand().toUriString()
+webCleint.get().uri(uriString).retrieve.bodyToMono(PostResponse): Mono<PostResponse>
+
+Flux.fromIterable(idList).flatMap(this::getPostContent): Flux(PostResponse)
+Flux.fromIterable(idList).parallel().runOn(Schedulers.parallel()).flatMap(this::getPostContent).sequential(): Flux(PostResponse)
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-9. R2DBC 이론
+동기가 포함되면 성능에 문제가 될 수 있다.
+1. reactor-netty(async)
+2. WebClient(async)
+3. JDBC(sync)
+4. X
+
+## Reactive Relational DataBase Connectivity
+- Asylnchronous Database Access
+- Reative Stream
+- Nonblocking I/O
+- Open specificiation
+> H2, MariaDb, Mysql, Oracle, PostgreSQL
+- SPI(Service Provider Interface)
+- Drivers
+- spring-boot-starter-data-r2dbc, spring-data-r2dbc, r2dbc-spi, r2dbc-mysql
+> 각 버전호환
+
+## Spring Data R2DBC
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-10. R2DBC 실습(1)
+- MySQL8(container)
+- Gradle
+> spring-boot-starter-data-r2dbc  
+> io.asyncer:r2dbc-mysql
+- Repository
+> ReactiveCrudRepository
+
+## 실습 - Webflux1 (User/Post)
+- create table users, posts
+- build.gradle
+```gradle
+implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
+implementation 'io.asyncer:r2dbc-mysql:1.0.2' // spi 1.0.0 (spring boot3)
+```
+- application.yaml
+```yaml
+spring:
+  r2dbc:
+    url: r2dbc:mysql://localhost:3306/fastsns?userSSL=false&useUnicode=true&PublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    username: root
+    password: root1234!!
+```
+- code
+```java
+@Slf4j
+@Component
+@RequiredArgsConstructor
+@EnableR2dbcRepositories
+@EnableR2dbcAuditing
+public class R2dbcConfig implements ApplicationListener<ApplicationReadyEvent> {
+    private final DatabaseClient databaseClient;
+
+    @Override
+    public void onApplicationEvent(ApplicationReadyEvent event) {
+        // reactor: publisher, subscriber
+        databaseClient.sql("SELECT 1").fetch().one()
+                .subscribe(
+                        success -> {
+                            log.info("Initialize r2dbc database connection");
+                        },
+                        error -> {
+                            log.error("Failed to initialize r2dbc database connection");
+                            SpringApplication.exit(event.getApplicationContext(), () -> -110);
+                        }
+                );
+    }
+}
+
+@Data
+@Builder
+@AllArgsConstructor
+@Table("users")
+public class User {
+    @Id
+    private Long id;
+    private String name;
+    private String email;
+    @CreatedDate
+    private LocalDateTime createdAt;
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
+}
+
+public interface UserR2dbcRepository extends ReactiveCrudRepository<User, Long> {
+}
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+//    private final UserRepository userRepository;
+    private final UserR2dbcRepository userR2dbcRepository;
+
+    public Mono<User> create(String name, String email) { /* ... */ }
+    public Flux<User> findAll() { /* ... */ }
+    public Mono<User> findById(Long id) { /* ... */ }
+    public Mono<Void> deleteById(Long id) { /* ... */ }
+    public Mono<User> update(Long id, String name, String email) { /* ... */ }
+}
+```
+> organize
+> > `@EnableR2dbcRepositories`  
+> > `@EanbleR2dbcAuditing`  
+> > `DatabaseClient`  
+> > interface UserR2dbcRepository extends `ReactiveCrudRepository<T, ID>`
+- Code - Posts
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table("posts")
+public class Post { /* */ }
+
+public interface PostR2dbcRepository extends ReactiveCrudRepository<Post, Long> {
+}
+
+@Service
+@RequiredArgsConstructor
+public class PostServiceV2 {
+    private final PostR2dbcRepository postR2dbcRepository;
+
+    // create
+    public Mono<Post> create(Long userId, String title, String content) {
+        return postR2dbcRepository.save(Post.builder()
+                .userId(userId)
+                .title(title)
+                .content(content)
+                .build());
+    }
+
+    // read
+    public Flux<Post> findAll() {
+        return postR2dbcRepository.findAll();
+    }
+
+    public Mono<Post> findById(Long id) {
+        return postR2dbcRepository.findById(id);
+    }
+
+    // delete
+    public Mono<Void> deleteById(Long id) {
+        return postR2dbcRepository.deleteById(id);
+    }
+}
+
+@RestController
+@RequestMapping("/v2/posts")
+@RequiredArgsConstructor
+public class PostControllerV2 {
+    private final PostServiceV2 postServiceV2;
+
+    @PostMapping("")
+    public Mono<PostResponseV2> createPost(@RequestBody PostCreateRequest request) {
+        return postServiceV2.create(request.getUserId(), request.getTitle(), request.getContent())
+                .map(PostResponseV2::of);
+    }
+
+    @GetMapping("")
+    public Flux<PostResponseV2> findAll() {
+        return postServiceV2.findAll()
+                .map(PostResponseV2::of);
+    }
+
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<PostResponseV2>> findPost(@PathVariable Long id) {
+        return postServiceV2.findById(id)
+                .map(p -> ResponseEntity.ok().body(PostResponseV2.of(p)))
+                .switchIfEmpty(Mono.just(ResponseEntity.notFound().build()));
+    }
+
+    @DeleteMapping("/{id}")
+    public Mono<ResponseEntity<PostResponseV2>> deletePost(@PathVariable Long id) {
+        return postServiceV2.deleteById(id).then(Mono.just(ResponseEntity.noContent().build()));
+    }
+}
+
+@Data
+public class PostCreateRequest { /* */ }
+@Data
+@Builder
+public class PostResponseV2 {
+    // ...
+    public static PostResponseV2 of(Post post) { /* */ 
+}
+```
+
+₩
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-11. R2DBC 실습(2)
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-12. Reactive Redis 이론
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-13. Reactive Redis 실습
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-14. Spring MVC vs. Webflux
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-15. blockhound

@@ -6,5 +6,7 @@
 
 ---------------------------------------------------------------------------------------------------------------------------
 # 실습환경
+## Mysql
+> $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/docker-compose.yaml up -d
 ## Redis
 > $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/redis/docker-compose-6-2.yaml up -d
