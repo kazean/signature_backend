@@ -1493,7 +1493,8 @@ reativeRedisTemplate
 - Spring MVC - JPA, Spring Data Redis
 - Spring Webflux- R2DBC, Spring Data Reactive Redis
 - Apach Jmeter
-> $ brew install jmter
+> $ brew install jmter  
+> $ /usr/local/Cellar/jmeter/5.6.2/libexec/bin/jmete
 ## 실습
 ### mvc
 - gradle
