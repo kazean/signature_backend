@@ -8,5 +8,10 @@
 # 실습환경
 ## Mysql
 > $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/docker-compose.yaml up -d
+```sql
+SET GLOBAL time_zone='Asia/Seoul';
+SET time_zone='Asia/Seoul';
+SELECT @@global.time_zone, @@session.time_zone;
+```
 ## Redis
 > $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/redis/docker-compose-6-2.yaml up -d

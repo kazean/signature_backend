@@ -10,7 +10,7 @@
 - [9. R2DBC 이론](#ch03-09-r2dbc-이론)
 - [10. R2DBC 실습(1)](#ch03-10-r2dbc-실습1)
 - [11. R2DBC 실습(2)](#ch03-11-r2dbc-실습2)
-- [12. Reactie Redis 이론](#ch03-12-reactive-redis-이론)
+- [12. Reactive Redis 이론](#ch03-12-reactive-redis-이론)
 - [13. ]()
 - [14. ]()
 - [15. ]()
@@ -949,7 +949,7 @@ public class PostResponse {
 ```java
 @Bean WebCleint.builder().build
 UriComponentsBuilder.fromHttpUrl(url).path(path).buildAndExpand().toUriString()
-webCleint.get().uri(uriString).retrieve.bodyToMono(PostResponse): Mono<PostResponse>
+webCleint.get().uri(uriString).retrieve().bodyToMono(PostResponse): Mono<PostResponse>
 
 Flux.fromIterable(idList).flatMap(this::getPostContent): Flux(PostResponse)
 Flux.fromIterable(idList).parallel().runOn(Schedulers.parallel()).flatMap(this::getPostContent).sequential(): Flux(PostResponse)
@@ -965,7 +965,7 @@ Flux.fromIterable(idList).parallel().runOn(Schedulers.parallel()).flatMap(this::
 4. X
 
 ## Reactive Relational DataBase Connectivity
-- Asylnchronous Database Access
+- Asynchronous Database Access
 - Reative Stream
 - Nonblocking I/O
 - Open specificiation
@@ -973,6 +973,9 @@ Flux.fromIterable(idList).parallel().runOn(Schedulers.parallel()).flatMap(this::
 - SPI(Service Provider Interface)
 - Drivers
 - spring-boot-starter-data-r2dbc, spring-data-r2dbc, r2dbc-spi, r2dbc-mysql
+> 3.0.*, 3.0.*, 1.0.0.RELEASE, i.asyncer:r2dbc-mysql:1.0.0  
+> 2.7.*, 1.5.*, 0.9.1.RELEASE, i.asyncer:r2dbc-mysql:0.9.3  
+> 2.6.*/below, 1.4.*/below, 0.8.6.RELEASE, dev.miku:r2dbc-mysql:0.8.2  
 > 각 버전호환
 
 ## Spring Data R2DBC
@@ -1057,6 +1060,47 @@ public class UserService {
     public Mono<User> findById(Long id) { /* ... */ }
     public Mono<Void> deleteById(Long id) { /* ... */ }
     public Mono<User> update(Long id, String name, String email) { /* ... */ }
+}
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/users")
+public class UserController {
+    private final UserService userService;
+
+    @PostMapping("")
+    public Mono<?> createUser(@RequestBody UserCreateRequest request) {
+        return userService.create(request.getName(), request.getEmail())
+                .map(UserResponse::of);
+    }
+
+    @GetMapping("")
+    public Flux<UserResponse> findAllUsers() {
+        return userService.findAll()
+                .map(UserResponse::of);
+    }
+
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<UserResponse>> findUser(@PathVariable Long id) {
+        return userService.findById(id)
+                .map(u -> ResponseEntity.ok(UserResponse.of(u)))
+                .switchIfEmpty(Mono.just(ResponseEntity.notFound().build()));
+    }
+
+    @DeleteMapping("/{id}")
+    public Mono<ResponseEntity<?>> deleteUser(@PathVariable Long id) {
+        // 204(no content)
+        return userService.deleteById(id).then(Mono.just(ResponseEntity.noContent().build()));
+    }
+
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<UserResponse>> updateUser(@PathVariable Long id, @RequestBody UserUpdateRequest request) {
+        // user (x): 404 not found
+        // user (o): 200
+        return userService.update(id, request.getName(), request.getEmail())
+                .map(u -> ResponseEntity.ok(UserResponse.of(u)))
+                .switchIfEmpty(Mono.just(ResponseEntity.notFound().build()));
+    }
 }
 ```
 > organize
@@ -1146,21 +1190,305 @@ public class PostResponseV2 {
 }
 ```
 
-₩
+
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-11. R2DBC 실습(2)
+## Repository
+- ReactiveCrudRepository
+- @Query
+- Custom Repository
+## 실습 - webflux1 - User
+```java
+public interface UserR2dbcRepository extends ReactiveCrudRepository<User, Long> {
+    @Modifying
+    @Query("DELETE FROM users WHERE name = :name")
+    Mono<Void> deleteByName(String name);
+}
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserR2dbcRepository userR2dbcRepository;
+
+    public Mono<Void> deleteByName(String name) {
+        return userR2dbcRepository.deleteByName(name);
+    }
+}
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/users")
+public class UserController {
+    private final UserService userService;
+    private final PostServiceV2 postServiceV2;
+
+    @DeleteMapping("/search")
+    public Mono<ResponseEntity<?>> deleteUserByName(@RequestParam String name) {
+        return userService.deleteByName(name).then(Mono.just(ResponseEntity.noContent().build()));
+    }
+}
+```
+> `@Modifying`, `@Query("WHERE name = :name")`
+- Join
+```java
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/users")
+public class UserController {
+    private final UserService userService;
+    private final PostServiceV2 postServiceV2;
+
+    @GetMapping("/{id}/posts")
+    public Flux<UserPostResponse> getUserPosts(@PathVariable Long id) {
+        return postServiceV2.findByAllUserId(id)
+                .map(UserPostResponse::of);
+    }
+}
+
+public interface PostCustomR2dbcRepository {
+    Flux<Post> findAllByUserId(Long userId);
+}
+
+@Repository
+@RequiredArgsConstructor
+public class PostCustomR2dbcRepositoryImpl implements PostCustomR2dbcRepository{
+    private final DatabaseClient databaseClient;
+
+    @Override
+    public Flux<Post> findAllByUserId(Long userId) {
+        var sql = """
+                SELECT 
+                    p.id as pid, p.user_id as userId, p.title, p.content, p.created_at as createdAt, p.updated_at as updatedAt,
+                    u.id as uid, u.name as name, u.email as email, u.created_at as uCreatedAt, u.updated_at as uUpdatedAt 
+                FROM posts p 
+                LEFT JOIN users u 
+                ON p.user_id = u.id 
+                WHERE u.id = :userId
+                """;
+        return databaseClient.sql(sql)
+                .bind("userId", userId)
+                .fetch()
+                .all()
+                .map(row -> Post.builder()
+                        .id((Long) row.get("pid"))
+                        .userId((Long) row.get("userId"))
+                        .title((String) row.get("title"))
+                        .content((String) row.get("content"))
+                        .user(
+                                User.builder()
+                                        .id((Long) row.get("uid"))
+                                        .name((String) row.get("name"))
+                                        .email((String) row.get("email"))
+                                        .createdAt(((ZonedDateTime) row.get("uCreatedAt")).toLocalDateTime())
+                                        .updatedAt(((ZonedDateTime) row.get("uUpdatedAt")).toLocalDateTime())
+                                        .build()
+                        )
+                        .createdAt(((ZonedDateTime) row.get("createdAt")).toLocalDateTime())
+                        .updatedAt(((ZonedDateTime) row.get("updatedAt")).toLocalDateTime())
+                        .build());
+    }
+}
+
+public interface PostR2dbcRepository extends ReactiveCrudRepository<Post, Long>, PostCustomR2dbcRepository {}
+
+@Service
+@RequiredArgsConstructor
+public class PostServiceV2 {
+    private final PostR2dbcRepository postR2dbcRepository;
+
+    public Flux<Post> findByAllUserId(Long id) {
+        return postR2dbcRepository.findAllByUserId(id);
+    }
+}
+
+@Data
+@Builder
+public class UserPostResponse {
+    private Long id;
+    private String username;
+    private String title;
+    private String content;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    public static UserPostResponse of(Post post) {
+        return UserPostResponse.builder()
+                .id(post.getId())
+                .username(post.getUser().getName())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .createdAt(post.getCreatedAt())
+                .updatedAt(post.getUpdatedAt())
+                .build();
+    }
+}
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table("posts")
+public class Post {
+    @Id
+    private Long id;
+    @Column("user_id")
+    private Long userId;
+    private String title;
+    private String content;
+    @Transient
+    private User user;
+    @Column("created_at")
+    @CreatedDate
+    private LocalDateTime createdAt;
+    @Column("updated_at")
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
+}
+```
+> CustomRepository  
+> `DatabaseClient`.sql().bind().fetch().all().map(), `@Transient`
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-12. Reactive Redis 이론
+## Reactive Redis
+- Reactive Stream
+- Nonblokcing I/O
+- Spring Data Reactvie Redis
+> lettuce
+## Spring Data Reactive Redis
+- ReactiveRedisConnectionFactory
+> LettuceConnectionFactory
+- `ReactiveRedisTemplate`
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-13. Reactive Redis 실습
+## 실습 설명
+- Redis 6
+- Gradle
+> spring-boot-starter-data-redis-reactive
+## 실습 - webflux1 - User
+- build.gradle
+> implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+- application.yml
+```yml
+spring:
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+```
+```java
+@Configuration
+@RequiredArgsConstructor
+@Slf4j
+public class RedisConfig implements ApplicationListener<ApplicationReadyEvent> {
+    private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
+
+    @Override
+    public void onApplicationEvent(ApplicationReadyEvent event) {
+        reactiveRedisTemplate.opsForValue().get("1")
+                .doOnSuccess(i -> log.info("Initialize to redis connection"))
+                .doOnError((err) -> log.error("Fail to initialize to redis connection : {}", err.getMessage()))
+                .subscribe();
+    }
+
+    @Bean
+    public ReactiveRedisTemplate<String, User> reactiveRedisUserTemplate(ReactiveRedisConnectionFactory connectionFactory) {
+        var objectMapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        Jackson2JsonRedisSerializer<User> jsonRedisSerializer = new Jackson2JsonRedisSerializer<User>(objectMapper, User.class);
+
+        RedisSerializationContext<String, User> serializationContext = RedisSerializationContext
+                .<String, User>newSerializationContext()
+                .key(RedisSerializer.string())
+                .value(jsonRedisSerializer)
+                .hashKey(RedisSerializer.string())
+                .hashValue(jsonRedisSerializer)
+                .build();
+        return new ReactiveRedisTemplate<>(connectionFactory, serializationContext);
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserR2dbcRepository userR2dbcRepository;
+    private final ReactiveRedisTemplate<String, User> reactiveRedisTemplate;
+
+    public String getUserCacheKey(Long id) {
+        return "users:%d".formatted(id);
+    }
+    public Mono<User> findById(Long id) {
+        // 1. redis 조회
+        // 2. 값이 존재하면 응답을하고
+        // 3. 없으면 DB에 질의하고 그 결과를 redis 에 저장하는 흐름
+        return reactiveRedisTemplate.opsForValue()
+                .get(getUserCacheKey(id))
+                .switchIfEmpty(userR2dbcRepository.findById(id)
+                        .flatMap(u -> reactiveRedisTemplate.opsForValue()
+                                .set(getUserCacheKey(id), u, Duration.ofSeconds(30))
+                                .then(Mono.just(u))));
+    }
+
+    public Mono<Void> deleteById(Long id) {
+        return userR2dbcRepository.deleteById(id)
+                .then(reactiveRedisTemplate.unlink(getUserCacheKey(id)))
+                .then(Mono.empty());
+    }
+
+    public Mono<User> update(Long id, String name, String email) {
+        // 1. 해당 사용자를 찾는다
+        // 2. 데이터를 변경하고 저장한다
+        // map을 하지않은 이유 map 을 하게 되면 Mono<Mono<User>>
+        return userR2dbcRepository.findById(id)
+                .flatMap(u -> {
+                    u.setName(name);
+                    u.setEmail(email);
+                    return userR2dbcRepository.save(u);
+                })
+                .flatMap(u -> reactiveRedisTemplate.unlink(getUserCacheKey(id)).then(Mono.just(u)));
+    }
+}
+```
+> organize
+```java
+// ConnectionFactory > spring.data.redis
+@Bean
+ReactiveRedisTemplate<String, User> reactiveRedisUserTemplate(ReactiveRedisConnectionFactory connFactory) {
+    var objectMapper = new ObjectMapper()
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    Jackson2JsonRedisSerializer<User> jsonRedisSerializer = new Jackson2JsonRedisSerializer<User>(objectMapper, User.class);
+
+    RedisSerailizationContext<String, User> serailizationContext = RedisSerializationContext
+        .<String, User>newSerializationContext()
+        .key(RedisSerializer.toString())
+        .value(jsonRedisSerializer)
+        .hashKey(RedisSerializer.toString())
+        .hashValue(jsonRedisSerializer)
+        .build();
+    return new ReactiveRedistemplate<>(connFactory, serializationContext);
+}
+
+private fianl ReactiveRedisTemplate<String, User> reactiveRedisTempalte;
+reativeRedisTemplate
+    .opsForValue()
+        .get(key)
+        .set(key, user, duration)
+    .unlink(key) // async
+    .delete(key) // sync
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-14. Spring MVC vs. Webflux
+
 
 
 ---------------------------------------------------------------------------------------------------------------------------

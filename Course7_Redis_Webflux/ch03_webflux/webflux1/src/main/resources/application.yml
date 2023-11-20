@@ -3,6 +3,10 @@ spring:
     url: r2dbc:mysql://localhost:3306/fastsns?userSSL=false&useUnicode=true&PublicKeyRetrieval=true&serverTimezone=Asia/Seoul
     username: root
     password: root1234!!
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
 logging:
   level:
     root: INFO
