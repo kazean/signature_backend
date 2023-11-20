@@ -185,10 +185,10 @@ public class Publisher {
 > organize
 ```
 Publisher Subscribe
-  < subscribe
-  onSubscribe >
-  < request(n) / cancel
-  onNext/onError/onComplete()
+  - subscribe
+  - onSubscribe
+  > request(n) / cancel
+  - onNext/onError/onComplete()
 ```
 
 ## Reactor Test
@@ -658,6 +658,8 @@ public class UserController {
 ```
 - testCode
 ```java
+import static org.mockito.Mockito.when;
+
 @WebFluxTest(UserController.class)
 @AutoConfigureWebTestClient
 class UserControllerTest {
@@ -966,7 +968,7 @@ Flux.fromIterable(idList).parallel().runOn(Schedulers.parallel()).flatMap(this::
 
 ## Reactive Relational DataBase Connectivity
 - Asynchronous Database Access
-- Reative Stream
+- Reactive Stream
 - Nonblocking I/O
 - Open specificiation
 > H2, MariaDb, Mysql, Oracle, PostgreSQL
@@ -1354,7 +1356,7 @@ public class Post {
 ## Reactive Redis
 - Reactive Stream
 - Nonblokcing I/O
-- Spring Data Reactvie Redis
+- Spring Data Reactive Redis
 > lettuce
 ## Spring Data Reactive Redis
 - ReactiveRedisConnectionFactory
@@ -1488,7 +1490,201 @@ reativeRedisTemplate
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-14. Spring MVC vs. Webflux
+- Spring MVC - JPA, Spring Data Redis
+- Spring Webflux- R2DBC, Spring Data Reactive Redis
+- Apach Jmeter
+> $ brew install jmter
+## 실습
+### mvc
+- gradle
+```gradle
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+	compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+```
+- application.yml
+```yml
+server:
+  port: 9000
+  tomcat:
+    max-connections: 10000
+    accept-count: 1000
+    threads:
+      max: 3000
+      min-spare: 1000
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/fastsns?userSSL=false&useUnicode=true&PublicKeyRetrieval=true
+    username: root
+    password: root1234!!
+  data:
+    host: localhost
+    port: 6379
+```
+- code
+```java
+@SpringBootApplication
+@RestController
+@RequiredArgsConstructor
+public class MvcApplication implements ApplicationListener<ApplicationReadyEvent> {
+	private final RedisTemplate<String, String> redisTemplate;
+	private final UserRepository userRepository;
+
+
+	public static void main(String[] args) {
+		SpringApplication.run(MvcApplication.class, args);
+	}
+
+	@GetMapping("/health")
+	public Map<String, String> health() {
+		return Map.of("health", "ok");
+	}
+
+	@GetMapping("/users/{id}")
+	public User getUser(@PathVariable Long id) {
+		return userRepository.findById(id).orElse(new User());
+	}
+
+	@GetMapping("/users/1/cache")
+	public Map<String, String> getCachedUsers() {
+		var name = redisTemplate.opsForValue().get("users:1:name");
+		var email = redisTemplate.opsForValue().get("users:1:email");
+		return Map.of("name", name == null ? "" : name, "email", email == null ? "" : email);
+	}
+
+	@Override
+	public void onApplicationEvent(ApplicationReadyEvent event) {
+		redisTemplate.opsForValue().set("users:1:name", "grep");
+		redisTemplate.opsForValue().set("users:1:email", "grep@fastcampus.co.kr");
+
+		Optional<User> user = userRepository.findById(1L);
+		if (user.isEmpty()) {
+			userRepository.save(User.builder()
+					.name("greg")
+					.email("greg@fastcampus.co.kr")
+					.build());
+		}
+	}
+}
+
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
+@Entity
+@Table(name = "users")
+class User {
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+	private String name;
+	private String email;
+	private LocalDateTime createdAt;
+	private LocalDateTime updatedAt;
+}
+
+interface UserRepository extends JpaRepository<User, Long> {
+}
+```
+
+### webflux
+- gradle
+```gradle
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+	implementation "io.asyncer:r2dbc-mysql:1.0.2"
+
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.projectreactor:reactor-test'
+}
+```
+- application.yml
+```yml
+server:
+  port: 9010
+spring:
+  r2dbc:
+    url: r2dbc:mysql://localhost:3306/fastsns?userSSL=false&useUnicode=true&PublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    username: root
+    password: root1234!!
+  data:
+    redis:
+      host: localhost
+      port: 6379
+```
+- code
+```java
+@SpringBootApplication
+@RestController
+@RequiredArgsConstructor
+public class WebfluxApplication implements ApplicationListener<ApplicationReadyEvent> {
+	private final UserRepository userRepository;
+	private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
+
+	@GetMapping("/health")
+	public Mono<Map<String, String>> health() {
+		return Mono.just(Map.of("health", "ok"));
+	}
+
+	@GetMapping("/users/{id}")
+	public Mono<User> getUser(@PathVariable Long id) {
+		return userRepository.findById(id).defaultIfEmpty(new User());
+	}
+
+	@GetMapping("/users/1/cache")
+	public Mono<Map<String, String>> getCachedUser() {
+		var name = reactiveRedisTemplate.opsForValue().get("users:1:name");
+		var email = reactiveRedisTemplate.opsForValue().get("users:1:email");
+
+		return Mono.zip(name, email)
+				.map(i -> Map.of("name", i.getT1(), "email", i.getT2()));
+	}
+
+	public static void main(String[] args) {
+		SpringApplication.run(WebfluxApplication.class, args);
+	}
+
+	@Override
+	public void onApplicationEvent(ApplicationReadyEvent event) {
+		reactiveRedisTemplate.opsForValue().set("users:1:name", "greg");
+		reactiveRedisTemplate.opsForValue().set("users:1:email", "greg@fastcampus.co.kr");
+
+	}
+}
+
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
+@Table(name = "users")
+class User {
+	@Id
+	private Long id;
+	private String name;
+	private String email;
+	@CreatedDate
+	private LocalDateTime createdAt;
+	@LastModifiedDate
+	private LocalDateTime updatedAt;
+}
+
+interface UserRepository extends ReactiveCrudRepository<User, Long> {
+}
+```
+- organize
+> Jmeter : /health, /users/1, /users/1/cache  
+> Throughput, stv 차이
 
 
 ---------------------------------------------------------------------------------------------------------------------------
