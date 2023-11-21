@@ -1690,3 +1690,100 @@ interface UserRepository extends ReactiveCrudRepository<User, Long> {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-15. blockhound
+## Blockhound(JAVA Agent)
+Detect block from non-blocking thread
+> 코드중에서 Blocking call 되는 부분을 검출
+
+## 실습
+- build.gradle
+```gradle
+tasks.withType(Test).all {
+	if (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_13)) {
+		jvmArgs += [
+				"-XX:+AllowRedefinitionToAddDeleteMethods"
+		]
+	}
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
+	implementation 'io.asyncer:r2dbc-mysql:1.0.2' // spi 1.0.0 (spring boot3)
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+    implementation 'io.projectreactor.tools:blockhound:1.0.8.RELEASE'
+
+
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.projectreactor:reactor-test'
+	testImplementation 'io.projectreactor.tools:blockhound:1.0.8.RELEASE'
+}
+```
+- java
+```java
+/**
+ * -XX:+AllowRedefinitionToAddDeleteMethods
+ */
+@SpringBootApplication
+public class Webflux1Application implements ApplicationRunner {
+
+	public static void main(String[] args) {
+//		BlockHound.install();
+		SpringApplication.run(Webflux1Application.class, args);
+	}
+
+	@Override
+	public void run(ApplicationArguments args) throws Exception {
+		/*
+		Mono.delay(Duration.ofSeconds(1))
+				.doOnNext(it -> {
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+						throw new RuntimeException(e);
+					}
+				})
+				.subscribe();
+		*/
+	}
+}
+```
+- test
+```java
+@WebFluxTest(UserController.class)
+@AutoConfigureWebTestClient
+class UserControllerTest {
+    static {
+        BlockHound.install(
+                builder -> builder.disallowBlockingCallsInside("com.example.webflux1.controller.UserControllerTest", "blockHoundTest")
+        );
+    }
+
+    @Autowired
+    private WebTestClient webTestClient;
+
+    @MockBean
+    private UserService userService;
+
+    @MockBean
+    private PostServiceV2 postServiceV2;
+
+    @Test
+    void blockHoundTest() {
+        StepVerifier.create(Mono.delay(Duration.ofSeconds(1))
+                        .doOnNext(it -> {
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }))
+                .verifyComplete();
+    }
+}
+```
+- organize
+> Blockhound.install()  
+> Blockhound.install(builder -> builder.disallowBlockingCallInside("className", "methodName"))
