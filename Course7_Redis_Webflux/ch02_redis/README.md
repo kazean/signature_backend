@@ -205,7 +205,7 @@ public class Main {
 ```
 > organize
 ```java
-- JedisPool(host, port)
+- new JedisPool(host, port)
 - jeisPool.getResource: Jedis
 - jedis.set/get/mget/incr/incrBy
 - jeis.pipelined: Pipelined
@@ -999,7 +999,7 @@ $ vegeta attack -timeout=30s -duration=15s -rate=5000/1s -targets=request1.txt -
 ## 실습
 ### session
 - build.gradle
-> spring-session-data-redis'
+> spring-session-data-redis
 - application.yaml
 ```yaml
 spring:
@@ -1210,8 +1210,47 @@ services:
         networks:
         - monitor
         restart: always
+    redis:
+        container_name: redis
+        image: redis:6.2
+        ports:
+        - 6379:6379
+        networks:
+        - monitor
+        restart: always
+
+    prometheus:
+        image: prom/prometheus:latest
+        container_name: prometheus
+        user: root
+        volumes:
+        - ./prometheus/config:/etc/prometheus
+        - ./prometheus/data:/prometheus
+        ports:
+        - 9090:9090
+        networks:
+        - monitor
+        restart: always
+
+    grafana:
+        container_name: grafana
+        image: grafana/grafana:latest
+        environment:
+        - GF_SECURITY_ADMIN_USER=admin
+        - GF_SECURITY_ADMIN_PASSWORD=fastcampus
+        - GF_USERS_ALLOW_SIGN_UP=false
+        volumes:
+        - ./grafana/data:/var/lib/grafana
+        - ./grafana/provisioning:/etc/grafana/provisioning
+        ports:
+        - 3000:3000
+        depends_on:
+        - prometheus
+        networks:
+        - monitor
+        restart: always
 ```
-- prometheus.yml
+- prometheus/config/prometheus.yml
 ```yaml
 global:
   scrape_interval: 1m

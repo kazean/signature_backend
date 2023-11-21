@@ -9,7 +9,8 @@
 - CDN(Content Delivery Network)
 - Scale out
 - Load Balancer
-> RDBMS scale-out은 어렵다 Cache 사용(Redis)
+> RDBMS scale-out은 어렵다
+> > Cache 사용(Redis)
 - Web Application
 > Thread
 > > Reactor (Spring Webflux): 적은 리소스로 대용량 처리, 비동기 I/O, Event Loop
