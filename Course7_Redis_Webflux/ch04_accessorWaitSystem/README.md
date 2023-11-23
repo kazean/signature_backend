@@ -3,10 +3,10 @@
 - [2. 아키텍처 설계](#ch04-02-아키텍쳐-설계)
 - [3. 개발 환경 준비](#ch04-03-개발-환경-준비)
 - [4. 대기열 등록 API 개발](#ch04-04-대기열-등록-api-개발)
-- [5. 진입 요청 API 개발]()
-- [6. 접속 대기 웹페이지 개발]()
-- [7. 대기열 스케쥴러 개발]()
-- [8. 대기열 이탈]()
+- [5. 진입 요청 API 개발](#ch04-05-진입-요청-api-개발)
+- [6. 접속 대기 웹페이지 개발](#ch04-06-접속-대기-웹페이지-개발)
+- [7. 대기열 스케쥴러 개발](#ch04-07-대기열-스케줄러-개발)
+- [8. 대기열 이탈](#ch04-08-대기열-이탈)
 - [9. 테스트]()
 - [10. 마무리]()
 
@@ -627,8 +627,233 @@ UserQueueService.getRank(String queue, Long userId): Mono<Long>
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-07. 대기열 스케줄러 개발
+대기열 등록된 리스트를 진입을 Scheduler를 이용해서 자동화
+## 실습 - flow
+- code
+```java
+@EnableScheduling
+@SpringBootApplication
+public class FlowApplication {}
 
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class UserQueueService {
+  private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
+  private final String USER_QUEUE_WAIT_KEY = "users:queue:%s:wait";
+  private final String USER_QUEUE_WAIT_KEY_FOR_SCAN = "users:queue:*:wait";
+  private final String USER_QUEUE_PROCEED_KEY = "users:queue:%s:proceed";
+
+  @Value("${schedule.enable}")
+  private Boolean scheduling = false;
+
+@Scheduled(initialDelay = 5000, fixedDelay = 5000)
+  public void scheduleAllowUser() {
+    if (!scheduling) {
+      log.info("passed scheduling...");
+      return;
+    }
+
+    log.info("called Scheduling...");
+
+    var maxAllowUserCount = 3L;
+
+    reactiveRedisTemplate.scan(ScanOptions.scanOptions()
+        .match(USER_QUEUE_WAIT_KEY_FOR_SCAN)
+        .count(100L)
+        .build())
+      .map(key -> key.split(":")[2])
+      .flatMap(queue -> allowUser(queue, maxAllowUserCount)
+        .map(allowed -> Tuples.of(queue, allowed)))
+      .doOnNext(tuple -> log.info("Tried {} and allowed {} members of {} queue", maxAllowUserCount, tuple.getT2(), tuple.getT1()))
+      .subscribe();
+  }
+}
+```
+- application.yml
+```yml
+spring:
+schedule:
+  enable: true
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+schedule:
+  enable: false
+```
+> organize
+```java
+// Spring 
+@EnableScheduling
+@Scheduled(initialDelay, fixedDelay, cron)
+reactiveRedisTemplate.scan(ScanOptions.scanOptions().match("pattern").count(countL).build())
+
+@Value("${yaml.schedule.enable}")
+private Boolean scheduling = false;
+// test와 act간 서로 영향없게 하기 위함
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-08. 대기열 이탈
+접속자가 재접속시 정책 - 토큰과 쿠키를 이용해서 재접속 허용
+- rank 시 proceed_queue에 이미 있으면 token 발행 5분
+- waiting_room.html 대기페이지 접속시 토큰 검증 로직
+## 실습 - flow
+- code
+```java
+public class UserQueueService {
+  public Mono<Boolean> isAllowedByToken(final String queue, final Long userId, String token) {
+    return this.generateToken(queue, userId)
+      .filter(gen -> gen.equalsIgnoreCase(token))
+      .map(i -> true)
+      .defaultIfEmpty(false);
+  }
+
+  public Mono<String> generateToken(final String queue, final Long userId) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      var input = "user-queue-%s-%d".formatted(queue, userId);
+      byte[] encodedHash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+      StringBuilder hexString = new StringBuilder();
+      for (byte aByte : encodedHash) {
+          hexString.append(String.format("%02x", aByte));
+      }
+      return Mono.just(hexString.toString());
+    } catch (NoSuchAlgorithmException e) {
+      throw new RuntimeException(e);
+    }
+  }
+}
+
+@ActiveProfiles("test")
+@SpringBootTest
+@Import(EmbeddedRedis.class)
+class UserQueueServiceTest {
+  @Test
+  void isNotAllowedByToken() {
+    StepVerifier.create(userQueueService.isAllowedByToken("default", 100L, ""))
+        .expectNext(false)
+        .verifyComplete();
+  }
+
+  @Test
+  void isAllowedByToken() {
+    StepVerifier.create(userQueueService.isAllowedByToken("default", 100L, "d333a5d4eb24f3f5cdd767d79b8c01aad3cd73d3537c70dec430455d37afe4b8"))
+        .expectNext(true)
+        .verifyComplete();
+  }
+
+  @Test
+  void generateToken() {
+    StepVerifier.create(userQueueService.generateToken("default", 100L))
+        .expectNext("d333a5d4eb24f3f5cdd767d79b8c01aad3cd73d3537c70dec430455d37afe4b8")
+        .verifyComplete();
+  }
+}
+
+public class UserQueueController {
+  @GetMapping("/touch")
+  public Mono<?> touch(
+        @RequestParam(name = "queue", defaultValue = "default") String queue,
+        @RequestParam(name = "user_id") Long userId,
+        ServerWebExchange exchange
+  ) {
+    return Mono.defer(() -> userQueueService.generateToken(queue, userId))
+          .map(token -> {
+            exchange.getResponse().addCookie(
+                  ResponseCookie.from("user-queue-%s-token".formatted(queue), token)
+                        .maxAge(Duration.ofSeconds(300))
+                        .path("/")
+                        .build()
+            );
+            return token;
+          });
+  }
+}
+
+public class WaitingRoomController {
+  @GetMapping("/waiting-room")
+  public Mono<Rendering> waitingRoomPage(
+        @RequestParam(name = "queue", defaultValue = "default") String queue,
+        @RequestParam(name = "user_id") Long userId,
+        @RequestParam(name = "redirect_url") String redirectUrl,
+        ServerWebExchange exchange
+  ) {
+    var key = "user-queue-%s-token".formatted(queue);
+
+    HttpCookie cookieValue = exchange.getRequest().getCookies().getFirst(key);
+    String token = cookieValue == null ? "" : cookieValue.getValue();
+//        return userQueueService.isAllowed(queue, userId)
+    return userQueueService.isAllowedByToken(queue, userId, token)
+          .filter(allowed -> allowed)
+          .flatMap(allowed -> Mono.just(Rendering.redirectTo(redirectUrl).build()))
+          .switchIfEmpty(
+                userQueueService.registerWaitQueue(queue, userId)
+                      .onErrorResume(ex -> userQueueService.getRank(queue, userId))
+                      .map(rank -> Rendering.view("waiting-room.html")
+                            .modelAttribute("number", rank)
+                            .modelAttribute("userId", userId)
+                            .modelAttribute("queue", queue)
+                            .build())
+          );
+  }
+}
+```
+- waiting-room.html
+```html
+<script>
+  function fetchWaitingRank() {
+    const queue = '[[${queue}]]';
+    const userId = '[[${userId}]]';
+    const queryParam = new URLSearchParams({queue: queue, user_id: userId});
+    fetch('/api/v1/queue/rank?' + queryParam)
+      .then(response => response.json())
+      .then(data => {
+          if(data.rank < 0) {
+            fetch('/api/v1/queue/touch?' + queryParam)
+              .then(response => {
+                document.querySelector('#number').innerHTML = 0;
+                document.querySelector('#updated').innerHTML = new Date();
+
+                const newUrl = window.location.origin + window.location.pathname + window.location.search;
+                window.location.href = newUrl;
+              })
+              .catch(error => console.error(error));
+            return;
+          }
+          document.querySelector('#number').innerHTML = data.rank;
+          document.querySelector('#updated').innerHTML = new Date();
+      })
+      .catch(error => console.error(error));
+  }
+
+  setInterval(fetchWaitingRank, 3000);
+</script>
+```
+> organize
+```java
+// token 다른 암호화 토큰발행 대신 MessageDigset 암호화방식 사용하여 간단히 구현
+MessageDigest digest = MessageDigest.getInstance("SHA-256")
+var bytes = digest.digest(inputs.getBytes(StandardCharsets.UTF-8)); //: byte[]
+StringBuilder hexString = new StringBuilder();
+for(byte aByte : bytes) {
+  hexString.append(String.format("%02x", aByte))
+}
+
+@GetMapping("/touch") touch(/** */, ServerWebExchange exchange){
+  exchange.getResponse().addCookie(
+    ResponseCookie.from("key", value)
+      .maxAge(ageL /* or [Duration] */)
+      .path("path")
+      .build()
+  )
+}
+
+@GetMapping("/waiting-room")
+public Mono<Rendering> waitingRoomPage(/** */, ServerWebExchange exchange){
+  exchange.getRequest().getCookies().getFirst("key"); // : HttpCookie
+}
+```
