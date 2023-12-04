@@ -89,7 +89,7 @@ public class UserQueueService {
         }
     }
 
-    @Scheduled(initialDelay = 5000, fixedDelay = 5000)
+    @Scheduled(initialDelay = 5000, fixedDelay = 10000)
     public void scheduleAllowUser() {
         if (!scheduling) {
             log.info("passed scheduling...");
@@ -98,7 +98,7 @@ public class UserQueueService {
 
         log.info("called Scheduling...");
 
-        var maxAllowUserCount = 3L;
+        var maxAllowUserCount = 100L;
 
         reactiveRedisTemplate.scan(ScanOptions.scanOptions()
                         .match(USER_QUEUE_WAIT_KEY_FOR_SCAN)

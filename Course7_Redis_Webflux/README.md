@@ -15,3 +15,6 @@ SELECT @@global.time_zone, @@session.time_zone;
 ```
 ## Redis
 > $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/redis/docker-compose-6-2.yaml up -d
+
+## Jmeter
+> $ /usr/local/Cellar/jmeter/5.6.2/libexec/bin/jmeter

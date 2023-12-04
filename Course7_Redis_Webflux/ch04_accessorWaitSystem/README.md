@@ -465,7 +465,7 @@ class UserQueueServiceTest {
 # Ch04-06. 접속 대기 웹페이지 개발
 접속 대기 페이지 화면 개발과 접속페이지로 이동 로직 구현
 ## 실습 - flow
-- code
+- waiting-room.html
 ```html
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
@@ -857,3 +857,105 @@ public Mono<Rendering> waitingRoomPage(/** */, ServerWebExchange exchange){
   exchange.getRequest().getCookies().getFirst("key"); // : HttpCookie
 }
 ```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-09. 테스트
+- website 페이지 이동시 승인 안되있으면 대기페이지, 되있다면 접속페이지 이동시키기
+- JMeter Test
+
+## Code
+- website
+```java
+@SpringBootApplication
+@Controller
+public class WebsiteApplication {
+	RestTemplate restTemplate = new RestTemplate();
+
+	public static void main(String[] args) {
+		SpringApplication.run(WebsiteApplication.class, args);
+	}
+
+	@GetMapping("/")
+	public String index(@RequestParam(name = "user_id") Long userId,
+						@RequestParam(name = "queue", defaultValue = "default") String queue,
+						HttpServletRequest request) {
+		var cookies = request.getCookies();
+		var cookieName = "user-queue-%s-token".formatted(queue);
+		var token = "";
+		if (cookies != null) {
+			var cookie = Arrays.stream(cookies)
+					.filter(c -> c.getName().equalsIgnoreCase(cookieName))
+					.findFirst();
+			token = cookie.orElse(new Cookie(cookieName, "")).getValue();
+		}
+
+		var uri = UriComponentsBuilder
+				.fromUriString("http://127.0.0.1:9010")
+				.path("/api/v1/queue/allowed")
+				.queryParam("user_id", userId)
+				.queryParam("queue", queue)
+				.queryParam("token", token)
+				.encode()
+				.build()
+				.toUri();
+
+		ResponseEntity<AllowedUserResponse> response = restTemplate.getForEntity(uri, AllowedUserResponse.class);
+		if (response == null || !response.getBody().allowed) {
+			return "redirect:http://127.0.0.1:9010/waiting-room?user_id=%d&redirect_url=%s"
+					.formatted(userId, "http://127.0.0.1:9000/?user_id=%d".formatted(userId));
+		}
+
+		return "index";
+	}
+
+	public record AllowedUserResponse(Boolean allowed) {
+	}
+}
+```
+- flow
+```java
+@RestController
+@RequestMapping("/api/v1/queue")
+@RequiredArgsConstructor
+public class UserQueueController {
+  @GetMapping("/allowed")
+    public Mono<AllowedUserResponse> isAllowedUser(
+            @RequestParam(name = "queue", defaultValue = "default") String queue,
+            @RequestParam(name = "user_id") Long userId,
+            @RequestParam(name = "token") String token
+    ) {
+//        return userQueueService.isAllowed(queue, userId)
+        return userQueueService.isAllowedByToken(queue, userId, token)
+                .map(AllowedUserResponse::new);
+    }
+}
+```
+> organize
+```java
+// website 
+  RestTemplate restTemplate = new RestTemplate();
+
+  @GetMapping("/")
+  public String index(@RequestParam(name = "user_id") Long userId,
+          @RequestParam(name = "queue", defaultValue = "default") String queue,
+          HttpServletRequest request) {
+    // cookie 검증
+    // UriComponentBuilder
+    UriComponentBuilder.fromUriString("url").path("path").queryParam("name", val).encode().build().toUri()
+    // restTemplate 127.0.0.1:9010/api/v1/queue/allowed
+    restTemplate.getForEntity(uri, AllowedUserResponse.class); // :Responseentity<AllowedUserResponse> response
+    // response 에 따라서 waiting-room or index.html
+  }
+```
+
+## Test
+- Jmeter: http://127.0.0.1:9010/waiting-room?user_id=0,9999999&redirect_url=127.0.0.1:9000
+### JMeter
+> $ /usr/local/Cellar/jmeter/5.6.2/libexec/bin/jmeter
+### Redis - /bin/sh
+> while [ true ]; do date; redis-cli zcard users:queue:default:wait; redis-cli zcard users:queue:default:proceed; sleep 1; done;
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-10. 마무리
