@@ -7,8 +7,9 @@
 - [6. 접속 대기 웹페이지 개발](#ch04-06-접속-대기-웹페이지-개발)
 - [7. 대기열 스케쥴러 개발](#ch04-07-대기열-스케줄러-개발)
 - [8. 대기열 이탈](#ch04-08-대기열-이탈)
-- [9. 테스트]()
-- [10. 마무리]()
+- [9. 테스트](#ch04-09-테스트)
+- [10. 마무리](#ch04-10-마무리)
+
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-01. 요구사항 분석
@@ -17,7 +18,7 @@ massive -> queue -> Web Application
 ## 트래픽 유형
 - resource 변경
 - scale in/out
-- spake traffuc
+- spike traffic
 ## 정리
 - 접속자 대기열 시스템
 1. 예측 가능한 시기
@@ -48,7 +49,21 @@ massive -> queue -> Web Application
 - index.html
 ## flow - 접속자 대기 Web App
 - build.gradle
-> webflux, data-redis-reactive, validation, lombok, devtools, thymeleaf
+```gradle
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.projectreactor:reactor-test'
+	testImplementation 'com.github.codemonstur:embedded-redis:1.0.0'
+}
+```
+> webflux, data-redis-reactive, validation, thymeleaf, lombok, devtools
 - application.yml: server.port:9010
 
 
@@ -150,7 +165,8 @@ public record RegisterUserResponse(Long rank) {
 ```
 - organize
 ```java
-// # UserQueueController
+// # UserQueueController @RequsetMapping("/api/v1/queue")
+// ## registerUser(@RequestParam String queue, @RequestParam Long userId) : Mono<RegisterUserResponse>
   @PostMapping("")
   public Mono<RegisterUserResponse> registerUser(
         @RequestParam(name = "queue", defaultValue = "default") String queue,
@@ -158,27 +174,33 @@ public record RegisterUserResponse(Long rank) {
   )
 
 // # UserQueueService
-ReactiveRedisTemplate<String, String> reactiveRedisTempalte;
-  var unixTimestamp = Instant.now().getEpochSecond();
-  return reactiveRedisTemplate.opsForZSet().add(USER_QUEUE_WAIT_KEY.formatted(queue), userId.toString(), unixTimestamp)
-                .filter(i -> i)
-                .switchIfEmpty(Mono.error(ErrorCode.QUEUE_ALREADY_REGISTERED_USER.build()))
-                .flatMap(i -> reactiveRedisTemplate.opsForZSet().rank(USER_QUEUE_WAIT_KEY.formatted(queue), userId.toString()))
-                .map(i -> i >= 0 ? i+1: i);
+// ## registerWaitQueue(final String queue, final Long userId): Mono<Long>
+// ## reactiveRedisTemplate.opsForZSet().rank(String key, Object oId)
+  ReactiveRedisTemplate<String, String> reactiveRedisTempalte;
+  
+  public Mono<Long> registerWaitQueue(final String queue, final Long userId) {
+    var unixTimestamp = Instant.now().getEpochSecond();
+    return reactiveRedisTemplate.opsForZSet().add(USER_QUEUE_WAIT_KEY.formatted(queue), userId.toString(), unixTimestamp)
+                  .filter(i -> i)
+                  .switchIfEmpty(Mono.error(ErrorCode.QUEUE_ALREADY_REGISTERED_USER.build()))
+                  .flatMap(i -> reactiveRedisTemplate.opsForZSet().rank(USER_QUEUE_WAIT_KEY.formatted(queue), userId.toString()))
+                  .map(i -> i >= 0 ? i+1: i);
+  }
 
 // # Error
-ApplicationException extends RuntimeException
-HttpStatus httpStatus; String Code; String reason;
+class ApplicationException extends RuntimeException {
+  HttpStatus httpStatus; String Code; String reason;
+}
 
 enum ErrorCode {
   QUEUE_ALREADY_REGISTERD_USER(HttpStatus.CONFLICT, "UQ-0001", "Already registered in queue");
 
   HttpStatus httpstatus; String code, String reason;
-
   ApplicationException build(){ return new ApplicationException(httpstatus, code, reason)}
 }
 
-ApplicationAdvice {
+@RestControllerAdvice
+class ApplicationAdvice {
   @ExceptionHandler(ApplicationException.class)
   Mono<ResponseEntity<ServerExceptionResponse>> applicationExceptionHandler(ApplicationException exception) { /* ... */}
   record ServerExceptionResponse(String code, String reason)
@@ -399,14 +421,27 @@ class UserQueueServiceTest {
 ```
 > organize
 ```java
-// 진입허용 UserQueueService
-reactiveRedisTemplate.opsForZSet().popMin(USER_QUEUE_WAIT_KEY.formatted(queue), count).flatMap(member -> /* ... */)
+// # UserQueueService
+// ## 진입허용 Mono<Long> allowUser(final String queue, final Long count)
+// ## Wait queue 에서 count 만큼 popMin 후 flatMap 을 통해 Proceed queue 에 opsForZSet().add() 
+// ## 후 개수 count, 없으면 0 
+reactiveRedisTemplate.opsForZSet().popMin(USER_QUEUE_WAIT_KEY.formatted(queue), count).flatMap(member -> reactiveRedisTemplate.opsForZSet().add(/* ... */)).count()
 
-// 진입가능 상태인지
-reactiveRedisTemplate.opsForZSet().rank(USER_QUEUE_PROCEED_KEY)
+// ## 진입가능 상태인지 Mono<Boolean> isAllowed(final String queue, final Long userId)
+// ## Proceed queue 에 
+// ## 해당 ID rank 없으면 nill > defaultIfEmpty(-1L): false
+reactiveRedisTemplate.opsForZSet().rank(USER_QUEUE_PROCEED_KEY, userId.toString())
   .defaultIfEmpty(-1L)
   .map(/* ... */)
 
+// # build.gradle
+// ## embedded-redis
+// # application.yml
+// ## spring.config.activate.on-profile
+// ## spring.data.redis.host/port
+// # @TestConfiguration class EmbeddedRedis
+// ## RedisServer redisServer : new RedisServer(63790);
+// ## @PostConstructor redisServer.start()/ @PreDestroy .stop()
 /* test
 // build.gradle
 testImplementation 'com.github.codemonstur:embedded-redis:1.0.0'
@@ -426,7 +461,7 @@ class EmbeddedRedis {
   private final RedisServer redisServer;
 
   EmbeddedRedis(){
-    this.redisServer = new RedisServeR(63790);
+    this.redisServer = new RedisServer(63790);
   }
 
   @PostConstructor
@@ -959,3 +994,7 @@ public class UserQueueController {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-10. 마무리
+## 접속자 대기열 시스템
+- massive > queue > Web Application
+> Spring webflux  
+> Redis

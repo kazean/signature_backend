@@ -16,3 +16,4 @@ services:
       - TZ=Asia/Seoul
     volumes:
       - /Users/admin/study/signature/tools/mysql:/var/lib/mysql
+      - /Users/admin/study/signature/tools/my.cnf:/etc/my.cnf
