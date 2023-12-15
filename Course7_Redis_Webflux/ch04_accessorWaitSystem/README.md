@@ -501,6 +501,8 @@ class UserQueueServiceTest {
 접속 대기 페이지 화면 개발과 접속페이지로 이동 로직 구현
 ## 실습 - flow
 - waiting-room.html
+> /waiting-room
+> fetch('/api/v1/queue/rank') (등록이 안되있으면 재등록)
 ```html
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
@@ -629,11 +631,13 @@ class UserQueueServiceTest {
 }
 ```
 > organize
+- waiting-room.html
 ```html
 const queue = '[[#{queue}]]';
 const userId = '[[#{userId}]]'
 const queryParam = new URLSearchParams({queue:queue, user_id:userId});
 
+// rank 표시, rank < 0 일시 재요청
 fetch('/api/v1/queue/rank?' + queryParam)
   .then(response => response.json())
   .then(data => {
@@ -641,6 +645,10 @@ fetch('/api/v1/queue/rank?' + queryParam)
   })
   .catch(errror => /* */)
 ```
+- WaitingRoomController
+> Rendering.redirectTo(String url)/.view(String url)  
+> Proceed queue 에 이미 있으면 Rendering.redirect(redirectUrl)  
+> 없으면 registerWaitQueue 등록후 Rendering.view(wait-room.html), 에러시 Wait queue 의 rank
 ```java
 @GetMapping("/waiting-room")
 public Mono<Rendering> waitingRoomPage(
@@ -651,9 +659,14 @@ public Mono<Rendering> waitingRoomPage(
   return userQueueService.isAllowed(queue, userId)
     .filter(allowed -> allowed)
     .flatMap(allowed -> Mono.just(Rendering.redirectTo("url").build()))
-    .switchIfEmpty(Mono.just(Rendering.view("waiting-room.html")
-      .modelAttribute("name", value)
-      .build()))
+    .switchIfEmpty(
+      userQueueService.registerWaitQueue(queue, userId)
+      .onErrorResume(ex -> userQueueService.getRank(queue, userId))
+      .map(rank -> Rendering.view("waiting-roon.html")
+        .modelAttribute("number", rank)
+        .modelAttribute("userId", userId)
+        .modelAttribute("queue", queue)
+        .build()))
 }
 
 UserQueueService.getRank(String queue, Long userId): Mono<Long>
@@ -722,12 +735,19 @@ schedule:
 ```java
 // Spring 
 @EnableScheduling
-@Scheduled(initialDelay, fixedDelay, cron)
-reactiveRedisTemplate.scan(ScanOptions.scanOptions().match("pattern").count(countL).build())
+class FlowApplication {}
 
-@Value("${yaml.schedule.enable}")
-private Boolean scheduling = false;
-// test와 act간 서로 영향없게 하기 위함
+class UserQueueService {
+  // test와 act간 서로 영향없게 하기 위함
+  @Value("${yaml.schedule.enable}")
+  private Boolean scheduling = false;
+
+  @Scheduled(initialDelay = 5000, fixedDelay = 5000, cron = /* ... */)
+  public void scheduleAllowUser() {
+    reactiveRedisTemplate.scan(ScanOptions.scanOptions().match("pattern").count(countL).build());
+    // scan 후 queue name 추출하여 allow 진행
+  }
+}
 ```
 
 
@@ -869,6 +889,9 @@ public class WaitingRoomController {
 </script>
 ```
 > organize
+> > /waiting-room : Wait queue register 등록  
+> > waiting-room.html : fetch /api/v1/queue/rank > data.rank < 0 일경우 fetch /api/v1/queue/touch cookie 생성 후 window.location.href /waiting-room  
+> > /waiting-room : isAllowedByToken 으로 redirect url 이동
 ```java
 // token 다른 암호화 토큰발행 대신 MessageDigset 암호화방식 사용하여 간단히 구현
 MessageDigest digest = MessageDigest.getInstance("SHA-256")
@@ -878,6 +901,8 @@ for(byte aByte : bytes) {
   hexString.append(String.format("%02x", aByte))
 }
 
+// ServerWebExchange exchange
+// exchange.getResponse().addCookie(ResponseCookie.from("key", value))
 @GetMapping("/touch") touch(/** */, ServerWebExchange exchange){
   exchange.getResponse().addCookie(
     ResponseCookie.from("key", value)
@@ -887,6 +912,7 @@ for(byte aByte : bytes) {
   )
 }
 
+// exchange.getRequest().getCookies().getFirst("key")
 @GetMapping("/waiting-room")
 public Mono<Rendering> waitingRoomPage(/** */, ServerWebExchange exchange){
   exchange.getRequest().getCookies().getFirst("key"); // : HttpCookie
@@ -977,7 +1003,7 @@ public class UserQueueController {
           HttpServletRequest request) {
     // cookie 검증
     // UriComponentBuilder
-    UriComponentBuilder.fromUriString("url").path("path").queryParam("name", val).encode().build().toUri()
+    UriComponentBuilder.fromUriString("url").path("path").queryParam("name", val)/* .queryParam() */.encode().build().toUri()
     // restTemplate 127.0.0.1:9010/api/v1/queue/allowed
     restTemplate.getForEntity(uri, AllowedUserResponse.class); // :Responseentity<AllowedUserResponse> response
     // response 에 따라서 waiting-room or index.html
