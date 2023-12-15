@@ -643,7 +643,7 @@ fetch('/api/v1/queue/rank?' + queryParam)
   .then(data => {
     ...
   })
-  .catch(errror => /* */)
+  .catch(errror => /* */)₩
 ```
 - WaitingRoomController
 > Rendering.redirectTo(String url)/.view(String url)  
