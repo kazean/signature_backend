@@ -632,7 +632,7 @@ class UserQueueServiceTest {
 ```
 > organize
 - waiting-room.html
-```html
+```javascript
 const queue = '[[#{queue}]]';
 const userId = '[[#{userId}]]'
 const queryParam = new URLSearchParams({queue:queue, user_id:userId});
