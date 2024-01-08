@@ -35,9 +35,9 @@
 - Foundation Services: Compute, Networking, Storage
 - Infrastructure: Region, AZ, Edge Location
 #### Tranditional Infrastructure - AWS
-[Security] Firewalls, ACLs, Administrators - Security Group, NACLs, IAM
-[Networking] Router, Network Pipeline, Switch - ELB, NLB, VPC
-[Server] On-Promise Server - AMI, EC2 Instance
+[Security] Firewalls, ACLs, Administrators - Security Group, NACLs, IAM  
+[Networking] Router, Network Pipeline, Switch - ELB, NLB, VPC  
+[Server] On-Promise Server - AMI, EC2 Instance  
 [Storage] DAS, SAN, NAS, RDBMS - EBS, EFS, S3, RDS
 
 
