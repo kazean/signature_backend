@@ -228,12 +228,12 @@ EC2에 연결되는 블록 스토리지
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-08. Amazon EC2 인스턴스 만들기(실습)
 - Default VPC에 다음 조건의 인스턴스 생성
-> - 이름: test-ap2-ec2  
-> - AMI: Amazon Linux2 AMI(HVM) - Kernel 5.10 - SSD Volume Type  
-> - 인스턴스 유형: t2.micro  
+> - 이름: test-ap2-ec2
+> - AMI: Amazon Linux2 AMI(HVM) - Kernel 5.10 - SSD Volume Type
+> - 인스턴스 유형: t2.micro
 > - 키 페어 생성(RSA, .pem)
 > - 네트워크: default VPC, public-subnet-a
->> 방화벽: test-ap2-sg: 22, 80/TCP : 모든 IP  
+>> 방화벽: test-ap2-sg: 22, 80/TCP : 모든 IP
 > - 스토리지: GP3, 8GiB
 
 
