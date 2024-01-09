@@ -6,7 +6,10 @@
 - [5. AWS 클라우드 네트워크 운영(이론)](#ch03-05-aws-클라우드-네트워크-운영이론)
 - [6. AWS 클라우드 네트워크 운영(실습)](#ch03-06-aws-클라우드-네트워크-운영실습)
 - [7. Amazon EC2 인스턴스 만들기(이론)](#ch03-07-amazon-ec2-인스턴스-만들기이론)
-- [8. ](#ch03-)
+- [8. Amazon EC2 인스턴스 만들기(실습)](#ch03-08-amazon-ec2-인스턴스-만들기실습)
+- [9. Amazon EC2 원격 로그인 실습(for Window)](#ch03-09-amazon-ec2-원격-로그인-실습for-window)
+- [10. Amazon EC2 원격 로그인 실습(for Mac)](#ch03-10-amazon-ec2-원격-로그인-실습for-mac)
+- [11. ](#ch03-)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -236,7 +239,31 @@ EC2에 연결되는 블록 스토리지
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-09. Amazon EC2 원격 로그인 실습(for Window)
+## 인스턴스 로그인
+- IP Address, Username/Password
+> Username, aws Default Usernames: ec2-user  
+> Password, Key-Pair: Public Key
+- ssh Login
+- ssh 서버(sshd)
+- ssh 클라이언트 프로그램
+> CloudShell, Putty, iTerm
+## EC2 로그인 실습
+- XShell, XFTP
+- SSH CLI 사용
+> ssh [-i keyfile] user@server  
+> sftp [-i keyfile] source-file user@server:file-name  
+> scp [-i keyfile] source-file user@server:dest-file
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-10. Amazon EC2 원격 로그인 실습(for Mac)
+## 인스턴스 로그인
+- Server & Client
+- SSH Client: iTerm를 사용한 bash shell의 ssh cli를 사용
+- SSH 명령어 사용
+> 1) ssh -i ~.pem ec2-user@server
+> 2) test.txt 
+> > scp -i ~pem test.txt ec2-user@server:~/  
+> > sftp -i ~pem ec2-user@server  
+> > > sftp> put test.txt  
+> > > put, get, reput [-r directory]
