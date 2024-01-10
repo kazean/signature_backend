@@ -240,6 +240,7 @@ EC2에 연결되는 블록 스토리지
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-09. Amazon EC2 원격 로그인 실습(for Window)
 ## 인스턴스 로그인
+- Server & Client
 - IP Address, Username/Password
 > Username, aws Default Usernames: ec2-user  
 > Password, Key-Pair: Public Key
@@ -258,7 +259,6 @@ EC2에 연결되는 블록 스토리지
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-10. Amazon EC2 원격 로그인 실습(for Mac)
 ## 인스턴스 로그인
-- Server & Client
 - SSH Client: iTerm를 사용한 bash shell의 ssh cli를 사용
 - SSH 명령어 사용
 > 1) ssh -i ~.pem ec2-user@server
@@ -267,3 +267,67 @@ EC2에 연결되는 블록 스토리지
 > > sftp -i ~pem ec2-user@server  
 > > > sftp> put test.txt  
 > > > put, get, reput [-r directory]
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-11. Spring 기반 Web 서버 만들기
+- Spring 이란?
+> - Spring framework와 Spring boot 차이점: embedded tomcat
+> - Spring boot3.0 버전 특징: Java17, GrralVM Spring Natvie AOT > Binary 빌드 속도향상
+- Java build tool: gradle, maven
+- Spring web page
+> - [Spring.io](https://spring.io)
+> - [Spring.io quick start](https://spring.io/quickstart/)
+> - [Spring initializer](https://start.spring.io/)
+
+## Sample Project
+- demo
+> gradle-groovy, Java11, Spring2.7.12  
+> Spring Web
+
+## 실습
+- Spring boot build 방법
+- Spring /hello rest api controller 생성
+- Spring properties 설정법 dev, prd tjfwjd
+- java -jar 명령어 사용법
+```
+1. spring build 방법
+   - ./gradlew build
+   - 빌드 성공하면 ./build/libs/projectsample-0.0.1-SNAPSHOT-plain.jar 파일 생성
+2. spring profile 설정법 ( project-sample-server/src/main/resources )
+   - default ( application.yaml ) // h2 db 접속
+   - prd ( application-prd.yaml ) // mysql db 접속
+3. build된 spring boot jar 구동방법
+   - -Dspring.profiles.active option 사용방법은 아래와 같습니다.
+   - java -jar -Dspring.profiles.active=prd projectsample-0.0.1-SNAPSHOT.jar // prd ( application-prd.yaml으로 구동 )
+   - java -jar -Dspring.profiles.active=default projectsample-0.0.1-SNAPSHOT.jar // default ( application.yaml으로 구동 )
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-12. Amazon RDS에 데이터 저장하기(이론)
+## Database 이해
+- 데이터베이스, DBMS, RDBMS, SQL
+## `Amazon RDS`
+RDBMS를 더 쉽게 설치, 운영 및 확장할 수 있는 웹 서비스
+- RDS 특징
+> - 유연한 인스턴스 및 스토리지 확장
+> - 쉬운 백업과 복원 기능
+> - 멀티 AZ를 통한 고가용성 확보
+> - RDS 암호화 옵션을 통한 보안성 강화
+> - Database Migration 서비스
+- RDS를 사용하는 이유
+> 하드웨어 프로비저닝, 소프트웨어 설치 및 패치, 스토리지 관리, 백업을 통한 재해 복구 등 시간이 많이 소요되는 중요 관리 작업을 `자동화`
+- RDS 특징
+> - DB엔진은 DB 인스턴스에서 실횡되는 특정 관계형 데이터베이스 소프트웨어
+> > MariaDB, MS SQL Server, MySQL, Oracle, PostgreSQL  
+> > 프리티어: db.t2.micro, db.t3.micro, db.t4g.micro
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-13. Amazon RDS에 데이터 저장하기(실습)
+
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-14. 
