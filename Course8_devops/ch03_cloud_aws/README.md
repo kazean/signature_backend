@@ -9,7 +9,12 @@
 - [8. Amazon EC2 인스턴스 만들기(실습)](#ch03-08-amazon-ec2-인스턴스-만들기실습)
 - [9. Amazon EC2 원격 로그인 실습(for Window)](#ch03-09-amazon-ec2-원격-로그인-실습for-window)
 - [10. Amazon EC2 원격 로그인 실습(for Mac)](#ch03-10-amazon-ec2-원격-로그인-실습for-mac)
-- [11. ](#ch03-)
+- [11. Spring기반 WEB 서버 만들기](#ch03-11-spring-기반-web-서버-만들기)
+- [12. Amazon RDS에 데이터 저장하기(이론)](#ch03-12-amazon-rds에-데이터-저장하기이론)
+- [13. Amazon RDS에 데이터 저장하기(실습)](#ch03-13-amazon-rds에-데이터-저장하기실습)
+- [14. 간단한 클라우드 기반 Application 운영](#ch03-14-간단한-클라우드-기반-application-운영)
+- [15. Amazon Route53으로 도메인 서비스 구축하기(이론)](#ch03-15-amazon-route53으로-도메인-서비스-구축하기이론)
+- [16. Amazon Route53으로 도메인 서비스 구축하기(실습)](#ch03-)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -326,8 +331,91 @@ RDBMS를 더 쉽게 설치, 운영 및 확장할 수 있는 웹 서비스
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-13. Amazon RDS에 데이터 저장하기(실습)
+## RDS 사용하기
+- 프리티어 서비스로 MySQL 데이터베이스 생성
+> 단일 AZ, db.t2/t3/t4g.micro
+1. 서브넷 그룹 선택
+2. 파라미터 그룹
+3. 옵션 그룹
+4. 데이터베이스 생성
+## RDS 생성
+- 1단계: 서브넷 그룹 생성
+> - 이름: fastcampus-db-sub-group
+> - VPC: default
+> - 가용영역: ap-northeast-2a/2c
+> - 서브넷 선택
+- 2단계: 파라미터 그룹 생성
+> - 파라미터 그룹 패밀리: mysql8.0
+> - 유형: DB Parameter Group
+> - 그룹이름: fastcampus-db-param-group
+- 3단계: 옵션 그룹 생성
+> - 이름: fastcampus-db-option-group
+> - 엔진: mysql
+> - 메이저 엔진 버전: 8.0
+- 4단계: 데이터베이스 생성
+> - 데이터베이스 생성 방식 선택: 표준 방식
+> - 엔진 옵션: MySQL
+> - 엔진 버전: MySQL 8.0.32
+> - 템플릿: 프리티어
+> - DB 인스턴스 식별자: fastcampus-rds-mysql8 / 마스터 사용자 이름/암호
+> - 인스턴스: 버스터블클래스 - db.t2.micro, 20GiB, 임계값(1000GiB)
+> - 컴퓨팅리소스: EC2 컴퓨팅 리소스에 연결 안함
+> - VPC: default
+> - DB 서브넷 그룹: fastcampus-db-sub-group
+> - 퍼블릭 액세스: yes
+> - VPC 보안그룹: fastcampus-db-sg
+> - 가용영역: ap-northeast-2a
+> - 데이터베이스 포트: 3306
+> - 데이터베이스 인증: 암호인증
+## EC2 인스턴스에서 연결
+```sh
+$ ssh -i ~.pem ec2-user@< host >
+$ sudo yum install -y mysql
+$ mysql -h < host > -u < id > -p
+$ > show database;  
+$ > create database projectdb;
+$ > show database; exit
+```
 
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-14. 간단한 클라우드 기반 Application 운영
+## Spring boot Project를 EC2에 운영하기
+- Spring Application Setting
+> - sample-project-server
+> > - default, prd application.yml
+> > - java -jar -DSpring.profiles.active=prd < ~ >.jar
+- EC2 server에 App Upload
+> scp -i < ~.pem > ~.jar ec2-user@< ip >:~/
+- EC2 Java install
+> sudo su, yum update, yum list | grep java-11, yum install -y java-11
+- EC2 SG 설정
+> IN < Any:8080>
+- APP 실행
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch03-14. 
+# Ch03-15. Amazon Route53으로 도메인 서비스 구축하기(이론)
+## DNS(Domain Name Server) 이해
+- 사람은 IP Add 대신 도메인 이름 사용
+- host.domain
+> `FQDN(Full Qualified Domain Name)`
+- 호스트 이름과 IP 주소 매핑
+> ARPAnet: `hosts.txt(/etc/host)`
+- DNS
+> - 클라이언트/서버 모델, 분산된 계층적 모델(root, top down)
+> - ICANN
+## Route 53 이해하기
+### Route 53 이란?
+- 가용성과 확장성이 뛰어난 도메인 이름 시스템 웹서비스
+- 주요 기능
+> 도메인 등록, 모니터링, 장애조치, 다양한 라우팅 정책, VPC용 Private DNS
+- 레코드 유형
+> - NS: 도메인 네임서버의 이름을 나열
+> - SOA(Start Of Authority): 레코드 및 Route 53 동작을 결정하는 기본 정보를 나열
+> - A: FQDN의 Address
+- 프리티어 X
+> 월별, ELB, CloudFront, Elastic Beanstalk, API Gateway, VPC Endpoint, S3 버킷 매핑의 레코드 쿼리르 제외한 DNS 쿼리 요금부과
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-16. Amazon Route53으로 도메인 서비스 구축하기(실습)
