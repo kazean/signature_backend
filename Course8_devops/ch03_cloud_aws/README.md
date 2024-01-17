@@ -248,7 +248,7 @@ EC2에 연결되는 블록 스토리지
 - Server & Client
 - IP Address, Username/Password
 > Username, aws Default Usernames: ec2-user  
-> Password, Key-Pair: Public Key
+> Password, Key-Pair: Private Key
 - ssh Login
 - ssh 서버(sshd)
 - ssh 클라이언트 프로그램
@@ -419,3 +419,127 @@ $ > show database; exit
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-16. Amazon Route53으로 도메인 서비스 구축하기(실습)
+## Amazon Route53 등록 순서
+- 도인 구매(gabia)
+> fsdeveloper.shop
+- Amazon Route 53 생성
+- route 53 nameserver 등록 
+- EIP 생성 후 route 53에 레코드 추가
+## 도메인 등록 과정
+- 도메인 구매
+> fsdeveloper.shop
+> - aws - gandi
+> - gabia
+- 구입한 도메인을 Route 53에 등록하기 (developer)
+> 호스팅 영역  
+> Route53 NS > 가비아 도메인 관리 > 도메인 정보 변경 > 네임서버 설정
+- EIP 생성 후 Route 53에 레코드 등록
+> EIP 할당 > EIP 주소 연결 (인스턴스) > Route53 에 레코드 등록 (project-test.fsdeveloper.shop : EIP)
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-17. AWS 리소스 삭제
+## AWS 리소스 삭제 - dev
+- Amazon Route53 삭제 > Amazon RDS 삭제 > EC2 인스턴스 삭제 > AWS 네트워크 삭제
+> 생성의 역순
+- Route 53 삭제
+> 레코드 삭제, 호스팅 영역 삭제, 도메인 삭제(gabia, aws)
+- RDS 삭제
+> 데이터베이스(최종 Snapshot 체크 해제) 삭제  
+> 옵션 그룹, 파라미터 그룹, 서브넷 그룹 삭제
+- EC2 인스턴스 삭제
+> EIP, SG, 키 페어(옵션) 삭제
+- AWS 네트워크 삭제
+> NAT, IGW, VPC & EIP
+## 과금확인 - Root
+- Billing > 청구서
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-18. LAB - AWS 개발환경 만들기 - 답안 & 해설 1-2
+## LAB Preview
+- Spring boot Project
+> tab 4가지 - FIND OWNER (RDS)
+## LAB AWS 개발환경 만들기
+1. 인프라 구성하기
+- 네트워크 구성
+- 프로젝트 서버 인스턴스 생성
+- RDS 구성
+2. 애플리케이션 설정
+- 소스코드 다운로드
+- 애플리케이션 등록
+3. (옵션) 도메인 구성
+- 도메인 레코드 등록
+- 도메인을 잉요한 서비스 접속
+### 1.1 인프라 구성하기 - 네트워크 구성
+- vpc: 30.0.0.0/20
+- subnet 4개 (ap-northeast-2a/2c)
+> - pub2, pri2 subnet
+> - Public: 30.0.0.0/24, 30.0.8.0/24 
+> - Private: 30.0.1.0/24, 30.0.9.0/24
+- NAT 1개(VPC)
+- IGW
+### 1.2 인프라 구성하기 - 프로젝트 서버 인스턴스 생성
+- Key Pari: lab-keypari
+- 보안그룹 생성
+> - ssh: lab-ssh-secure-grp(22)
+> - spring: lab-spring-secure-grp(8080)
+> - mysql: lab-mysql-secure-grp(3306)
+- EC2 인스턴스 Spec
+> - 이름: lab-ec2-server
+> - keypair: lab-keypair
+> - ami: Amazon Linux2 AMI(HVM) - Kerner 5.10
+> - 인스턴스 유형: t2.micro
+> - 네트워크 정보
+> > - vpc: lab-vpc
+> > - subnet: lab-subnet-public1-ap-norteast-2a
+> - EIP 자동 할당
+> - SG: lab-ssh/spring-secure-grp
+> - 스토리지: 8GiB GP2
+### 1.3 인프라 구성하기 - RDS 구성
+- DB subnet 그룹 생성
+> - name: lab-mysql-db-subnet
+> - vpc: lab-vpc
+> - 가용영역: ap-northeast-2a/2c
+> - subnet: lab-subnet-private1-ap-northeast-2a/2c
+> - db parameter group: mysql8, name: lab-mysql8-grp
+> - db option group: mysql8-option, 엔진 mysql, 메이저 엔진 8.0
+- 데이터베이스 생성
+> - db 인스턴스 식별자: lab-mysql-db
+> - 템플릿 - 프리티어
+> - 단일 db 인스턴스
+> - mysql8.0.32
+> - 자격 증명 설정: master/
+> - 스토리지: ssd gp2, 20Gib
+- 데이터베이스 생성 - 연결옵션
+> - 컴퓨터 리소트: ec2 컴퓨팅 리소스에 연결 안함.
+> - vpc: lab-vpc
+> - db 서브넷 그룹: lab-mysql-db-subnet
+> - 퍼블릭 액세스: 아니오
+> - 기존 vpc 보안 그룹: lab-mysql-secure-grp
+> - 가용영역: ap-northeast-2a
+> - 추가 구성: 초기 데이터베이스 이름: labfinaldb
+> > - 백업: 자동 백업을 활성화 체크 해제
+### 2.1 애플리케이션 설정 - 소스코드 다운로드
+- [소스코드 다운로드](https://github.com/spring-projects/spring-petclinic)
+> README 참조
+- 사전준비: java17
+- 실행 명령어
+```sh
+$ git clone https://github.com/spring-projects/spring-petclinic.git
+$ cd spring-petclinic
+$ ./mvnw package -DskipTests
+$ java -jar -Dspring.profiles.active=mysql spring-petclinic-3.1.0-SNAPSHOT.jar
+```
+### 2.2 애플리케이션 설정 - 애플리케이션 등록
+- 프로젝트 jar file 을 EC2 Server 에 scp 명령어로 업로드
+- ec2 server setting
+- mysql 접속 확인
+- spring project 실행
+> java -jar -Dspring.profiles.active=mysql spring-petclinic-3.1.0-SNAPSHOT.jar
+- Public IP로 접속 확인
+- 접속화면에서 유저 등록후 mysql console에서 데이터 확인
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch03-19. LAB - AWS 개발환경 만들기 - 답안 & 해설 2-2
