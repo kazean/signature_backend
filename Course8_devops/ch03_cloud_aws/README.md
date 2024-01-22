@@ -483,7 +483,7 @@ $ > show database; exit
 - NAT 1개(VPC)
 - IGW
 ### 1.2 인프라 구성하기 - 프로젝트 서버 인스턴스 생성
-- Key Pari: lab-keypari
+- Key Pair: lab-keypair
 - 보안그룹 생성
 > - ssh: lab-ssh-secure-grp(22)
 > - spring: lab-spring-secure-grp(8080)
@@ -546,3 +546,24 @@ $ java -jar -Dspring.profiles.active=mysql spring-petclinic-3.1.0-SNAPSHOT.jar
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-19. LAB - AWS 개발환경 만들기 - 답안 & 해설 2-2
+## 2.2 애플리케이션 설정 - 애플리케이션 등록
+- git 설치 및 project clone
+```sh
+sudo su
+yun install git
+git clone <sample-code>
+# java17, mysql 설치
+yum search <java-17, mysql>
+# sample project build
+yum install java-17-~
+yum install mysql
+```
+- 프로젝트 기동 및 TEST
+```sh
+./mvnw package -DskipTests
+java -jar -Dspring.profiles.active=<default/mysql> <~>.jar
+```
+> application.yaml 수정
+## 3.1 도메인 구성 및 TEST 도메인 레코드 등록
+- Gabia 도메인 구매 및 Route53 생성
+- AWS 리소스 삭제
