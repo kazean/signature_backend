@@ -2,9 +2,9 @@
 - [1. 컨테이너 개념과 동작 원리](#ch04-01-컨테이너-개념과-동작-원리)
 - [2. docker 명령어 - 이론](#ch04-02-docker-명령어---이론)
 - [3. docker 명령어 - 실습](#ch04-03-docker-명령어---실습)
-- [4. ](#ch04)
-- [5. ](#ch04)
-
+- [4. docker 스토리지 관리](#ch04-04-docker-스토리지-관리)
+- [5. docker 네트워크 관리](#ch04-05-docker-네트워크-관리)
+- [.](#ch04-)
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-01. 컨테이너 개념과 동작 원리
@@ -150,10 +150,156 @@ docker [OPTIONS] COMMAND
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-03. docker 명령어 - 실습
+- 컨테이너 이미지
+- 컨테이너 관리
+- 컨테이너 조작
+- 컨테이너 저장소 관리(clip4~5)
+## 실습
+- [fc-study ch03 git](https://github.com/azjaehyun/fc-study/blob/main/chapter-3/02%20Docker%20Commands_Image%20%26%20Container)
+- [docker docs](https://docs.docker.com/)
+- [docker hub](https://hub.docker.com/)
+### 이미지 관리 - (ec2-user)
+```sh
+#01. 컨테이너 이미지 관리 commands
+# 웹서버 컨테이너 `nginx`와 `리눅스 명령어`를 모아놓은 busybox 컨테이너 이미지를 다운로드 받아 실행
+
+# 컨테이너 검색
+# hub.docker.com
+docker search busybox
+# > / 가 붙어있으면 개인이 만든 container
+# > docker search는 docker hub에서만 검색
+# > Search Docker Hub for images
+
+# 컨테이너 다운로드 (docker hub: Trusted Content> Docker Official Image, Vertified Publisher, Sponsored OSS)
+sudo ls /var/lib/docker/overlay2
+docker pull busybox
+docker image ls
+docker pull nginx:1.22
+# 최신버전
+docker pull nginx:1.25
+docker pull nginx:latest
+docker images
+
+# AWS 겔러리를 통해 컨테이너 이미지 다운로드
+# https://gallery.ecr.aws/
+docker pull public.ecr.aws/bitnami/apache:latest
+docker images
+
+# 이미지 히스토리 보기
+docker history nginx:1.25
+docker history busybox
+
+docker inspect busybox
+docker inspect public.ecr.aws/bitnami/apache:latest
+
+# 이미지 삭제
+docker rmi busybox
+docker rmi nginx:1.22
+docker rmi public.ecr.aws/bitnami/apache:latest
+```
+### 컨테이너 관리/조작
+```sh
+#02. 컨테이너 관리
+# 컨테이너는 읽기전용의 이미지 레이어(불변의 유니언 파일 시스템UFS) + 읽기쓰기 가능한 컨테이어 레이어를 결합
+# 컨테이너는 격리된 공간에서 프로세스가 동작하는 기술
+# 컨테이너 생성(create): 컨테이너 레이어 생성)
+# 컨테이너 실행(start)을 하면 격리된 환경에서 프로세스로 동작
+
+# nginx 웹서버 컨테이너를 동작하고 서비스 동작 흐름 확인 및 운영
+# image + rw container layer --> process 동작 --> stop --> container layer 삭제
+
+# 터미널 추가 생성 T2
+# sudo -i
+# cd /var/lib/docker/overlay2/
+# ls
+
+# T1
+docker images
+docker create --name web nginx:latest
+# 동작중인 컨테이너 출력
+docker ps
+# 모든 컨테이너 출력
+docker ps -a
+# 동작
+docker start web[or container ID]
+docker ps
+## PID network(IP addr) host(hostname) mount User IPC
+
+# 컨테이너 세부정보 출력
+docker inspect web
+
+curl [IP Addr 172.17.0.2]
+
+docker stop web
+docker ps -a
+# 컨테이너 삭제
+docker rm web
+
+# background 서비스 실행
+# docker run: pull -> create -> start
+docker run --help
+docker run -d --name web nginx:latest
+docker ps
+curl [IP Addr]
+
+# 컨테이너 내부에서 명령어 실행 docker exec
+docker exec -it web /bin/bash
+pwd
+cd /usr/share/nginx/html
+ls
+cat index.html
+echo "TEST WEB PAGE" > index.html
+exit
+
+curl [IP Addr]
+
+# 호스트 파일을 컨테이너로 복사하기: docker cp host_file_nm container_name:dir 
+# 반대도 가능함
+echo 'Fast Campus!' > index.html
+ls
+cat index.html
+docker cp index.html web:/usr/share/nginx/html
+curl [IP Addr]
+
+# 컨테이너 로그, 프로세스 관련 조작 명령어 사용
+docker logs web
+docker top web
+docker diff web 
+# > C(Create), A(Add), D(Delete)
+
+# 컨테이너 종료 및 삭제
+docker stop web
+docker ps 
+docker ps -a
+
+docker rm web
+docker ps -a
+
+# foreground 컨테이너 실행
+# run: pull -> create -> start -> attach
+docker run -it --name c1 busybox:latest # busybox 는 자동적으로 /bin/sh 를 실행하는 이미지이므로 -it 
+ls /bin
+date
+mkdir testdir
+cd testdir
+ls
+cd
+whoami
+exit # busybox container 종료(stop)
+docker ps -a
+
+# docker rm
+docker rm c1
+docker ps - a
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch04-0. 
+# Ch04-04. docker 스토리지 관리 
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-05. docker 네트워크 관리 
 
 
 ---------------------------------------------------------------------------------------------------------------------------
