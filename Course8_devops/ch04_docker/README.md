@@ -296,6 +296,76 @@ docker ps - a
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-04. docker 스토리지 관리 
+## 컨테이너 스토리지
+- 컨테이너 이미지 레이어(복습)
+> - 불변 읽기 전용 레이어, 유니언 파일 시스템
+> - Base image
+> - * RW Container Layer 임시
+> > 볼륨 마운트
+- 컨테이너 데이터 보존: volume mount
+> -v <호스트 경로>:<컨테이너 마운트 경로>[:읽기 모드]
+> > docker run --name web -d -v /webdata:/usr/share/nginx/html nginx
+- 컨테이너 데이터 공유
+> 한 호스트 경로를 여러 컨테이너에서 공유해서 사용
+- LAB: MySQL 컨테이너에서 만들어진 db를 영구 보존하는법
+
+## 실습
+```sh
+# volume mount 구성 전
+docker run --name web -d nginx
+docker inspect web
+curl 172.17.0.2
+
+echo "Fast Campus" > index.html
+docker cp index.html web:/usr/share/nginx/html
+curl 172.17.0.2
+
+# 컨테이너 삭제시 container layer에서 수정된 index.html은?
+docerk rm -f web
+docker run --name web -d nginx
+
+# 웹 데이터를 영구 보존해보자
+# 도커 호스트에 웹문서를 만들어 저장하고 컨테이너로 마운트해서 전달하기
+sudo -i
+mkdri /webdata
+echo "Fast Campus" > /webdata/index.html
+exit
+
+# volume mount해서 컨테이너에 전달하기
+docker run --name web -d -v /webdata:/usr/share/nginx/html nginx
+curl 172.17.0.2
+docker rm -f web
+docker run --name web -d -v /webdata:/usr/share/nginx/html nginx
+curl 172.17.0.2
+
+# 웹문서 공유도 가능한가?
+docker run -d --name web1 -v /webdata:/usr/local/apache2/htdocs:ro httpd:latest
+docker ps
+docker inspect web
+docker inspect web1
+
+# LAB: MySQL 컨테이너에서 만들어진 db를 여구 보존하자.
+# /var/lib/mysql
+# mysql에서 만든 데이터를 호스트에 복사: 앞에 경로('/')를 지정해주지 않으면 /var/lib/docker/volumes 에 저장됨
+# docker volume 명령어
+docker run -d --name db -d -v dbdata:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=pass mysql:8
+docker ps
+
+# 볼륨 마운트 상태 확인
+docker inspect db
+docker volume ls
+ls /var/lib/docker/volumes/dbdata/_data
+
+# 컨테이너 삭제후 다시 실행해도 데이터 보존됨
+docker rm -f db -f web1 -f web
+ls /var/lib/docker/volumes/dbdata/_data
+docker volume ls
+
+docker run -d --name db -d -v dbdata:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=pass mysql:8
+docker rm -f db
+docker volume --help
+docker volume rm dbdata
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
