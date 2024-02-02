@@ -4,6 +4,8 @@
 - [3. docker 명령어 - 실습](#ch04-03-docker-명령어---실습)
 - [4. docker 스토리지 관리](#ch04-04-docker-스토리지-관리)
 - [5. docker 네트워크 관리](#ch04-05-docker-네트워크-관리)
+- [6. Best Practice & Securiy를 고려한 컨테이너 빌드(1)](#ch04-06-best-practice--security를-고려한-컨테이너-빌드1)
+- [7. Best Practice & Securiy를 고려한 컨테이너 빌드(2)](#ch04-07-best-practice--security를-고려한-컨테이너-빌드2)
 - [.](#ch04-)
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -327,7 +329,7 @@ docker run --name web -d nginx
 # 웹 데이터를 영구 보존해보자
 # 도커 호스트에 웹문서를 만들어 저장하고 컨테이너로 마운트해서 전달하기
 sudo -i
-mkdri /webdata
+mkdir /webdata
 echo "Fast Campus" > /webdata/index.html
 exit
 
@@ -344,7 +346,7 @@ docker ps
 docker inspect web
 docker inspect web1
 
-# LAB: MySQL 컨테이너에서 만들어진 db를 여구 보존하자.
+# LAB: MySQL 컨테이너에서 만들어진 db를 영구 보존하자.
 # /var/lib/mysql
 # mysql에서 만든 데이터를 호스트에 복사: 앞에 경로('/')를 지정해주지 않으면 /var/lib/docker/volumes 에 저장됨
 # docker volume 명령어
@@ -370,7 +372,148 @@ docker volume rm dbdata
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-05. docker 네트워크 관리 
+## 컨테이너 네트워크
+- 도커 네트워크
+> - docker0
+> > - 브릿지 네트워크는 모든 Docker 호스트에 존재
+> > - 도커 호스트의 defulat network(172.17.0.0/16)
+> > - 컨테이너를 NAT를 사용하여 외부 네트워크로 포워딩
+> > - 172.0.0.1이 docker0에 할당
+> - 컨테이너 네트워크 및 호스트 네임
+> > - IP Add: 172.17.0.0/16, GateWay Add: 172.17.0.1
+> > - Hostname: 컨테이너 ID중 앞 12문자
+> > - 외부접속이 불가능한 Private Network Addr로 Port forwarding 필요
+> - 컨테이너 포트와 호스트 포트 매핑(Port forwarding)
+> > $ docker run -p <host_port>:<con_port> image:tag  
+> > $ docker run -p <con_port> image:tag ## 호스트 포트 알려지지 않은 포트로 자동 매핑됨
+## 컨테이너 네트워크 Driver
+- 도커 네트워크 Driver
+> - bridge
+> > 브릿지 네트워크 docker0. default driver
+> - host
+> > DockerHost의 네트워크를 컨테이너에 적용
+> - null
+> - 네트워크 드라이버 적용
+> > $ docker netowork ls  
+> > $ docker run --net=bridge/host/none image:tag
+## 실습
+```sh
+# Port forward 실습
+# 두개의 웹 서버(web1, web2 :nginx)를 실행하고 외부 접속 가능여부 확인
+docker run -d --name web1 nginx
+docker run -d --name web2 -p 80:80 nginx
+docker ps
+docker inspect web1
+docker inspect web2
+curl 172.17.0.2
+curl 172.17.0.3
+# 외부에서 허용되는 웹서버는? :web2
 
+# Docker Network Driver
+docker network ls
+docker run --it --name app1 --net=bridge --rm busybox
+/ # ip addr
+/ # exit
+docker run --it --name app1 --net=host --rm busybox
+/ # ip addr
+/ # exit
+docker run --it --name app1 --net=none --rm busybox
+/ # ip addr
+/ # exit
+# inspect 시 host는 ip 주소가 있으며 none은 없다
+
+# LAB nodejs로 간단한 웹서버 동작
+cat <<END > web.js
+const http = require('http');
+var handler = function(request, response) {
+  response.writeHead(200);
+  response.end('Hello FastCampus!' + '\n');
+};
+var www = http.createServer(handler)
+www.listen(8080);
+END
+
+docker run -d -it -p 80:8080 --name web node
+docker ps
+docker cp web.js web:/web.js
+docker exec -it web node /web.js
+# 서비스 동작 확인
+T2$ curl localhost
+T2$ curl 172.17.0.2:8080
+# 컨테이너 종료
+docker rm -f web
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-06. Best Practice &  Security를 고려한 컨테이너 빌드(1)
+## 도커 컨테이너 빌드
+- Container build
+> - docker commit으로 컨테이너 만들기
+> - Dockerfile로 컨테이너 build
+> - Dockerfile 명령어
+> - Dockerfile Best Practice
+- docker commit으로 간단한 컨테이너 만들기
+> - 기존 컨테이너를 기반으로 컨테이너 빌드  
+> docker commit [OPTS] CONTAINER [REPOSITORY[:TAG]]  
+> docker commit --change='CMD ["/sbin/httpd", "-DFOREGROUND"]' centos webserver:v1
+- Dockerfile로 컨테이너 build
+> - Dockerfile
+> > - 컨테이너 빌드를 위한 명령어 집합, 텍스트 파일
+> > - 다양한 Instructions 지원
+> > - 대소문자 구분 X, 가독성을 위해 대문자 사용
+> > - 이미지 생성을 위한 핵심 요소
+```Dockerfile
+FROM centos:7
+RUN yum install -y httpd curl
+RUN echo "Fast Campus" > /var/www/html/index.html
+CMD ["/sbin/httpd", '-DFOREGROUND']
+```
+## 실습
+```sh
+# 01. docker commit으로 컨테이너 빌드
+# centos:7 + httpd 웹서버 + index.html 수정
+docker run --name centos -it centos:7
+/]# yum install -y httpd curl
+/]# echo 'Fast Campus' > /var/www/html/index.html
+/]# /sbin/httpd -DFOREGROUND &
+/]# curl localhost
+/]# exit
+docker ps -a
+
+# docker commit
+docker commit --change='CMD ["/sbin/httpd", '-DFOREGROUND']' centos webserver:v1
+docker images
+docker run -d --name  webserver:v1
+curl 172.17.0.2
+docker rm -f web
+
+# 02. dockerfile을 이용한 컨테이너 빌드
+mkdir -p build/webserver
+cat <<END > Dockerfile
+FROM centos:7
+RUN yum install -y httpd curl
+RUN echo "Fast Campus" > /var/www/html/index.html
+CMD ["/sbin/httpd", "-DFOREGROUND"]
+END
+docker build -t webserver:v2 .
+docker images
+docker run -d --name web webserver:v2
+curl 172.17.0.2
+docker rm -f web
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-07. Best Practice &  Security를 고려한 컨테이너 빌드(2) 
+
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-08. 컨테이너 저장소 운영하기(1)
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-09. 컨테이너 저장소 운영하기(2)
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-0. 
