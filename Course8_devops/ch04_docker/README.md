@@ -4,8 +4,8 @@
 - [3. docker 명령어 - 실습](#ch04-03-docker-명령어---실습)
 - [4. docker 스토리지 관리](#ch04-04-docker-스토리지-관리)
 - [5. docker 네트워크 관리](#ch04-05-docker-네트워크-관리)
-- [6. Best Practice & Securiy를 고려한 컨테이너 빌드(1)](#ch04-06-best-practice--security를-고려한-컨테이너-빌드1)
-- [7. Best Practice & Securiy를 고려한 컨테이너 빌드(2)](#ch04-07-best-practice--security를-고려한-컨테이너-빌드2)
+- [6. Best Practice & Securiy를 고려한 컨테이너 빌드(1)](#ch04-06-best-practice-n-security를-고려한-컨테이너-빌드1)
+- [7. Best Practice & Securiy를 고려한 컨테이너 빌드(2)](#ch04-07-best-practice-n-security를-고려한-컨테이너-빌드2)
 - [8. 컨테이너 저장소 운영하기(1)](#ch04-08-컨테이너-저장소-운영하기1)
 - [9. 컨테이너 저장소 운영하기(2)](#ch04-09-컨테이너-저장소-운영하기2)
 - [10.](#ch04-)
@@ -449,7 +449,7 @@ docker rm -f web
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch04-06. Best Practice &  Security를 고려한 컨테이너 빌드(1)
+# Ch04-06. Best Practice N Security를 고려한 컨테이너 빌드(1)
 ## 도커 컨테이너 빌드
 - Container build
 > - docker commit으로 컨테이너 만들기
@@ -508,7 +508,7 @@ docker rm -f web
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch04-07. Best Practice &  Security를 고려한 컨테이너 빌드(2) 
+# Ch04-07. Best Practice N Security를 고려한 컨테이너 빌드(2) 
 ## 도커 컨테이너 빌드: Docker
 - Dockerfile 명령어
 > - #     Comment
