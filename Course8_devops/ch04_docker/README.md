@@ -506,14 +506,311 @@ docker rm -f web
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-07. Best Practice &  Security를 고려한 컨테이너 빌드(2) 
+## 도커 컨테이너 빌드: Docker
+- Dockerfile 명령어
+> - #     Comment
+> - FROM        Base Image, 필수(0Byte Scratch 이미지 활용)
+> - LABEL       Info 정보표시
+> - RUN         Base Image에서 실행할 명령어
+> - ADD         host 경로에서 복사할 아카이브 파일, COPY와 다르게 압축해제/URL Download 가능
+> - COPY
+> - WORKDIR     pwd
+> - ENV         환경변수 지정
+> - USER        user 지정, 선택안할시 root, 유저생성 필수
+> - EXPOSE      컨테이너 동작시 외부에서 사용할 포트 info 정보 지정(ps시 PORTS에 기술됨)
+> - CMD         컨테이너 동작시 자동으로 실행할 서비스나 스크립트 지정, CMD는 ENTRYPOINT와 다르게 -it 로 스크립트 변경 가능
+> - ENTRYPOINT  
+## 실습
+```sh
+#################################
+# 03. Dockerfile
+## Description
+# FROM : 컨테이너의 Base Image(java, node, centos container)를 지정. 
+#        alpine, debian, ubuntu, centos, node, python, scratch, ...
+# LABEL maintainer="seongmi lee <seongmi.lee@email.address>"
+# RUN : FROM으로 부터 받은 base image에서 실행할 명령어 
+#    FROM python                  FROM centos:7            FROM debian:bookworm-slim
+#    RUN  pip install tensorflow  RUN yum install httpd    RUN apt-get update && apt-get install apache2
+# COPY : 도커 호스트에 만들어둔 파일이나 디렉토리를 컨테이너로 복사해서 저장(*문자 사용. 디렉토리 이름은 /로 종료)
+echo "Welcome to Fast Campus World." > index.html
 
+FROM centos:7
+RUN yum install -y httpd curl
+COPY index.html /var/www/html/index.html
+CMD ["/sbin/httpd", "-DFOREGROUND"]
+
+# ADD : 컨테이너 이미지에 호스트 파일을 복사한다. 
+#       COPY와는 달리 압축된 파일은 압축을 해제하여 컨테이너 이미지로 복사하고, URL 링크에 있는 파일 복사도 가능하다.
+tree html
+tar cf html.tar html/
+
+FROM centos:7
+RUN yum install -y httpd
+ADD html.tar /var/www/
+CMD ["/sbin/httpd", "-DFOREGROUND"]
+
+# WORKDIR : WORKDIR은 컨테이너의 작업 디렉토리를 설정. 
+# ENV: ENV는 환경 변수를 설정한다. 
+# EXPOSE : 컨테이너가 시작할 때 외부에 포트를 노출
+# USER : USER뒤에 나오는 지시어는 USER에서 정의한 username 권한으로 실행된다.
+# CMD :  CMD는 컨테이너가 시작되었을 때 자동으로 실행할 스크립트나 명령을 입력한다.
+# ENTRYPOINT : CMD와 같은 역할을 하나 마치 실행가능한 binary와 같이 정의한다. 
+
+## Practice
+FROM centos:7
+RUN yum install -y httpd
+WORKDIR /var/www
+ADD html.tar  . 
+ENV VERSION 15
+EXPOSE 80
+CMD ["/sbin/httpd", "-DFOREGROUND"]
+
+docker build -t exam -f  Dockerfile .
+docker ps
+docker run --name exam -it exam /bin/bash
+#/ pwd
+#/ ls html
+#/ env
+#/ exit
+
+docker rm -f exam
+```
+## 도커 컨테이너 빌드 모범사례
+1. .dockerignore
+2. 경량 컨테이너 이미지 빌드
+> - Base Image 경량이미지 적용
+> - Multistrage 빌드
+3. 불필요한 패키지 및 도구 제거
+4. 애플리케이션 분리(Multitier, WEB/WAS)
+5. 레이어수 최소화
+6. 여러 라인 인수 정렬(가독성)
+7. 빌드 캐시 활용
+## 실습
+```sh
+#################################
+# 04. Dockerfile 작성 모범사례(Best Practice)
+
+#.ignore file
+# 빌드 디렉토리에 이런 파일들이 있다 가정하면
+# index.html test.html password.txt Dockerfile  .git/*  data/file
+
+cat .dockerignore
+Dockerfile
+password*
+.git/*
+
+cat  Dockerfile
+FROM centos:7
+RUN yum install -y httpd && yum clean all
+COPY * /var/www/
+CMD ["/sbin/httpd", "-DFOREGROUND"]
+
+
+# 경량의 컨테이너 이미지 빌드
+# Base Image: scratch, alpine, debian, ubuntu, centos, node, python...
+# multistage 빌드
+mkdir ~/build/app1
+cd ~/build/app1
+cat <<END > main.go
+package main
+import(
+    "fmt"
+    "time"
+)
+func main() {
+    for {
+        fmt.Println("Hello, world!")
+        time.Sleep(10 * time.Second)
+    }
+}
+END
+
+# 멀티스테이지 적용 하지 않고 컨테이너 빌드
+cat  Dockerfile
+FROM golang:1.11
+WORKDIR /usr/src/app
+COPY main.go .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags '-s' -o main .
+CMD ["main"]
+END
+
+
+# 멀티스테이지를 적용하여 컨테이너 빌드
+cat  Multi-dockerfile
+FROM golang:1.11 as builder
+WORKDIR /usr/src/app
+COPY main.go .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags '-s' -o main .
+
+FROM scratch
+COPY --from=builder  /usr/src/app/main  /main 
+CMD ["/main"]
+END
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-08. 컨테이너 저장소 운영하기(1)
+## 컨테이너 배포방법
+- 컨테이너/컨테이너 이미지를 배포
+> - 아카이브 파일로 전달
+> - 레지스트리에 저장
+### 아카이브 파일로 컨테이너 배포
+- docker export/import
+> - 컨테이너를 tar 아카이브 파일로 저장/가져오기
+> - docker export [OPTS, [-o filename]] container
+> - docker import [OPTS] file | URL | -[REPO[:TAG]]
+- docker save/laod
+> - 컨테이너 이미지를 tar `아카이브` 파일로 저장
+> - docker save [OPTS -o ~.tar] IMAGE
+> - docker load [OPTS -i ~.tar] 
+> > ### 이미지를 저장하기 때문에 load시 이미지 정보가 이미 tar에 들어있기에 이미지명 지정 불가능
+## 실습
+```sh
+# 01. 컨테이너 빌드
+mkdir build/webapp
+cd build/webapp
+
+cat <<END > web.js
+const http = require('http');
+var handler = function(request, response) {
+  response.writeHead(200);
+  response.end("Hello FastCampus!"  + "\n");
+};
+var www = http.createServer(handler);
+www.listen(8080);
+END
+
+cat <<END > Dockerfile
+FROM node:7
+COPY web.js /web.js
+ENTRYPOINT ["node", "/web.js"]
+END
+
+docker build -t webapp:v1  .
+
+
+#################################
+# 02. 아카이브로 컨테이너 배포
+# Export/Import
+# docker export
+## 안해도 가능? 아니면 구동후 run/stopped이어야 가능? docker run --name webapp -d webapp:v1 
+curl 172.17.9.2:8080
+docker ps
+docker export -o webapp.export.tar webapp:v1
+docker rm -f webapp
+docker rmi webapp:v1
+docker import webapp.export.tar webapp:v1
+docker images
+
+# Save/Load
+docker ps -a ## empty
+docker images webapp:v1 ## webapp:v1
+docker save webapp:v1 -o webapp.save.tar
+docker rmi webapp:v1
+docker load -i webapp.save.tar
+docker images
+
+
+# 02. 컨테이너 이미지 태그 추가
+# docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]
+# 이미지 태그는 어떤 문자열이든 포함 가능
+# 소스프트웨어 버전 관리의 또 다른 방법 : [majer].[minor].[patch]
+docker tag webapp:v1  smlinux/webapp:v1
+docker images | grep webapp
+```
+## 컨테이너 레지스토리
+- 퍼블릿/프라이빗 레지스트리
+> - Pub Reg: Docker Hub, Redhat Quay, AWS: gallery.ecr.aws
+> - Pri Reg: Harbor, GitLab Container Registry, docker registry
+### 컨테이너 배포 과정
+1. Dockerfile 작성
+2. Image Build
+> - 이미지 빌드(docker build)
+> - 이미지 태그
+3. Registry Push
+> - registry(docker login/logout)
+> - 이미지 저장(docker push)
+4. Deploy
+
+
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-09. 컨테이너 저장소 운영하기(2)
+## 컨테이너 레지스토리
+- 퍼블릭 레지스토리: 누구나 이용할 수 있는 공개된 레지스트리
+> Docker Hub, Redhat Quay, AWS
+- 프라이빗 레지스트리: 온프레미스 환경에서 사내에서 운용할 수 있는 오픈소스 레지스트리
+> Habor, GitLab Container Registry, docker registry
+### 컨테이너/컨테이너 이미지를 배포
+- 아카이브 파일로 전달
+- 레지스트리에 저장
+> - 로그인 계정(aws, docker hub)
+> - 레파지토리
+> - 컨테이너 이미지를 업로드
+### Docker Hub 레지스트리에 컨테이너 이미지 저장 후 배포
+- 계정 생성시 레파지토리가 만들어짐
+- 로그인: docker login
+- 컨테이너 업로드
+> docker tag webapp:v1 repo/webapp:v1  
+> docker push repo/webapp:v1
+### 실습
+```sh
+#################################
+# 03. 컨테이너 저장
+# docker login [OPTIONS] [SERVER]
+# docker logout [SERVER]
+# docker push [OPTIONS] NAME[:TAG]
+
+
+# hub.docker.com의 smlinux 계정의 레파지토리에 컨테이너 저장
+docker login
+docker push smlinux/webapp:v1
+```
+### Amazon ECR 레지스트리에 컨테이너 이미지 저장 후 배포
+- 레파지토리 생성: Amazon ECR
+> - Amazon ECR > 시작하기 > 퍼블릭 > 리포지토리 이름: webapp > 레포지토리 생성
+> - aws cli 구성: aws cli 설치 > aws 계정의 액세스키 생성 > 액세스키를 이용해 인증진행
+- 로그인: AWS CLI를 통해 aws 계정으로 로그인
+- 컨테이너 업로드
+```sh
+aws ecr-public get-login-password --region us-east-1|docker login --username AWS --password-stdin public.ecr.aws/xxx
+docker build -t webapp .docker tag webapp:latest public.ecr.aws/xxx/webapp:latest
+docker push public.ecr.aws/xxx/webapp:latest
+```
+### 실습
+```sh
+# Amazon ECR
+# (1) aws cli 설치
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+aws --version
+# 관리콘솔 -> IAM -> 사용자 -> 계정선택 -> 보안자격증명 > 액세스 키 만들기 -> CLI -> 액세스키, 비밀액세스키 저장
+aws configure
+AWS Access Key ID [None]: 액세스키
+AWS Secret Access Key [None]: 비밀_액세스키
+Default region name [None]: ap-northeast-2
+Default output format [None]: <Enter>
+
+# aws 연결 arn 확인
+aws sts get-caller-identity
+
+# (2) Public Registry 생성
+# (3) webapp에 대한 푸시명령 실행
+aws ecr-public get-login-password --region us-east-1|docker login --username AWS --password-stdin public.ecr.aws/xxx
+docker build -t webapp .docker tag webapp:latest public.ecr.aws/xxx/webapp:latest
+docker push public.ecr.aws/xxx/webapp:latest
+
+#################################
+# 04. 배포 TEST
+docker run -d --name webapp_hub smlinux/webapp:v1
+docker run -d --name webapp_ecr 147256386706.dkr.ecr.ap-northeast-2.amazonaws.com/webapp:v1
+```
+### 리소스 삭제
+- Docker hun: 레파지토리 선택후 [Settings] - [Delete repository]
+- Amazon ECR: webapp 리포지토리 선택후[삭제]
+
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-0. 
