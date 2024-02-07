@@ -511,7 +511,8 @@ docker rm -f web
 # Ch04-07. Best Practice N Security를 고려한 컨테이너 빌드(2) 
 ## 도커 컨테이너 빌드: Docker
 - Dockerfile 명령어
-> - #     Comment
+```
+> - #           Comment
 > - FROM        Base Image, 필수(0Byte Scratch 이미지 활용)
 > - LABEL       Info 정보표시
 > - RUN         Base Image에서 실행할 명령어
@@ -523,6 +524,7 @@ docker rm -f web
 > - EXPOSE      컨테이너 동작시 외부에서 사용할 포트 info 정보 지정(ps시 PORTS에 기술됨)
 > - CMD         컨테이너 동작시 자동으로 실행할 서비스나 스크립트 지정, CMD는 ENTRYPOINT와 다르게 -it 로 스크립트 변경 가능
 > - ENTRYPOINT  
+```
 ## 실습
 ```sh
 #################################
