@@ -818,4 +818,100 @@ docker run -d --name webapp_ecr 147256386706.dkr.ecr.ap-northeast-2.amazonaws.co
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch04-0. 
+# Ch04-10. Docker Compose 사용하기(1)
+## 도커 컴포즈를 이용한 컨테이너 운영
+- Docker Compose 란
+> - 컨테이너 애플리케이션 스택을 Yaml 코드로 정의하는 정의서
+> - Yaml코드를 실행하기 위한 다중 컨테이너 ㅅ ㅣㄹ행 도구
+> - 단일 서버에서 여러 컨테이너를 프로젝트 단위로 묶어서 관리
+> - docker-compose.yml YAML 파일을 통해 명시적 관리
+> - 프로젝트 단위로 도커 네트워크와 볼륨 관리
+> - 프로젝트 내 서비스 간 의존성 정의 가능
+> - 프로젝트 내 서비스 디스커버리 자동화
+> - 손 쉬운 컨테이너 수평 확장
+- Docker Compose 설치
+```
+sudo mkdir -p /usr/local/lib/docker/cli-plugins/
+sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+```
+- Docker Compose YAML 코드
+> - YAML
+> > - YAML Ain't Markup Language
+> - YAML 기본 구조
+```yaml
+parent:
+  child1: first child
+  key2:
+    child-1: kim
+  key3:
+    - grandchild1:
+      name: kim
+    - grandchild2:
+      name: lee
+```
+> parent-child 구조, '-' 배열의미
+## 실습
+```sh
+# 01. Install Docker-compose-plugin on AWS Linux
+sudo mkdir -p /usr/local/lib/docker/cli-plugins/
+sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+docker compose --help
+
+mkdir -p compose/webserver
+cd compose/webserver
+# docker run --name webserver \
+#             -v /web_data:/usr/share/nginx/html \
+#             -p 80 --restart=always nginx:1.22
+cat <<END >  docker-compose.yml
+services:
+  webserver:
+    image: nginx:1.22
+    volumes:
+      - /web_data:/usr/share/nginx/html
+    restart: always
+    expose:
+      - 80
+END
+
+docker run --name testweb -d  nginx
+
+docker compose up -d
+docker compose ls
+docker compose ps
+docker ps -a
+
+docker inspect webserver-webserver-1
+docker exec -it webserver-webserver-1 /bin/bash
+echo "test" > /usr/share/nginx/html/index.html
+curl 172.18.0.2
+# > docker compose는 network를 새로 구성 172.18.0.0/16
+
+docker compose logs webserver
+
+docker compose up --scale webserver=2 -d
+docker compose ps
+
+docker compose stop webserver
+docker compose ps
+docker compose rm
+
+docker compose up --scale webserver=3 -d
+docker compose ps
+docker compose down
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-11. Docker Compose 사용하기(2)
+
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-. 
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch04-. 
