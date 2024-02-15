@@ -57,7 +57,7 @@
 > > - DOCKER_HOST
 > > > docker daemon, images, containers
 > > - Registry
-> > > NGiNX
+> > > NGINX
 - Docker vs. Podman
 > - Docker는 docker daemon에 의존적, root 
 > - Podman은 Rootless, 독립적, daemon이 없다
@@ -487,7 +487,7 @@ docker run --name centos -it centos:7
 docker ps -a
 
 # docker commit
-docker commit --change='CMD ["/sbin/httpd", '-DFOREGROUND']' centos webserver:v1
+docker commit --change='CMD ["/sbin/httpd", "-DFOREGROUND"]'  centos  webserver:v1
 docker images
 docker run -d --name  webserver:v1
 curl 172.17.0.2
@@ -566,13 +566,13 @@ CMD ["/sbin/httpd", "-DFOREGROUND"]
 ## Practice
 FROM centos:7
 RUN yum install -y httpd
-WORKDIR /var/www
-ADD html.tar  . 
+WORKDIR /var/www/html
+ADD index.html  . 
 ENV VERSION 15
 EXPOSE 80
 CMD ["/sbin/httpd", "-DFOREGROUND"]
 
-docker build -t exam -f  Dockerfile .
+docker build -t exam .
 docker ps
 docker run --name exam -it exam /bin/bash
 #/ pwd
@@ -806,16 +806,17 @@ aws sts get-caller-identity
 # (2) Public Registry 생성
 # (3) webapp에 대한 푸시명령 실행
 aws ecr-public get-login-password --region us-east-1|docker login --username AWS --password-stdin public.ecr.aws/xxx
-docker build -t webapp .docker tag webapp:latest public.ecr.aws/xxx/webapp:latest
+docker tag webapp:v1 public.ecr.aws/~~~/webapp:latest
+# docker build -t webapp .docker tag webapp:latest public.ecr.aws/xxx/webapp:latest
 docker push public.ecr.aws/xxx/webapp:latest
 
 #################################
 # 04. 배포 TEST
-docker run -d --name webapp_hub smlinux/webapp:v1
-docker run -d --name webapp_ecr 147256386706.dkr.ecr.ap-northeast-2.amazonaws.com/webapp:v1
+docker run -d --name webapp_hub ~~~/webapp:v1
+docker run -d --name webapp_ecr ~~~.ecr.ap-northeast-2.amazonaws.com/webapp:v1
 ```
 ### 리소스 삭제
-- Docker hun: 레파지토리 선택후 [Settings] - [Delete repository]
+- Docker hub: 레파지토리 선택후 [Settings] - [Delete repository]
 - Amazon ECR: webapp 리포지토리 선택후[삭제]
 
 
@@ -824,7 +825,7 @@ docker run -d --name webapp_ecr 147256386706.dkr.ecr.ap-northeast-2.amazonaws.co
 ## 도커 컴포즈를 이용한 컨테이너 운영
 - Docker Compose 란
 > - 컨테이너 애플리케이션 스택을 Yaml 코드로 정의하는 정의서
-> - Yaml코드를 실행하기 위한 다중 컨테이너 ㅅ ㅣㄹ행 도구
+> - Yaml코드를 실행하기 위한 다중 컨테이너 실행 도구
 > - 단일 서버에서 여러 컨테이너를 프로젝트 단위로 묶어서 관리
 > - docker-compose.yml YAML 파일을 통해 명시적 관리
 > - 프로젝트 단위로 도커 네트워크와 볼륨 관리
@@ -917,12 +918,13 @@ docker compose down
 ## 실습
 - docker-compose exam
 ```yaml
+## 구문 이해하기
 # 02.  wordpress 애플리케이션 운영
 # 도커 컴포즈로 애플리케이션 설정 값 지정 예
 # docker network create webapp-net: 172.18.0.0/16
 # docker run -d --name db --net webapp-net -p 5432:5432 postgres:9.4
 # docker run -d --name webserver -v /web_data:/usr/share/nginx/html  --restart=always -p 80 -p 443   -env Provider=Postgres --net webapp-net nginx:1.22
-# dockercompose.yaml
+# docker-compose.yaml
 # docker compose -d
 version "3.8"
 services:
@@ -1065,13 +1067,19 @@ rm -rf /tmp/app-sql.sh
 mysqld
 EOF
 
+# mysql 실행 시 /tmp/app-sql.sh을 적용하여 root패스워드 설정, projectdb와 developer계정 설정을 진행하고 파일 삭제
+mysqld --bootstrap --verbose=0 < /tmp/app-sql.sh
+rm -rf /tmp/app-sql.sh
+mysqld
+EOF
+
 docker build -t mysql-projectdb  .
 docker images
 
 docker run -d --name db mysql-projectdb
 docker exec -it db /bin/bash
 
-mysql -h localhost -u root -ppass
+mysql -h localhost -u root -pass
 show databases;
 exit
 exit
