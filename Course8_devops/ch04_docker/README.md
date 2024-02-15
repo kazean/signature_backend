@@ -10,7 +10,8 @@
 - [9. 컨테이너 저장소 운영하기(2)](#ch04-09-컨테이너-저장소-운영하기2)
 - [10. Docker Compose 사용하기(1)](#ch04-10-docker-compose-사용하기1)
 - [11. Docker Compose 사용하기(2)](#ch04-11-docker-compose-사용하기2)
-- [.](#ch04-)
+- [12. 현업사례 중심 컨테이너 기반 애플리케이션 운영](#ch04-12-현업-사레-중심-컨테이너-기반-애플리케이션-운영)
+- [13. LAB: 컨테이너 기반 애플리이션 서비스 운영하기 - 연습문제 N 풀이](#ch04-13-lab-컨테이너-기반-애플리케이션-서비스-운영하기---연습문제-풀이)
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-01. 컨테이너 개념과 동작 원리
@@ -999,7 +1000,399 @@ volumes:
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-12. 현업 사레 중심 컨테이너 기반 애플리케이션 운영
+## 현업사례 중심의 컨테이너 빌드
+- 쉘 스크립트 이용한 컨테이너 빌드
+- 경량의 인프라 컨테이너 빌드
+- Multi-stage Dockerfile로 경량의 컨테이너 빌드
+### 셸 스크립트를 이용한 컨테이너 빌드
+- docker-entrypoint.sh (일반적 이름으로 사용, 규칙 X)
+- 컨테이너가 처음 시작할 때 실행할 명령어 모음
+- 스크립트를 실행하여 컨테이너에 필요한 환경구성이나 변수 데이터를 전달 / 민감 데이터 처리시 사용
+### 실습 - Mysql
+```sh
+# 01. 스크립트를 이용해 컨테이너 빌드
+# MySQL 데이터베이스 컨테이너 빌드 예
+mkdir -p ~/build/mysql
+cd ~/build/mysql
+cat <<EOF > Dockerfile
+FROM ubuntu:14.04
+# 패스워드 프롬프트 없이 mysql 패키지 설치
+## noninteractive 방법으로 설치
+## debconf-set-selections 에 패키지 설치에 필요한 설정을 미리 구성. 패스워드는 빌드시 환경변수로 전달
+ENV DEBIAN_FRONTEND noninteractive
+ENV MYSQL_ROOT_PASSWORD pass
+ENV MYSQL_USER_PASSWORD pass
+RUN apt-get update
+RUN echo "mysql-server mysql-server/root_password password" | debconf-set-selections
+RUN echo "mysql-server mysql-server/root_password_again password" | debconf-set-selections
+RUN apt-get install -y mysql-server
+# /etc/mysql/my.cnf의 bind-address를 0.0.0.0 으로 수정하여 외부 접속을 허용
+WORKDIR /etc/mysql
+RUN sed -i "s/127.0.0.1/0.0.0.0/g" my.cnf
+# 스크립트 파일 복사후 실행
+ADD docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+EXPOSE 3306
+ENTRYPOINT /docker-entrypoint.sh
+EOF
+#-----------------------------------
+# docker-entrypoint.sh 를 이용해 MYSQL 데이터베이스에 애플리케이션 운영에 필요한
+# projectdb 데이터베이스 생성과 developer 계정의 접근 권한 할당
+cat << EOF > docker-entrypoint.sh
+#!/bin/bash
+
+if [ -z $MYSQL_ROOT_PASSWORD ]; then
+  exit 1
+fi
+
+# mysql_install_db 명령으로 mysql데이터베이스 grant 테이블을 초기화
+mysql_install_db --user mysql > /dev/null
+# SQL 스크립트를 만들어 적용 후 삭제 
+cat > /tmp/app-sql.sh << END
+USE mysql;
+FLUSH PRIVILEGES;
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+UPDATE user SET password=PASSWORD("$MYSQL_ROOT_PASSWORD") WHERE user='root';
+CREATE DATABASE projectdb;
+CREATE USER  'developer'@'%' IDENTIFIED BY '${MYSQL_USER_PASSWORD}';
+GRANT select, insert, update ON projectdb.* to 'developer'@'%';
+FLUSH PRIVILEGES;
+END
+
+# mysql 실행 시 /tmp/app-sql.sh을 적용하여 root패스워드 설정, projectdb와 developer계정 설정을 진행하고 파일 삭제
+mysqld --bootstrap --verbose=0 < /tmp/app-sql.sh
+rm -rf /tmp/app-sql.sh
+mysqld
+EOF
+
+docker build -t mysql-projectdb  .
+docker images
+
+docker run -d --name db mysql-projectdb
+docker exec -it db /bin/bash
+
+mysql -h localhost -u root -ppass
+show databases;
+exit
+exit
+```
+### 경량의 인프라 컨테이너 빌드
+- 컨테이너에서 리눅스 패키지 업데이트/설치 시 생성되는 캐시 삭제
+- yum 캐시 삭제
+> yum clean all
+- apt 캐시 삭제
+> - apt clean: 설치에 사용한 패키지 라이브러리, 임시파일(/var/cache/apt/archives/*.deb) 삭제
+> - apt autoremove: 사용하지 않는 dependency 패키지 삭제
+> - rm -rfv /var/lib/apt/list/* /tmp/* /var/tmp/* : apt와 연관된 캐시 파일 삭제
+- ubuntu 기반의 아파치 웹 서버 컨테이너 빌드 예
+### 실습 - ubuntu 기반의 아파치 웹 서버 컨테이너 빌드 예
+```sh
+# 02. 경량의 인프라 컨테이너 빌드
+# ubuntu 기반의 아파치 웹서버 컨테이너 빌드 예
+
+mkdir ~/build/webserver-ubuntu
+cd ~/build/webserver-ubuntu
+
+# 데이터 파일 생성
+cat > index.html <<EOF
+<html>
+<head>
+  <title>Container build TEST</title>
+  <style>body {margin-top: 40px; background-color: #333;} </style>
+</head>
+<body>
+  <div style=color:white;text-align:center>
+    <hl> FastCampus</hl>
+    <h2> building docker container for devops developers </h2>
+   <p> Build the container lightweight. </p>
+  </div>
+</body>
+</html>
+EOF
+
+
+# 2.1 기본 컨테이너 빌드
+cat > Dockerfile.base << EOF
+FROM ubuntu:18.04
+LABEL maintainer="SEONGMI-LEE <seongmi.lee@gmail.com>"
+RUN apt update && \
+    apt install apache2 -y 
+COPY index.html /var/www/html/index.html
+CMD apachectl -DFOREGROUND
+EOF
+
+docker build -t webserver-ubuntu:base . -f Dockerfile.base
+
+# 2.2 컨테이너 경량으로 만들기
+# 패키지 설치시
+  ## -qq 옵션은 quiet 옵션의 2단계로 로깅 정보를 삭제
+  ## --no-install-recommends 옵션을 통해 apt가 자동으로 권장 패키지를 설치하지 않게 하여 꼭 필요한 패키지만 설치
+# 패키지 설치 완료되면,
+  ## apt 패키지 설치 시 사용했던 apt 캐시를 모두 삭제한다.
+cat > Dockerfile.lightweight << EOF
+FROM ubuntu:18.04
+LABEL maintainer="SEONGMI-LEE <seongmi.lee@gmail.com>"
+RUN apt update && \
+    apt install apache2 -y -qq --no-install-recommends && \ 
+    apt clean -y && \
+    apt autoremove -y &&\
+    rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+COPY index.html /var/www/html/index.html
+CMD apachectl -DFOREGROUND
+EOF
+
+docker build -t webserver-ubuntu:light . -f Dockerfile.lightweight
+
+# 컨테이너 동작 상태 확인
+docker run -d --name web-base -p 8081:80 webserver-ubuntu:base 
+docker run -d --name web-light -p 8082:80 webserver-ubuntu:light 
+
+# 웹브라우로 확인
+
+# 컨테이너 크기 차이는???
+docker images
+```
+### 멀티 스테이지 Dockerfile로 경량의 컨테이너 빌드
+- 하나의 Dockerfile에 여러 개의 빌드 스테이지를 사용
+> - Stage 1(Build Stage)
+> > - 빌드에 필요한 도구와 의존성이 포함된 베이스 이미지를 사용
+> > - 소스 코드를 컨테이너로 복사하고 빌드 명령어를 실행하여 애플리케이션을 빌드, 이 단계에서 빌드 아티팩트를 생성
+> - Stage 2(Final Stage)
+> > - 이 단계에서는 빌드 도구나 첫 번째 스테이지에서의 불필요한 의존성이 없는 다른 베이스 이미지를 사용
+> > - `COPY --from=build <src> <dest>` 사용하여 첫 번째 스테이지에서 생성된 빌드 아티팩트를 최종 스테이지로 복사
+### 실습 - GO
+```sh
+# 03. 경량의 인프라 컨테이너 빌드
+# Multi-stage Dockerfile로 경량의 컨테이너 빌드
+mkdir -p ~/build/multi-stage-exam
+cd ~/build/multi-stage-exam
+
+# source code 생성
+cat > main.go << EOF
+package main
+
+import(
+    "fmt"
+    "time"
+)
+
+func main() {
+    for {
+        fmt.Println("Hello, world!")
+        time.Sleep(10 * time.Second)
+    }
+}
+EOF
+
+#  단일 stage Dockerfile
+cat > Dockerfile.single << EOF
+FROM golang:1.13-alpine
+WORKDIR /usr/src/app
+COPY main.go .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags '-s' -o main .
+CMD ["/usr/src/app/main"]
+EOF
+
+docker build -t hello-single . -f Dockerfile.single
+docker images hello-single
+
+# Multi-Stage Dockerfile
+cat > Dockerfile.multi << EOF
+# First Stage
+FROM golang:1.13-alpine as builder
+WORKDIR /usr/src/app
+COPY main.go .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags '-s' -o main .
+
+#Final Stage
+FROM scratch
+COPY --from=builder /usr/src/app/main /main
+CMD [ "/main" ]
+EOF
+
+docker build -t hello-multi . -f Dockerfile.multi
+
+# 동일 결과 나오는지 확인
+docker run -d --name single hello-single
+docker run -d --name multi hello-multi
+docker logs single
+docker logs multi
+
+# 이미지 크기 비교
+docker images
+
+docker rm -f $(docker ps -aq)
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch04-. 
+# Ch04-13. LAB 컨테이너 기반 애플리케이션 서비스 운영하기 - 연습문제 풀이
+## Lab: 컨테이너 애플리케이션 운영
+### 2장의(Chapter3) 애플리케이션 구성 Lab Review
+- 1단계 Amazon RDS
+- 2단계 PetClinic 앱 구성 및 실행
+> - Springboot - DB 2-tier App
+> - git clone https://github.com/spring-projects/spring-petclinic.git
+> - applicaiton-mysql.properties > ./mvnw package -DskipTests > ~.jar
+> - java -jar -Dspring-profiles.active=mysql ~.jar
+### Petclinic 애플리케이션을 컨테이너로 빌드하기
+- 1단계 Mysql 8.x DB
+> - db data와 구성정보 영구보존을 위한 볼륨 생성
+> - 애플리케이션, 데이터베이스 통신을 위한 network 생성
+> - mysql8 컨테이너, env > MYSQL_DATABASE=petclinic, MYSQL_USER=petclinic, MYSQL_PASSWORD=petclinic, MYSQL_ROOT_PASSWORD=root, Port: 3306
+- 2단계 Petclinic 소스코드 복제 후 컨테이너 빌드
+> - git download
+> - 컨테이너 빌드
+> > - java17 base image: eclipse-temurin:17-jdk-jammy
+> > - maven-wrapper를 컨테이너로 전달, mvnw를 이용해 종속성 설치
+> > - 소스코드 컨테이너 전달
+> > - 애플리케이션 실행: ./mvnw spring-boot:run -Dspring-boot.run.profiles=mysql
+> - .dockerignore 파일 생성
+- 3단계 컨테이너 애플리케이션 동작 TEST
+### 문제: Docker compose로 컨테이너 빌드 및 운영
+- 1단계 Dockerfile 만들기
+- 2단계 컨테이너 빌드 및 실행을 위한 docker-compose.petclinic.yml 만들기
+- 3단계 컨테이너 애플리케이션 동작 TEST
+```sh
+# Containerising Pet Clinic app using Docker 
+# 2장에서 다룬 팻클리닉 애플리케이션을 컨테이너로 빌드하고, Docker Compose 로 운영합니다. 
+
+# 8.1 MySQL 연동해서 Pet-Clinic 애플리케이션 실행
+# - MySQL 데이터베이스 실행
+# - 사용할 샘플 애플리케이션 복제 및 컨테이너 빌드
+# - 컨테이너 실행 및 TEST
+
+# (1) MySQL 데이터베이스 실행
+# 데이터베이스의 db data와 구성정보 영구보존을 위한 볼륨생성
+docker volume create mysql_data
+docker volume create mysql_config
+
+# 애플리케이션, 데이터베이스 통신을 위한 네트워크 생성
+docker network create mysqlnet
+
+# MySQL 데이터베이스 컨테이너 실행
+docker run -it --rm -d --name mysqlserver \
+  -v mysql_data:/var/lib/mysql \
+  -v mysql_config:/etc/mysql/conf.d \
+  -e MYSQL_USER=petclinic -e MYSQL_PASSWORD=petclinic -e MYSQL_DATABASE=petclinic \
+  -e MYSQL_ROOT_PASSWORD=root  \
+  -p 3306:3306 \
+  --network mysqlnet \
+  mysql:8.0
+
+docker ps
+
+# (2) 사용할 샘플 애플리케이션 복제 및 컨테이너 빌드
+git clone https://github.com/spring-projects/spring-petclinic.git
+cd spring-petclinic
+
+cat > Dockerfile
+FROM eclipse-temurin:17-jdk-jammy
+WORKDIR /app
+# maven-wrapper를 컨테이너로 전달
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+# mvnw를 이용해 컨테이너에 필요한 종속성 설치
+RUN ./mvnw dependency:resolve
+# 소스코드 컨테이너에 전달
+COPY src ./src
+# MySQL데이터베이스를 사용하는 애플리케이션 실행
+CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.profiles=mysql"]
+
+# .dockeringore 파일 생성
+cat > .dockerignore
+target
+
+# 컨테이너 빌드
+docker build -t petclinic-docker .
+docker images
+
+
+# - 컨테이너 실행 및  TEST
+docker run --rm -d --name petclinic-server \
+-e MYSQL_URL=jdbc:mysql://mysqlserver/petclinic \
+-p 8080:8080 \
+--network mysqlnet \
+petclinic-docker
+
+docker ps
+docker logs -f petclinic-server
+
+웹브라우저를 이용해 서버 연결후 owner, pet 추가
+http://serverIP:8080
+
+# MySQL 데이터베이스에 만들어졌는지 확인
+docker exec -it mysqlserver /bin/bash
+mysql -u petclinic -h localhost -ppetclinic
+mysql> use petclinic;
+mysql> select * from owners;
+mysql> select * from pets;
+mysql> exit
+bash-4.4# exit
+
+docker rm -f $(docker ps -aq)
+
+
+
+######################################
+# 문제: 앞서 실행한 MySQL, petclinc 을  Docker Compose를 사용하여 빌드 및 운영하시오.
+# 1단계 Multi-Stage Dockerfile만들기
+cat Dockerfile
+FROM eclipse-temurin:17-jdk-jammy
+WORKDIR /app
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:resolve
+COPY src ./src
+CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.profiles=mysql"]
+
+# docker-compose.petclinic.yml
+cat > docker-compose.petclinic.yml
+version: '3.8'
+services:
+  petclinic:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    environment:
+      - MYSQL_URL=jdbc:mysql://mysqlserver/petclinic
+    volumes:
+      - ./:/app
+    depends_on:
+      - mysqlserver
+
+  mysqlserver:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_USER=petclinic
+      - MYSQL_PASSWORD=petclinic
+      - MYSQL_DATABASE=petclinic
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - mysql_config:/etc/mysql/conf.d
+volumes:
+  mysql_data:
+  mysql_config:
+
+# compose service 실행
+docker compose -f docker-compose.petclinic.yml up --build -d
+docker logs -f spring-petclinic-petclinic-1
+
+# TEST
+웹브라우저 접속 후 owner 추가. 
+mysql db 저장 상태 확인
+docker exec -it spring-petclinic-mysqlserver-1 /bin/bash
+mysql -u petclinic -h localhost -ppetclinic
+mysql> use petclinic;
+mysql> select * from owners;
+mysql> exit
+exit
+
+# compose service 종료
+docker compose -f docker-compose.petclinic.yml down
+```
