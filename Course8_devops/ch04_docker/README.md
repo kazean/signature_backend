@@ -907,11 +907,98 @@ docker compose down
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-11. Docker Compose 사용하기(2)
+## docker compose 기반으로 멀티 컨테이너 애플리케이션 동작
+- 도커 컴포즈로 애플리케이션 설정값 지정예제 보기
+- Wordpress & Mysql DB 연동 서비스 예제보기
+- 도커 컴포즈의 한계
+> - 완전한 컨테이너 플랫폼이 아니다
+> - 지속적인 상태 유지 기능이 없다 
+## 실습
+- docker-compose exam
+```yaml
+# 02.  wordpress 애플리케이션 운영
+# 도커 컴포즈로 애플리케이션 설정 값 지정 예
+# docker network create webapp-net: 172.18.0.0/16
+# docker run -d --name db --net webapp-net -p 5432:5432 postgres:9.4
+# docker run -d --name webserver -v /web_data:/usr/share/nginx/html  --restart=always -p 80 -p 443   -env Provider=Postgres --net webapp-net nginx:1.22
+# dockercompose.yaml
+# docker compose -d
+version "3.8"
+services:
+  db:
+    image: postgres:9.4
+    ports:
+      - 5432:5432
+    networks:
+      - webapp-net
+  webserver: 
+    image: nginx:1.22
+    volumes:
+      - /web_data:/usr/share/nginx/html
+    restart: always
+    ports:
+      - 80
+      - 443
+    environment:
+      - Provider: Postgres
+    networks:
+      - webapp-net
+    depends_on:
+      - db
+    secrets:
+      - source: secrets-data
+        target: /etc/nginx.d/secret.file
 
+```
+### wordpress & mysql DB 연동 서비스 예제 보기
+> https://docs.docker.com/samples/wordpress/
+- sh
+```sh
+$ cd my_wordpress/
+# create docker-compose.yml
+$ docker compose up -d
+# http://localhost:80
+```
+- docker-compose.yml
+```yaml
+services:
+  db:
+    # We use a mariadb image which supports both amd64 & arm64 architecture
+    image: mariadb:10.6.4-focal
+    # If you really want to use MySQL, uncomment the following line
+    #image: mysql:8.0.27
+    command: '--default-authentication-plugin=mysql_native_password'
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=somewordpress
+      - MYSQL_DATABASE=wordpress
+      - MYSQL_USER=wordpress
+      - MYSQL_PASSWORD=wordpress
+    expose:
+      - 3306
+      - 33060
+  wordpress:
+    image: wordpress:latest
+    volumes:
+      - wp_data:/var/www/html
+    ports:
+      - 80:80
+    restart: always
+    environment:
+      - WORDPRESS_DB_HOST=db
+      - WORDPRESS_DB_USER=wordpress
+      - WORDPRESS_DB_PASSWORD=wordpress
+      - WORDPRESS_DB_NAME=wordpress
+volumes:
+  db_data:
+  wp_data:
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch04-. 
+# Ch04-12. 현업 사레 중심 컨테이너 기반 애플리케이션 운영
 
 
 ---------------------------------------------------------------------------------------------------------------------------
