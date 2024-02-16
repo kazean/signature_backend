@@ -308,6 +308,7 @@ docker push public.ecr.aws/~~~/springboot:latest
 - ALB 생성: ecs-farlab-alb
 - 서비스확인
 > http://alb-add:8080 # IP & DNS
+![Fargate_prac](./images/Fargate_prac.png)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
