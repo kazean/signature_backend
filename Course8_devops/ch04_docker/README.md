@@ -926,7 +926,7 @@ docker compose down
 # docker run -d --name webserver -v /web_data:/usr/share/nginx/html  --restart=always -p 80 -p 443   -env Provider=Postgres --net webapp-net nginx:1.22
 # docker-compose.yaml
 # docker compose -d
-version "3.8"
+version: "3.8"
 services:
   db:
     image: postgres:9.4
