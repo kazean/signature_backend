@@ -3,10 +3,10 @@
 - [ch05-02. Amazon ECR 리포지토리 운영 실습](#ch05-02-amazon-ecr-리포지토리-운영-실습)
 - [ch05-03. Amazon ECS 기반 컨테이너 애플리케이션 배포 실습](#ch05-03-amazon-ecs-기반-컨테이터-애플리케이션-배포-실습)
 - [ch05-04. Amazon Fargate 이해](#ch05-04-amazon-fargate-이해)
-- [ch05. ](#ch05-)
-- [ch05. ](#ch05-)
-- [ch05. ](#ch05-)
-- [ch05. ](#ch05-)
+- [ch05-05. Amazon Fargate로 컨테이너 애플리케이션 배포 실습](#ch05-05-amazon-fargate로-컨테이너-애플리케이션-배포-실습)
+- [ch05-06. Amazon 리소스 삭제](#ch05-06-amazon-리소스-삭제)
+- [ch05-07. LAB: 현업중심의 Amazon 컨테이너 서비스를 이용한 컨테이너 빌드에서 배포까지 - 문제](#ch05-07-lab-현업중심의-amazon-컨테이너-서비스를-이용한-컨테이너-빌드에서-배포까지---문제_1)
+- [ch05-08. LAB: 현업중심의 Amazon 컨테이너 서비스를 이용한 컨테이너 빌드에서 배포까지 - 답안 & 해설](#ch05-08-lab-현업중심의-amazon-컨테이너-서비스를-이용한-컨테이너-빌드에서-배포까지---답안-n-해설)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -186,11 +186,129 @@ docker push public.ecr.aws/~~~/springboot:latest
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch05-04. Amazon Fargate 이해 
+## AWS Fargate
+- 컨테이너 오케스트레이션 서비스
+- 주요 특징
+> - 서버리스 컨테이너 실행
+> - 자원 관리
+> - 확장성
+> - 보안
+> - 비용
+## AWS Fargate VS. ECS 차이점
+- 둘 다 컨테이너 오케스트레이션 서비스
+- ECS: EC2 인스턴스 안에 컨테이너 배포 모델
+- Fargate: 서버리스 컨테이너 배포 모델
+- 주요 차이점
+> - 배포 모델
+> - 인프라 관리
+> - 자원 할당
+> - 청구 모델
+> - 사용 요구 사항
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch05-. 
+# Ch05-05. Amazon Fargate로 컨테이너 애플리케이션 배포 실습
+## Fargate 실습 순서
+- ECS Cluster 생성: ecs-far
+> - default vpc, public subnet
+> - http-secure-grp(기존)
+- IAM 역할: ecs-task-rule(기존)
+- Task 등록: nginx-far-task
+- Service 생성: nginx-far-service
+- ALB Target Group 생성
+- ALB 생성
+- nginx 서비스 확인 
+## 실습
+```sh
+# ECS Cluster 생성
+# 클러스터 > 클러스터 생성 > ecs-fargate > default vpc > subnet a,c > ecs-fargate > AWS Faragte(기존 체크)
+# > 생성
+# > CloudFormation 확인 > CREATE_COMPLETE
+
+# Task 등록
+# ECS > 태스크 정의 > 새 태스크 정의
+# > nginx-fargate-task > nginx nginx:latest > 80 > 다음
+# > AWS Fargate > Linux/X86_64 > 1 CPU 2Gib > ecs-task-rule
+# > 로그 수집 사용 > Amazon CloudWatch > 다음 
+# > 생성
+
+# Service 등록
+# 클러스터 > 서비스 > 생성
+# > (패밀리) nginx-fargate-task > nginx-fargate-service > 서비스 연결 켜기 > default vpc > subnet a,c > http-secure-grp > 퍼블릭 IP
+# > 생성
+# > 서비스 > nginx-fargate-service > 태스크 > 태스크 ID 클릭 > 퍼블릭 IP 확인
+
+# ALB Target Group 생성
+# EC2 > 로드 밸런서 > ALB Target Group > IP add > nginx-fargate-alb-tg > default vpc > Health: / > Next
+# > 172.31.~ (Private IP) 80 > Include as pending below > Create Target Group
+
+# ALB
+# ALB Create > nginx-fargate-alb > internet-facing > default vpc > subnet a,c > http-secure-sg > nginx-fargate-alb-tg > Create LB
+# > View LoadBalancer 
+# # > Privisioning > Active
+
+# ALB nginx-fargate 
+# > DNS 확인 후 접속
+
+# ! EC2 Instance에 없다, 서버리스
+# ! 클러스터 > 서비스 > 태스크 > 로그 확인 가능
+# ! CloudWatch 에서도 확인 가능
+```
+> 한달 비용 $2
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch05-. 
+# Ch05-06. Amazon 리소스 삭제
+## 리소스 삭제 순서
+- ALB Group 삭제, ALB 삭제
+- ECS Service 삭제
+- ECS Cluster 삭제
+- ECR 삭제(OPT)
+## 실습
+```sh
+# 로드 밸런서 
+# > 로브 밸런서 > 삭제
+# > 대상그룹 > 삭제
+
+# ECS
+# 클러스터 > 서비스 > 서비스 삭제
+# 클러스터 > 클러스터 삭제
+
+# ECR 삭제 (OPT)
+``` 
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch05-07. LAB 현업중심의 Amazon 컨테이너 서비스를 이용한 컨테이너 빌드에서 배포까지 - 문제_1 
+## LAB 문재
+- public vpc
+- public, private subnet 각각 2개
+- public subnet에 ec2-server 생성
+- Private subnet에 Fargate 구성
+- SpringBoot 소스 ECR에 업로드
+> - Private ECR
+- Task 생성 - port 8080
+- Service 생성
+- 모니터링 로깅 - log 확인
+- ALB Target Group 생성
+- ALB 생성
+- 서비스 확인
+## LAB naming
+- VPC 자동생성 이용: ecs-prac
+- Private subnet에 Fargate 구성: ecs-far-lab
+- Public ec2 instance name: ec2-user
+- docker, git, aws cli 설치 및 aws configure 설정
+- SpringBoot
+> - repo name: spring-ecr
+- ECS cluster name: spring-ecs
+- Task 생성: ecs-farlab-task
+- Service 생성: ecs-farlab-service
+- 모니터링 로깅
+- ALB Target Group 생성: ecs-farlab-alb-tg
+- ALB 생성: ecs-farlab-alb
+- 서비스확인
+> http://alb-add:8080 # IP & DNS
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch05-08. LAB 현업중심의 Amazon 컨테이너 서비스를 이용한 컨테이너 빌드에서 배포까지 - 답안 N 해설
