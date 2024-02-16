@@ -36,7 +36,7 @@
 - ECS Cluster Architecure
 - Task & Task Definition
 - Service
-- ECS 구성(그림)
+![ECS Structure](./images/ECS_Structure.png)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
