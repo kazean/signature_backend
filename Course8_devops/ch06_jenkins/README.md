@@ -71,6 +71,120 @@ cat ~/.gitconfig
 
 ## 실습
 ```sh
+######################################
+# 1.Git 환경 구성
+# git 사용자 정보 등록
+git config --global user.name "GIT계정"
+git config --global user.email "메일주소"
+cat ~/.gitconfig
+
+##############################
+mkdir ~/fastcampus
+cd fastcampus/
+
+# 현재 작업디렉토리를 Git Repository 로 만들기
+# init 명령 실행하면 현재 상태가 master 브랜치로 설정됨
+git init
+ls -al
+ls .git
+
+
+# 누가 수정했는지 기록 필요. 수정자의 계정정보 등록(github 계정으로 등록하는것이 좋아요)
+git config --global user.name "GIT계정"
+git config --global user.email "메일주소"
+cat .git/config
+
+
+#2 Git Repository나 Staging Area에 추가되지 않아야 하는 파일 정의
+#  .gitignore 파일만들기(gitignore.io)
+cat > .gitignore
+*.class
+.gitignore
+<생략>
+
+ls -a
+
+
+#3 Working directory에 있는 파일을 Staging Area로 옮기는 명령 : git add
+#4 Git repository의 브랜치, 추적중인 파일과 변경된 파일 등의 현재 상태 확인: git status
+echo "code1" > src1.file
+echo "data" > data.file
+git status
+
+git add *.file
+git status
+
+
+echo "config" > cfg.file
+git status
+
+
+# working dir: data.file, cfg.file, src1.file   stage area:
+git rm --cached data.file src1.file
+git status
+
+# 원하는 파일만 선택해서 add
+# working dir: data.file,  cfg.file   stage area: src1.file
+git add -i
+4 - 3(src1.file) - <enter> - q
+git status
+
+
+#5 Staging Area에 있는 파일을 Repository에 저장(버전기록): git commit
+# git commit -> vi로 상세 커밋메시지 기록(첫줄: 변경내용 요약,두번재줄:공백, 세번째줄: 변경사항 자세히)
+# git commit -m "message"  -> 한줄 커밋 메시지 기록
+# git commit -a -m "message"
+
+#6 Repository의 commit 이력을 조회: git log
+# git log : 상세내용까지 모두 출력
+# git log --oneline : 간단하게 한라인으로 ID와 메시지만
+# git log --oneline --decorate --graph : 브랜치 정보를 포함하여 출력
+# # working dir: data.file, cfg.file   stage area:     repository : src1.file
+git commit -m "Add files(src1.file)"
+git status
+
+git add data.file
+git commit
+#Add data.file
+#
+#-contents
+# data
+
+git log
+git log --oneline
+git log --oneline --decorate --graph
+git log --oneline --decorate --graph --all
+
+cat >> src1.file
+code2
+
+git status
+git add src1.file
+git commit -m "Append code2"
+git log --oneline
+
+# 특정 파일의 로그만 확인
+git log src1.file
+
+#7 커밋된 파일들의 변경사항이 있는 파일에 대해 차이점 확인
+# 마지막 커밋 상태와 현재 워킹 디렉토리를 비교해서 파일들의 변경사항을 출력
+echo "code3" > src1.file
+git diff
+warning: in the working copy of 'src1.file', LF will be replaced by CRLF the next time Git touches it
+diff --git a/src1.file b/src1.file
+index 0a50039..6f9c4f0 100644
+--- a/src1.file
++++ b/src1.file
+@@ -1,2 +1 @@
+-code1
+-code2
++code3
+
+# 특정 커밋의 ID로 상태와 현재 워킹 디렉토리 비교해서
+git log --oneline
+git diff 47a7f78
+
+cd ..
 ```
 
 
