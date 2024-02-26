@@ -71,6 +71,7 @@ cat ~/.gitconfig
 
 ## 실습
 ```sh
+############## GIT 설정 및 add/commit/merge(충돌)/branch
 ######################################
 # 1.Git 환경 구성
 # git 사용자 정보 등록
@@ -333,6 +334,7 @@ git commit -m "Merge src1.file"
 > > git clone [github_url]
 ## 실습
 ```sh
+############## git repositorty remote 연결
 ###########################################
 #1. Repository 생성
 # devops-lab
@@ -412,6 +414,7 @@ Docker 또는 JRE가 설치된 모든환경에서 실행.
 > > cf, jenkins는 Docker or JRE기반 설치 가능
 ## 실습
 ```sh
+############## EC2에 jenkins 설치 및 실행하기
 #01. 인스턴스 만들기
 
 #02. docker  설치
@@ -524,6 +527,7 @@ http://jenkins-serer's_EIP:8080/
 - 아카이브 링크 확인
 ### 실습
 ```sh
+############## jenkins에서 git repo clone 받아서 프로젝트 빌드하기
 # Jenkins를 이용한 자동빌드
 # item name: petclinic
 
@@ -575,6 +579,7 @@ pipeline {
 - Pipeline script 구성 후 컨테이너 빌드
 ## 실습
 ```sh
+############## 위 예제에서 app image 빌드하기(Dockerfile)
 # 1. 컨테이너를 빌드할 소스코드에서  Dockerfile 이 있는지 확인
 github - Dockerfile
 
@@ -641,6 +646,7 @@ http://jenkins-server's_EIP
 > > - petclinic 프로젝트에 pipeline script로 slack 노티 구성
 ## 실습
 ```sh
+############## Jenkins Slack 연동
 1. Jenkins에 slack pipeline연동
 # (1) Slack의 워크스페이스와 채널 생성
 ## Workspace: test-smlee, Channel: #devops app test, #cicd
@@ -726,6 +732,7 @@ pipeline {
 
 ## 실습
 ```sh
+############## Jenkins Slack + ECR Push
 ################################################################
 2. Jenkins에서 빌드한 컨테이너를 Amazon ECR에 Push
 # (1) AWS role, 사용자 access key 생성
