@@ -4,10 +4,10 @@
 - [ch06-03. Jenkins 프로그램 소개 및 설치하기](#ch06-03-jenkins-프로그램-소개-및-설치하기)
 - [ch06-04. Git 연동을 위한 Jenkins 환경설정](#ch06-04-git-연동을-위한-jenkins-환경설정)
 - [ch06-05. Jenkins 파이프라인을 이용한 컨테이너 빌드](#ch06-05-jenkins-파이프라인을-이용한-컨테이너-빌드)
-- [ch06-06-01. Jenins Slack Webhook 연동하기](#ch06-06-01-jenkins-slack-webhook-연동하기)
-- [ch06-. ](#ch06)
-- [ch06-. ](#ch06)
-- [ch06-. ](#ch06)
+- [ch06-06-01. Jenins Slack Webhook 연동하기(1)](#ch06-06-01-jenkins-slack-webhook-연동하기)
+- [ch06-06-02. Jenins Slack Webhook 연동하기(2)](#ch06-06-02-jenkins-slack-webhook-연동하기-2)
+- [ch06-07. 실전 빌드하기 Source push - container build - ecr upload](#ch06-07-실전-빌드하기-source-push---container-build---ecr에-업로드-flow-arch-설명)
+- [ch06-08. LAB - git 코드 업로드부터 컨테이너 빌드까지 - CI 구축하기](#ch06-08-lab--git-코드-업로드-부터-컨테이너-빌드까지---ci-구축하기)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -478,20 +478,615 @@ docker rm -f web
 # 젠킨스에서 프로젝트를 생성해서 컨테이너 빌드 및 운영 TEST
 ## new Item > appjs-test FreeStyle Project > Build Steps (Execute Shell)
 ```
-> jenkins안에서 docker-ce (No-daemon) or docker client로 docker만 설치
+> jenkins안에서 docker-ce (No-daemon) or docker client로 docker만 설치  
+> `docker in docker 방식` -v /var/run/docker.sock:/var/run/docker.sock
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch06-04. Git 연동을 위한 Jenkins 환경설정
+- Jenkins pipeline 이란?
+- Git 연동을 위한 Jenkins 환경설정
+## Jenkins Pipeline: 깃 연동
+Repository > Deploy
+> CI tool
+## Jenkins Pipeline Script란?
+- Pipeline DSL 코드로 워크로드 정의
+- Job을 수동으로 설치할 때 반복되는 생성, 버전관리 등의 유지보수의 어려움 대응 - 코드로 운영
+> - pipeline: 파이프라인 구문의 시작/종료
+> - section
+> > - agent: 블록의 최상단에 기록, jenkins 실행자를 전체 파이프라인에 사용(any), 특정 stage에 사용(none)할지 설정
+> > - stage: pipeline에는 하나 이상의 stage를 포함.
+> > > - steps 하위 항목이 Jenkins 플러그인(sh)으로 실행되어 명령어 실행
+> - Directives: 파이프라인의 config 설정 값
+> > - enviroment: 변수값
+> > - tool: 자동 설치나 Path에 추가할 도구를 정의
+> > - parameter
+
+## git 연동을 위한 Jenkins 파이프라인 구성: 수동빌드
+```sh
+git clone https://~.git
+cd spring-petclinic
+./mvnw package
+target/petclinic-~.jar
+
+java -jar target/~.jar
+http://jenkins-serer's_EIP:8080/
+```
+## git 연동을 위한 Jenkins 파이프라인 구성: 자동빌드
+- Jenkins Project 만들기
+> - 새로운 Item 만들기
+> - Pipleline
+- Configure
+> - Git: petclinic build
+> - Pipeline: pipeline script
+- 빌드 진행
+- 콘솔 로그보기
+- 아카이브 링크 확인
+### 실습
+```sh
+# Jenkins를 이용한 자동빌드
+# item name: petclinic
+
+#설명 : 1. GIT: petclinic build
+
+# Pipeline : pipeline script
+# Jenkins 설치시 추천 플러그인 설치하면 git 관련된 플러그인이 포함되어 있음
+# Checkout 스테이지에서 git source 다운로드
+# Build 스테이지에서 sh 플러그인을 통해 mvnw  실행
+# Build 작업 완료후 생성된 jar 파일을 아카이브아키펙트로 전달 
+pipeline {
+    agent any
+        stages {
+            
+            stage('Checkout') {
+                steps {
+                    git branch: 'main', url:'https://github.com/237summit/petclinic.git'
+                }
+            }
+            
+            stage('Build') {
+                steps {
+                    sh "./mvnw  clean package"
+                }
+            
+            post {
+                success {
+                    archiveArtifacts 'target/*.jar'
+                }
+            }
+        }
+    }
+}
+
+# 빌드 진행 :  [지금 빌드]
+# 콘솔 로그 보기
+# POST : 아카이브아티팩트 링크 확인
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch06-05. Jenkins 파이프라인을 이용한 컨테이너 빌드
+- 도커 플러그인 설치
+- Pipeline을 이용한 컨테이너 빌드
+## Jenkins Pipeline을 이용한 Docker 연동
+- 플러그인 설치
+> - Jenkins 관리 > [System Configuration] > Plugins > [Available package] - `docker pipeline` 검색후 선택 > Install
+> > jenkins 재시작
+- Pipeline script 구성 후 컨테이너 빌드
+## 실습
+```sh
+# 1. 컨테이너를 빌드할 소스코드에서  Dockerfile 이 있는지 확인
+github - Dockerfile
+
+# 2. Jenkins 빌드 자동화 구성
+# 설명
+1. GIT: petclinic build -> jar
+2. Jenkins 컨테이너 빌드 자동화 구성
+
+# Jenkins pipeline script
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/237summit/petclinic.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh './mvnw clean package'
+            }
+        }
+        stage('Docker Image Build') {
+            steps {
+                script {
+                    docker.build("petclinic:v${BUILD_ID}")
+                }
+            }
+        }
+    }
+}
+
+
+#3. jenkins-server 에서 docker 명령으로 컨테이너 이미지 빌드 결과 확인
+docker images petclinic:v2
+docker run -d --name pet -p 80:8080 petclinic:v2
+docker ps
+docker logs -f  pet   # 라이브러리 설치가 완료될때 까지 기다린후 연결 TEST
+
+# 웹브라우저로 접속
+http://jenkins-server's_EIP
+
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch06-06-01. Jenkins Slack Webhook 연동하기
+- Slack의 워크스페이스와 채널 생성
+- 젠킨스에 슬랙 플러그인 설치 및 구성
+- Jenkins Pipeline 이용해 Slack 연동
+## Jenkins Slack Webhook 연동하기
+- Slack 이란?
+> Slack은 채널 기반 메세징 플랫폼입니다. Slack 워크스페이스는 사람들이 협업하고 모든 소프트웨어 도구와 서비스를 연결하며 작업을 수행하는데 필요한 정보를 찾을 수 있는 장소
+- Jenkins Slack 연동
+> Jenkins에서 Pipeline script를 동작할때 성공 및 실패 여부를 슬랙을 통해 노티가능
+- Slack과 Jenkins 연동하기
+> - 슬랙 워크스페이스 생성 > 채널 생성
+> - 채널에 Jenkins 연동: Jenkins에서 Slack 채널에 연동할 수 있도록 권한 할당
+> > - 통합 > 앱 추가 > jenkins 검색 후 설치
+> > > 웹 브라우저 실행되면 - 슬랙에 추가 > 채널선택
+> - Jenkins 관리
+> > - 플러그인 설치: `slack notification`
+> > - 시스템 구성 - slack (Credntial)
+> > - petclinic 프로젝트에 pipeline script로 slack 노티 구성
+## 실습
+```sh
+1. Jenkins에 slack pipeline연동
+# (1) Slack의 워크스페이스와 채널 생성
+## Workspace: test-smlee, Channel: #devops app test, #cicd
+## 채널에 jenkins 연동 
+## > #cicd `▿` > 통합 > 앱 추가 > jenkins CI
+# (2) 젠킨스에 슬랙 플러그인 설치
+## 'slack notification' > 관리 > 글로벌 Slack Notifier 설정 (팀 하위 도메인 / 통합 토큰 자격증명ID)
+# (3) 젠킨스에 슬랙 로그인 정보와 채널정보 추가
+# (4) Pipeline script에 추가
+# 설명: 3. 빌드 성공 유무에 따라 slack noti를 전송
+# pipeline script: 
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/237summit/petclinic.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh './mvnw clean package'
+            }
+        }
+        stage('Docker Image Build') {
+            steps {
+                script {
+                    docker.build("petclinic:v${BUILD_ID}")
+                }
+            }
+        }
+    }
+    post { 
+        success { 
+            slackSend(tokenCredentialId: 'slack-token'
+                , channel: '#cicd'
+                , color: 'good'
+                , message: "빌드성공")
+        }
+        failure { 
+            slackSend(tokenCredentialId: 'slack-token'
+                , channel: '#cicd'
+                , color: 'danger'
+                , message: "빌드실패")
+        }
+    }
+}
+```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch06-
+# Ch06-06-02. Jenkins Slack Webhook 연동하기 (2)
+## 학습내용
+- AWS
+> - ECR 정책 생성
+> - 사용자 콘솔 액세스키 생성
+> - Amazon ECR 생성
+- Jenkins
+> - Plugin: AWS Credentials, Pipeline: AWS Steps
+> - Credential: 사용자 콘솔 액세스키 등록
+> - 프로젝트 구성: pipeline script 구성
+
+## Amazon ECR 구성
+- 빌드된 컨테이너 이미지가 로컬이 아닌 Amazon ECR에 저장
+- AWS: ECR ROLE 생성, 액세스키 생성, ECR 생성
+- Jenkins: Plugin, Jenkins-server(aws cli 설치), 프로젝트 구성
+
+
+## AWS 구성
+> - `AmazonEC2ContainerRegisterPowerUser`, 이름: 'ecr-registry-full-access'
+> > developer 계정에 대한 권한
+> - 사용자 콘솔 액세스키 생성
+> > CLI
+> - Amazon ECR 생성
+> > 프라이빗, name: petclinic
+## Jenkins 구성
+> - Plugin 설치: AWS Credential(CloudBees AWS Credentials), Pipeline: AWS Steps
+> > Jenkins-Server: aws cli 설치
+> - Credential 등록: AWS 사용자 콘솔 액세스키 등록(aws-login)
+> > 관리 > Security > System > Global credentials > 'Add Credential'
+> > > AWS Credentials(ID/DESC: aws-login, Access Key Id/Secret Access Key) > Create
+> - Jenkins 프로젝트 구성: pipeline 구성
+
+## 실습
+```sh
+################################################################
+2. Jenkins에서 빌드한 컨테이너를 Amazon ECR에 Push
+# (1) AWS role, 사용자 access key 생성
+     신뢰 엔터티(AWS 계정) - ecr-registry-full-access: AmazonEC2ContainerRegistryPowerUser 전체 액세스 권한
+
+# (2) Amazon ECR 생성
+# (3) 젠킨스에 플러그인 설치 및 credentials 등록
+#     Plugin 설치 : AWS Credentials, Pipeline: AWS Steps
+#     aws credentials  등록:  aws-login
+
+#     Jenkins-Server:  aws cli  설치
+docker exec -it jenkins_prod /bin/bash
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+./aws/install
+aws --version
+exit
+
+# (4) Pipeline script에 추가
+#  설명
+1. GIT: petclinic build -> jar
+2. 컨테이너 빌드 후 ECR에 push
+
+# pipeline script:
+pipeline {
+    agent any
+    environment {
+       ECR_REPO = "계정ID.dkr.ecr.ap-northeast-2.amazonaws.com"
+       AWS_CREDENTIALS="aws-login"
+       ECR_NAME = "petclinic" // ecr 이름
+       REGION = "ap-northeast-2" // region 이름
+       IAM_ROLE_NAME = "arn:aws:iam::계정ID:role/ecr-registry-full-access"
+       ROLE_ACCOUNT = "developer"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/GIT계정/petclinic.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh './mvnw clean package'
+            }
+        }
+        stage('ECR Upload') {
+            steps{
+                script{
+                    try {                       
+                        withAWS(region: "${REGION}",credentials: "${AWS_CREDENTIALS}", role: "${IAM_ROLE_NAME}", roleAccount: "${ROLE_ACCOUNT}", externalId: 'externalId') {
+                            sh 'aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin  ${ECR_REPO}'
+                            sh 'docker build -t ${ECR_NAME} .'
+                            sh 'docker tag ${ECR_NAME}:latest ${ECR_REPO}/${ECR_NAME}:v$BUILD_NUMBER'
+                            sh 'docker push ${ECR_REPO}/${ECR_NAME}:v$BUILD_NUMBER'
+                            sh 'docker rmi ${ECR_REPO}/${ECR_NAME}:v$BUILD_NUMBER'
+                
+                        }
+                    }
+                    catch(error){
+                        print(error)
+                        currentBuild.result = 'FAILURE'
+                    } 
+                }
+            }
+            post {
+                success {
+                    echo "The ECR Upload stage successfully."
+                }
+                failure {
+                    echo "The ECR Upload stage failed."
+                }
+            }
+        }
+    }
+    post { 
+        success { 
+            slackSend(tokenCredentialId: 'slack-token'
+                , channel: '#cicd'
+                , color: 'good'
+                , message: "빌드성공")
+        }
+        failure { 
+            slackSend(tokenCredentialId: 'slack-token'
+                , channel: '#cicd'
+                , color: 'danger'
+                , message: "빌드실패")
+        }
+    }
+}
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch06-07. 실전 빌드하기: source push - container build - ecr에 업로드 (FLOW arch 설명)
+- Jenkins Pipeline Flow
+> - Jenkins WebHook
+> > Build Jenkins Job Automatically on GitHub Commit(OPT)
+- ![Workflow](./images/build_project_flow.png)
+
+## Jenkins Pipeline 작업 순서
+- IAM - Policy, Rule 생성 for ECR UPLOAD
+- ECR Repo 생성 - 'spring-petclinic'
+- AWS Credential 등록
+> - 액새스키 생성
+> - jenkins credential 등록
+- pipeline 코드 리뷰 - [Jenkins Pipeline 공식 가이드](https://www.jenkins.io/doc/book/pipeline/)
+- pipeline job 등록
+- Jenkins Webhook Trigger - Auto JobExecute(선택)
+> - LB 생성 - github webhook url 등록 필요 (주의 - public ip는 사용불가)
+## 실습
+- spring-petclinic (fc-study/chapter-5/lab-project) 
+> Jenkins Webhook, JenkinsBuild, Docker image tag, ECR Push, Slack 연동
+> - IAM: Policy('ecr-upload'), Role('ecr-upload-role')
+> - ECR: Pri('spring-petclinic')
+> - AWS Cred: AccessKey, Jenkins Cred('aws-credentials-ga')
+> - Jenkins Pipeline: 'chapter-5-job-test'
+> - Slack Channel: 'spring-petclinic-slack'
+> - Git Token: 'jenkins-webhook-token'
+> - LB: jenkins-ec2-server-tg, 'jenkins-ec2-server-alb'
+> -
+```sh
+# IAM - Policy, Rule 생성
+## 정책 > 정책 생성 > JSON (ecr:*, CloudWatch Logs:제한적 쓰기, Elastic Container Register:전체 액세스 권한) > name: 'ecr-upload' > 정책 생성
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "ecr:*",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+## 역할 > 역할 만들기 > AWS 계정 > ecr-upload 선택 > 'ecr-upload-role'
+
+# ECR Repo 생성 
+## Private: 'spring-petclinic'
+
+# AWS Credential 등록
+## IAM > 사용자 > 보안자격증명 > CLI > 'aws-accesskey'
+
+# Jenkins에 Credential 등록하기
+## Credentials > System > Global credentials > Add credentials
+## > AWS Credentials (ID/DESC:'<aws-credentials-jh>', Access Key ID/Secret Access Key: ~)
+
+# Pipeline 코드 리뷰
+## Jenkins Pipeline 생성 - 'chapter-5-job-test'
+### git clone
+### build
+### Dockerfile build & AWS ECR Upload
+### Slack push
+pipeline {
+    
+    agent any
+    environment {
+       ECR_REPO = "<~.dkr.ecr.ap-northeast-2.amazonaws.com>"  // ecr repository uri
+       AWS_CREDENTIALS="<jenkins aws credentials>" // aws credentialsId 
+       ECR_NAME = "<ecr-repo name: spring-petclinic>" // ecr 이름
+       REGION = "ap-northeast-2" // region 이름
+       GIT_REPO = "<https://github.com/azjaehyun/fc-study.git>" // clone git 이름
+       SLACK_CHANNER = "<spring-petclinic-slack>" // slack channer 이름
+       IAM_ROLE_NAME = "<arn:aws:iam::~:role/ecr-upload-role>" // aws cli  ecr 사용시 사용
+       ROLE_ACCOUNT = "<developer>" // 계정 이름
+    }
+
+    stages {
+
+        stage('Git Clone') {
+            steps {
+                dir("app") {
+                    git branch: 'main',  credentialsId: 'azjaehyun', url: "${GIT_REPO}"
+                }
+            }
+        }
+
+        stage('Maven Build') {
+            steps{
+                dir("app/chapter-5/lab-project"){
+                    sh '''
+                    chmod +x mvnw
+                    ./mvnw package -DskipTests
+                    '''
+                }  
+            }
+        }
+
+        stage('ECR Upload') {
+            steps{
+                script{
+                    dir("app/chapter-5/lab-project") {
+                        try {                       
+                            withAWS(region: "${REGION}",credentials: "${AWS_CREDENTIALS}", role: "${IAM_ROLE_NAME}", roleAccount: "${ROLE_ACCOUNT}", externalId: 'externalId') {
+                                sh 'aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin  ${ECR_REPO}'
+                                sh 'docker build -t ${ECR_NAME} .'
+                                sh 'docker tag ${ECR_NAME}:latest ${ECR_REPO}/${ECR_NAME}:$BUILD_NUMBER'
+                                sh 'docker push ${ECR_REPO}/${ECR_NAME}:$BUILD_NUMBER'
+                                sh 'docker rmi ${ECR_REPO}/${ECR_NAME}:$BUILD_NUMBER'
+                        
+                            }
+                        }
+                        catch(error){
+                            print(error)
+                            currentBuild.result = 'FAILURE'
+                        } 
+                    }
+                }
+            }
+            post {
+                success {
+                    echo "The ECR Upload stage successfully."
+                }
+                failure {
+                    echo "The ECR Upload stage failed."
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            slackSend (
+                channel: "${SLACK_CHANNER}", 
+                color: '#00FF00', 
+                message: """
+                    SUCCESS: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]
+                    [ECR_NAME : ${ECR_NAME}]
+                """
+                )
+            }
+        failure {
+            slackSend (
+                channel: "${SLACK_CHANNER}", 
+                color: '#FF0000', 
+                message: "FAIL: Job ${env.JOB_NAME} [${env.BUILD_NUMBER}]  [ECR_NAME : ${ECR_NAME}]"
+            )
+        }
+    }
+}
+
+# Jenkins Webhook Trigger - 현업에서는 잘안쓰고 수동으로함
+## Developer - Source Push -> GitHub( Github setting Webhook 등록) -> http://{your_jenkins_domain}/github-webhook/
+### 주의 퍼블릭 IP 등록불가, LB 또는 Domain 사용
+## EC2 > 로드밸런서 > 대상그룹 > IP, name: 'jenkins-ec2-server-tg', HTTP: 80 or 8080 > ec PUB IP or Pri IP [Pri]
+## LB > 'jenkins-ec2-server-alb' > 인터넷 경계 > sub a,c > http-secure-grp > jenkins-ec2-server-tg > 생성
+## Github Webhook 설정
+### Token 생성 ('jenkins-webhook-token', [`admin:repo_hook`,workflow, write:packages, delete:packages, admin:org, admin:public_key, admin:org_hook])
+### git project > Settings > Webhooks > Add Webhook > Payload URL: <http://LB DNS/github-webhook/> (주의, 뒤에 '/' 들어가야함), Secret: <git token>
+### Jenkins > item > 구성 > Build Trigger > GitHub hook trigger for GITScm pollings 체크
+
+# Test
+docker logs -f <con_id>
+git add/commit
+## Jenkins, ECR 확인
+
+# Slack 연동
+## Jenkins 관리 > Workspace, Credential(Secret text: token) > channel
+## 지금빌드 TEST
+## Slack, ECR 확인
+
+
+##############Jenkins 안만들었을 경우
+# Jenkins 컨테이너 - 플러그인 포함하여 빌드하기
+mkdir jenkins-build
+cd jenkins-build
+
+cat > Dockerfile
+FROM jenkins/jenkins:2.387.2
+#FROM jenkins/jenkins:latest
+
+USER root
+
+# docker in docker install
+RUN apt-get update && \
+    apt-get -y install apt-transport-https \
+      ca-certificates \
+      curl \
+      gnupg2 \
+      jq \
+      software-properties-common && \
+    curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg > /tmp/dkey; apt-key add /tmp/dkey && \
+    add-apt-repository \
+      "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
+      $(lsb_release -cs) \
+      stable" && \
+   apt-get update && \
+   apt-get -y install docker-ce
+   
+RUN groupadd -f docker
+RUN usermod -aG docker jenkins
+
+#aws cli install
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+RUN unzip awscliv2.zip
+RUN ./aws/install
+
+LABEL maintainer="azjaehyun@gmail.com"
+ENV JENKINS_USER admin
+ENV JENKINS_PASS admin
+ENV JAVA_OPTS -Djenkins.install.runSetupWizard=true
+RUN jenkins-plugin-cli \
+    --plugins \
+    git \
+    workflow-aggregator \
+    blueocean \
+    docker-plugin \
+    ant \
+    gradle \
+    pipeline-aws \
+    pipeline-build-step \
+    pipeline-github-lib \
+    pipeline-rest-api \
+    pipeline-stage-view \
+    timestamper \
+    aws-credentials \
+    file-operations \
+    branch-api \
+    workflow-support \
+    pam-auth \
+    ldap \
+    email-ext \
+    matrix-auth \
+    ws-cleanup \
+    resource-disposer \
+    antisamy-markup-formatter \
+    build-timeout \
+    nodejs \
+    slack:664.vc9a_90f8b_c24a_ 
+
+# Jenkins-ci:latest 컨테이너 빌드
+docker build -t jenkins-ci .
+docker images
+
+# Docker-in Docker 로 Jenkins 실행 후 로그인 인증서 확인
+docker run --name jenkins -d \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -p 80:8080 jenkins-cli
+
+#Jankins Admin login password 확인
+docker logs jenkins
+
+# 원격접속 -
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch06-08. LAB- git 코드 업로드 부터 컨테이너 빌드까지 - CI 구축하기
+## 문제: 빌드한 젠킨스 컨테이너로 git 코드 업로드부터 컨테이너 빌드 구성
+1. Jenkins 컨테이너 이미지 빌드
+- Jenkins 플러그인을 포함한 컨테이너 이미지 빌드 후 jenkins 실행
+- chapter-5/build 디렉토리에 있는 Dockerfile을 이용해 jenkins 컨테이너 빌드
+- docker build -t jenkins-plugin:2.419 .
+2. Petclinic 소스코드 clone 후 자신의 Github에 소스코드 push
+- git clone petclinic.git
+- mv petclinic spring-petclinic
+3. Jenkins 통해 pet-clinic 컨테이너 이미지 빌드 후 Amazon ECR에 Push
+- AWS 구성: 액세스키, role('ecr-full-access'::AmazonEC2ContainerRegistryPowerUser'), ECR('spring-petclinic')
+- 젠킨스 구성: slack-token, aws credentials('aws-login-token'), item('spring-petclinic')
