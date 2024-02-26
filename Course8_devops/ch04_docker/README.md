@@ -702,9 +702,10 @@ docker build -t webapp:v1  .
 # Export/Import
 # docker export
 ## 안해도 가능? 아니면 구동후 run/stopped이어야 가능? docker run --name webapp -d webapp:v1 
+docker run -d --name webapp webapp:v1
 curl 172.17.9.2:8080
 docker ps
-docker export -o webapp.export.tar webapp:v1
+docker export webapp -o webapp.export.tar
 docker rm -f webapp
 docker rmi webapp:v1
 docker import webapp.export.tar webapp:v1
