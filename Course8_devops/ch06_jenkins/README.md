@@ -1103,3 +1103,92 @@ docker logs jenkins
 3. Jenkins 통해 pet-clinic 컨테이너 이미지 빌드 후 Amazon ECR에 Push
 - AWS 구성: 액세스키, role('ecr-full-access'::AmazonEC2ContainerRegistryPowerUser'), ECR('spring-petclinic')
 - 젠킨스 구성: slack-token, aws credentials('aws-login-token'), item('spring-petclinic')
+## 해설
+```sh
+# 1. Jenkins container: docker-ce, aws-cli, jenkins plugins
+# ./build/Dockerfile plugins.txt
+# > plugins.txt를 COPY /usr/share/jenkins/plugins.txt
+# >  jenkins-plugin-cli --plugin-file /usr/share/jenkins/plugins.txt
+# > docker build -t jenkins-plugin:2.419 .
+# > docker run
+
+# 2. Git Repository 생성
+# > 'spring-petclinic'
+# > git token 'spring-pet git token'(repo, workflow)
+# > git config user.name/email
+# > remote add
+
+# 3. Jenkins CI 구성
+# > AWS Accesskey, Role(AmazonEC2ContainerRegistryPowerUser): 'ecr-full-access'
+# > ECR(Private, 'spring-petclinic')
+# > Jenkins Credentials: aws Credentials('aws-login'), slack('slack-login-token')
+# > Slack 구성 > System > Slack (팀 하위 도메인, 통합 토큰 자격 증명ID)
+# item 생성 pipeline
+```
+
+
+- Dockerfile
+```Dockerfile
+FROM jenkins/jenkins:2.419
+
+LABEL maintainer="Seongmi Lee seonmi.lee@gmail.com"
+
+# Install docker cli in Container
+USER root
+RUN apt-get update && \
+    apt-get -y install apt-transport-https \
+      ca-certificates \
+      curl \
+      gnupg2 \
+      jq \
+      software-properties-common && \
+    curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg > /tmp/dkey; apt-key add /tmp/dkey && \
+    add-apt-repository \
+      "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
+      $(lsb_release -cs) \
+      stable" && \
+   apt-get update && \
+   apt-get -y install docker-ce
+   
+RUN usermod -aG docker jenkins
+
+#aws cli install
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install
+
+ENV JENKINS_USER admin
+ENV JENKINS_PASS admin
+ENV JAVA_OPTS -Djenkins.install.runSetupWizard=true
+
+COPY plugins.txt /usr/share/jenkins/plugins.txt
+RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/plugins.txt
+```
+- plugins.txt
+```txt
+aws-credentials
+slack
+pipeline-aws
+pipeline-build-step
+pipeline-github-lib
+pipeline-rest-api
+pipeline-stage-view
+workflow-aggregator
+blueocean
+ant
+gradle
+git
+timestamper
+file-operations
+branch-api
+workflow-support
+pam-auth
+ldap
+email-ext
+matrix-auth
+ws-cleanup
+resource-disposer
+antisamy-markup-formatter
+build-timeout
+nodejs
+```
