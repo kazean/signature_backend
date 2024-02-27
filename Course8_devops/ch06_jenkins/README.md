@@ -392,7 +392,7 @@ git push
 - 자동 빌드와 자동 배포 서비스 운영
 > Mysql, PetClinic > Git, Docker > Jenkins
 ## Jenkins 개요
-- Jenkins 란?
+- Jenkins 란?  
 소프트웨어 구축, 테스트, 전달 및 배포와 관련된 모든 종류의 작업을 자동화하는데 사용할 수 있는 오픈 소스 자동화 서버로 
 Docker 또는 JRE가 설치된 모든환경에서 실행.  
 젠킨스는 다양한 플러그인들을 조합하여 일을 처리하는 Pipeline을 통해 CI/CD Pipeline을 구축
@@ -444,8 +444,11 @@ docker version
 docker run -d --name jenkins_prod \
   -p 8080:8080 -p 50000:50000 \
    -v /var/run/docker.sock:/var/run/docker.sock \
-   --user root   jenkins/jenkins:latest
+   --user root   jenkins/jenkins:2.387.2
+   
+#   --user root   jenkins/jenkins:latest
 docker exec -it jenkins_prod /bin/bash
+
 
 apt-get update && \
     apt-get -y install apt-transport-https \
@@ -480,6 +483,10 @@ docker rm -f web
 
 # 젠킨스에서 프로젝트를 생성해서 컨테이너 빌드 및 운영 TEST
 ## new Item > appjs-test FreeStyle Project > Build Steps (Execute Shell)
+git clone https://github.com/237summit/lab-test.git
+cd lab-test
+docker build -t nodejs .
+docker run -d --name web -p 80:8080 nodejs
 ```
 > jenkins안에서 docker-ce (No-daemon) or docker client로 docker만 설치  
 > `docker in docker 방식` -v /var/run/docker.sock:/var/run/docker.sock
@@ -537,22 +544,21 @@ http://jenkins-serer's_EIP:8080/
 # Jenkins 설치시 추천 플러그인 설치하면 git 관련된 플러그인이 포함되어 있음
 # Checkout 스테이지에서 git source 다운로드
 # Build 스테이지에서 sh 플러그인을 통해 mvnw  실행
-# Build 작업 완료후 생성된 jar 파일을 아카이브아키펙트로 전달 
 pipeline {
     agent any
-        stages {
-            
-            stage('Checkout') {
-                steps {
-                    git branch: 'main', url:'https://github.com/237summit/petclinic.git'
-                }
+    stages {
+        
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url:'https://github.com/237summit/petclinic.git'
             }
-            
-            stage('Build') {
-                steps {
-                    sh "./mvnw  clean package"
-                }
-            
+        }
+        
+        stage('Build') {
+            steps {
+                sh "./mvnw  clean package"
+            }
+        
             post {
                 success {
                     archiveArtifacts 'target/*.jar'
@@ -561,7 +567,6 @@ pipeline {
         }
     }
 }
-
 # 빌드 진행 :  [지금 빌드]
 # 콘솔 로그 보기
 # POST : 아카이브아티팩트 링크 확인
@@ -979,9 +984,9 @@ pipeline {
     }
 }
 
-# Jenkins Webhook Trigger - 현업에서는 잘안쓰고 수동으로함
-## Developer - Source Push -> GitHub( Github setting Webhook 등록) -> http://{your_jenkins_domain}/github-webhook/
-### 주의 퍼블릭 IP 등록불가, LB 또는 Domain 사용
+# > Jenkins Webhook Trigger - 현업에서는 잘안쓰고 수동으로함
+## > Developer - Source Push -> GitHub( Github setting Webhook 등록) -> http://{your_jenkins_domain}/github-webhook/
+### > 주의 퍼블릭 IP 등록불가, LB 또는 Domain 사용
 ## EC2 > 로드밸런서 > 대상그룹 > IP, name: 'jenkins-ec2-server-tg', HTTP: 80 or 8080 > ec PUB IP or Pri IP [Pri]
 ## LB > 'jenkins-ec2-server-alb' > 인터넷 경계 > sub a,c > http-secure-grp > jenkins-ec2-server-tg > 생성
 ## Github Webhook 설정
@@ -1091,8 +1096,9 @@ docker logs jenkins
 - Jenkins 플러그인을 포함한 컨테이너 이미지 빌드 후 jenkins 실행
 - chapter-5/build 디렉토리에 있는 Dockerfile을 이용해 jenkins 컨테이너 빌드
 - docker build -t jenkins-plugin:2.419 .
+> plugins 설치 안될시 `Suggest, docker pipeline, slack notification, AWS Credentials, AWS Steps`
 2. Petclinic 소스코드 clone 후 자신의 Github에 소스코드 push
-- git clone petclinic.git
+- git clone [petclinic.git](https://github.com/237summit/petclinic.git)
 - mv petclinic spring-petclinic
 3. Jenkins 통해 pet-clinic 컨테이너 이미지 빌드 후 Amazon ECR에 Push
 - AWS 구성: 액세스키, role('ecr-full-access'::AmazonEC2ContainerRegistryPowerUser'), ECR('spring-petclinic')
