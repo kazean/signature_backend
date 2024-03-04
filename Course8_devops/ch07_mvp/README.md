@@ -49,7 +49,7 @@
 - 채용 사이트 프론트엔드 - react-front
 > - react 컴포넌트 구성 - application & jobposting
 
-4. 인프라 설계
+4. 인프라 설계  
 ![인프라 설게](./images/infra_architecture.png)
 
 
