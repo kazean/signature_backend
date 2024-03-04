@@ -1,5 +1,5 @@
 # Ch07. [프로젝트] 웹 개발 프로젝트 6: 아키텍쳐 적용한 MVP 프로젝트 배포하기
-- [ch07-](#ch07)
+- [ch07-01. MVCP 프로젝트를 위한 DDD-MSA-멀티코듈 기반의 백엔드 아키텍쳐 설계](#ch07-01-mvp-프로젝트를-위한-ddd---msa---멀티모듈-기반의-백엔드-아키텍쳐-설계)
 - [ch07-](#ch07)
 - [ch07-](#ch07)
 - [ch07-](#ch07)
@@ -56,7 +56,90 @@
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch07-
+# Ch07-02. MVP 프로젝트를 위한 프론트 & 백엔드 소스코드 리뷰
+## 채용 사이트 화면
+- Application Back-End Rest API
+- JobPosting Back-End Rest API
+## 채용사이트 아키텍쳐 설계 - [jhipster jdi studio 활용](https://start.jhipster.tech/jdl-studio/)
+- 화면소개
+> - 지원자 백엔드 페이지(:8080)
+> - 채용공고 백엔드 페이지(:8888)
+> - React 프론트 페이지(:3000)
+- 구직자 백엔드: [코드링크](https://github.com/azjaehyun/fc-study/tree/main/chapter-6/final-lab/application-back)
+> - jhipster jdl: [코드링크](https://github.com/azjaehyun/fc-study/blob/main/chapter-6/final-lab/application-back/jhipster.jdl)
+- 채용자 백엔드 [코드링크](https://github.com/azjaehyun/fc-study/tree/main/chapter-6/final-lab/jobposting-back)
+> - jhipster jdl: [코드링크](https://github.com/azjaehyun/fc-study/blob/main/chapter-6/final-lab/jobposting-back/jhipster.jdl)
+- React 프론트 엔드: [코드링크](https://github.com/azjaehyun/fc-study/tree/main/chapter-6/final-lab/react-front)
+> - swagger.yaml를 이용해 openapi genrator로 생성한 공통 typescript [코드링크](https://github.com/azjaehyun/fc-study/blob/main/chapter-6/final-lab/application-back/react-openapi-generator/README.md)
+> - 소스코드 구조 및 컴포넌트 설명
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch07-03. MVP 프로젝트 운영을 위한 클라우드 인프라 구축
+## 인프라 구축
+- vpc & subnet 구축
+- security 그룹생성
+> - http - 80 port
+> - ssh - 22 port
+> - mysql - 3306 port
+> - springboot - 8080, 8888 port
+- rds subnet 생성
+- rds mysql instance 생성
+> - db user 및 권한 생성
+## 인프라 구축 Naming
+- vpc & subnet: final-lab
+- security 그룹 생성
+> - http-scr-grp: 80, 443
+> - ssh-scr-grp
+> - mysql-scr-grp
+> - spring-scr-grp: 8080, 8888
+- rds subnet 생성: final-db-subnet
+- rds mysql instance 생성
+## 실습
+```sh
+: << "END"
+# VPC
+name: final-lab
+subnet: a/c
+pub(2), pri(2)
+CIDER: (default)
+NAT: a존 1개(1개의 AZ에서)
+VPC Eedpoint: X
+
+# 보안그룹 생성
+http-secure-grp - 80, 443: Anywhere-IPv4
+ssh-secure-grp - 22
+mysql-secure-grp - 3306
+springboot-secure-grp - 8080,8888
+
+# RDS
+## 서브넷 그룹 > DB 서브넷 그룹 생성
+name: final-db-subnet
+vpc
+AZ: 2a,2c
+Subnet: 10.0.160/178.0/20
+
+## 데이터베이스 생성
+Mysql
+프리티어
+식별자: final-lab-db
+자격: admin
+마스터 암호:
+스토리지 default, 자동조정X
+vpc
+final-db-subnet
+퍼블릭 액세스: X
+sg: mysql-secure-grp
+az: 2a
+추가구성 
+> 초기 데이터베이스 이름: application
+데이터베이스 생성
+END
+```
+
+
+---------------------------------------------------------------------------------------------------------------------------
+# Ch07-04. DevOps 구성을 위한 GIT + JENKINS 서버 구성
 
 
 ---------------------------------------------------------------------------------------------------------------------------
