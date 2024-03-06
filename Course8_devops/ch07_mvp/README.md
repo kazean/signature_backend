@@ -141,7 +141,7 @@ END
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch07-04. DevOps 구성을 위한 GIT + JENKINS 서버 구성
 - ec2 instance 생성
-> - docker, mysql, git
+> - docker, mysql, git install
 > - jenkins container run
 > > - node install v16.17.0
 > > - aws credentials 등록
@@ -152,7 +152,7 @@ END
 ```sh
 : << "END"
 # ec2-instance
-name: fianl-jenkins
+name: final-jenkins
 AMI: Amazon Linux2 5.10
 instance type: t2.medium
 keyPair
@@ -179,10 +179,10 @@ exit
 docker ps
 
 ## Jenkins ch06/final-lab/jenkins_dockerfile/Dockerfile or DockerHub
-docker pull symjaehyn/jenkins:latest
+docker pull symjaehyun/jenkins:latest
 docker images
 
-docker run -d -v /var/run/docker.sock:/var/run/docker.sock -p 80:8080 symjaehyn/jenkins:latest
+docker run -d -v /var/run/docker.sock:/var/run/docker.sock -p 80:8080 symjaehyun/jenkins:latest
 docker logs -f ~
 
 ## mysql Check
@@ -227,15 +227,15 @@ name: node-16.17.0
 
 새로운 item
 node-version-test-job > Free Style
-> 빌드환경 Provide Node > Build Steps
+> 빌드환경 Provide Node > Build Steps [Execute shell]
 node --version > 저장 > 지금 빌드
 
 Slack Settings
 Jenkins 관리 > 시스템 설정 > Slack
-> Add Credentials > Secret Text(Token)
+> Add Credentials > Secret Text(Token: jenkins-fc-token)
 
 workspace/channel(jenkins-fc)
-설정 > 워크스페이스 설정 > 앱설정 > jenkins CI > 앱 세부정보 > 구성 > 구성편집 (Token 얻기)
+설정 > 워크스페이스 설정 > 앱 구성 > jenkins CI > 앱 세부정보 > 구성 > 구성편집 (Token 얻기)
 저장
 # Slack Test Connection
 END
@@ -260,6 +260,7 @@ END
 - ECS Taker 등록 및 task.json 설명
 ## 실습
 - [sample-code](https://github.com/azjaehyun/fc-study/tree/main/chapter-6/final-lab)
+> - iam/policy/cicd-ecr,ecs.json
 - application-back
 - jobposting-back
 - react-front
@@ -276,8 +277,8 @@ Identity and Access Management(IAM)에서 ci cd 배포 라인을 위해서 필�
 policy 폴더와 role 폴더의 가이드를 받으세요.
 
 ## 1. 정책 생성
-- policy cicd-ecr.json(cicd-ecr)
-- policy cicd-ecs.json(cicd-ecs)
+- policy cicd-ecr.json(cicd-ecr) # ecr:*, logs:CreateLogStream, PutLogEvents
+- policy cicd-ecs.json(cicd-ecs) # application-autoscaling:~, cloudwatch:~, ecs:~, iam:~
 
 ## 2. 역할 생성
 # ecs fargate 에서 ci cd 배포 라인을 위해서 필요한 role 정책을 만듭니다.
@@ -287,7 +288,7 @@ policy 폴더와 role 폴더의 가이드를 받으세요.
 ## 2-1. 역할 생성 - ecs task 등록시 필요. 
 - ecs-task-rule 이름으로 역할생성
 - 보안자격증명 >
-     > 역활 탭 이동 > 오른쪽 역할 만들기 버튼 클릭
+     > 역할 탭 이동 > 오른쪽 역할 만들기 버튼 클릭
      > Aws 서비스 > 맨밑 다른 aws 서비스의 사용 사례 클릭 후 
      > Elastic Container Service > Elastic Conainer Service Task 로 생성 
 
@@ -304,7 +305,7 @@ policy 폴더와 role 폴더의 가이드를 받으세요.
 - policy cicd-ecs.json add // 파일위치는 해당 경로의 policy 폴더 참조
 - CloudWatchFullAccess  add //	AWS 관리형	
 - AmazonECS_FullAccess add  // AWS 관리형	
-- Amazonecs-task-rulePolicy //  AWS 관리형	
+- AmazonECSTaskExecutionRolePolicy //  AWS 관리형	
   
 위 5개 권한을 넣고 ecs-cicd-deploy 이름으로 역할 생성
 
@@ -440,7 +441,7 @@ pipeline {
     }
 }
 ```
-- [final-lab/react-front/final-labreact-front-service.json](https://github.com/azjaehyun/fc-study/blob/main/chapter-6/final-lab/react-front/react-front-service.json)
+- [final-lab/react-front/final-lab/react-front-service.json](https://github.com/azjaehyun/fc-study/blob/main/chapter-6/final-lab/react-front/react-front-service.json)
 > back은 빌드 과정만 다름
 
 
@@ -451,6 +452,7 @@ pipeline {
 ECS > 클러스터 > 생성
 'final-cluster'
 vpc, subnet(pri-1/2: 10.0.128/144(2a/2c))
+> update된 aws에서 vpc, subnet 선택이 없다
 
 # ECR 생성 (Private)
 application-back
@@ -542,12 +544,10 @@ git push
 # jenkins pipeline 실행
 ## application-back-service-job 빌드 > Deploy Error 
 ## > ECS Service 없기 때문
-## Jobposting, Front 빌드
-
+## Jobposting, Front 빌드 > ecr image upload 위해
 # ECR 확인
-# ECS 태스크 정상 등록 확인
-# CloudWatch 확인
 
+# ECS 태스크 정상 등록 확인
 # ECS 서비스 생성
 ## ECS > 클러스터 생성
 ## 패밀리: react-front-service, 개정: <최신>
@@ -555,12 +555,14 @@ git push
 ## vpc, subnet(private 1,2: 128/144)
 ## sg: http-scr-grp-fianl(NGINX)
 ## PUB IP 꺼짐 > 생성 [Task Private IP 복사]
+# CloudWatch 확인
+
 
 # LB 생성
 ## LB > 대상그룹 생성 
 ## IP 주소 
 ## 'react-lb-tg'
-## TCP: 80
+## 'TCP: 80'
 ## vpc
 ## 상태검사: HTTP (/) > 다음
 ## Private IP 주소 등록 > Pending > 대상그룹 생성
@@ -569,6 +571,7 @@ git push
 ## 'final-lb'
 ## 인터넷 경계, vpc, subnet(pub1(2a),2(2c))
 ## 리스너 및 라우팅 TCP: 80, react-lb-tg > 로드밸런서 생성
+## >> 보안그룹 신규
 nslookup <lb-dns>
 
 # ECS: app, job-back 서비스 생성
