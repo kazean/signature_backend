@@ -7,4 +7,4 @@
 - [Course6. 대용량 데이터를 다루는 배치처리]()
 - [Course7. 대용량 트래픽 처리를 위한 백엔드 심화]()
 - [Course8. 백엔드 개발자를 위한 Devops 맛보기](https://github.com/kazean/signature_backend/tree/main/Course8_devops)
-> - MSA, DDD, AWS_Infra(IAM, EC2, RDS, Route53), Docker, AWS_Service(ECR, ECS, ECS_Fargate), Git + Jenkins, MVP Project(3Tier CICD)
+> - MSA-DDD-MultiModule, AWS_Infra(IAM, EC2, RDS, Route53), Docker, AWS_Service(ECR, ECS, ECS_Fargate), Git + Jenkins, MVP Project(3Tier CICD)
