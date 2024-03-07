@@ -155,9 +155,9 @@ END
 name: final-jenkins
 AMI: Amazon Linux2 5.10
 instance type: t2.medium
-keyPair
+keyPair [developer]
 Network: vpc(final-lab), sub(pub/2a)
-Pub IP
+Pub IP [활성]
 sg(http, ssh)
 storage: 100GiB
 END
@@ -251,6 +251,12 @@ END
 ![front-architecture](./images/front-node-arch.png)
 ## Jenkins pipeline 구축
 - iam policy, rule 생성
+> - policy
+> > - cicd-ecr
+> > - cicd-ecs
+> - role
+> > - ecs-task-rule: task definition json uses
+> > - ecs-cicd-deploy: jenkins pipeline uses
 - pipeline 코드 설명 및 Dockerfile 설명
 > - react 기반 - nodejs
 > - springboot 기반 - java
