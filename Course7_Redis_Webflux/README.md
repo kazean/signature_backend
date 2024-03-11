@@ -18,3 +18,6 @@ SELECT @@global.time_zone, @@session.time_zone;
 
 ## Jmeter
 > $ /usr/local/Cellar/jmeter/5.6.2/libexec/bin/jmeter
+
+## Git
+- [Code](https://github.com/morenice/fastcampus-2023-backend-advacned)

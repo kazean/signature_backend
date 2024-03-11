@@ -81,8 +81,8 @@ Strings, Lists, Hashes, Sorted sets, ...
 ## CLI 실행
 > $ docker ps  
 > $ docker exec -it [container Id] redis-cli [GET name]
-## 유용한 명령어
-- redis-cli monitor
+## 유용한 명령어 - redis-cli  [COMMAND]
+- monitor
 - slowlog get
 > 10 ms 이상
 - info 
@@ -104,17 +104,18 @@ Key/Value
 
 ## Key 주요 명령어
 ### TTL(Time To Live)
-- EXPIRE [KEY] [SECOND]
-- TTL [KEY]
-### DEL command (sync)
-### UNLINK command (async)
-### MEMORY USAGE
+- EXPIRE [KEY] [SECOND]: expire 설정
+- TTL [KEY]: ttl 확인
+### DEL [KEY] command (sync)
+### UNLINK [KEY] command (async)
+### MEMORY USAGE [KEY] : mem 사용량 확인
 
 ## Lists
 - Linked List(strings)
 - Queue, Stack
 ### command
 - LPUSH, RPUSH ,LPOP, RPOP, LLEN, LRANGE
+ex) lrange [key] 0 -1
 
 ## Sets
 - Unordered collection
