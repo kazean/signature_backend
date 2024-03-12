@@ -7,14 +7,14 @@
 ---------------------------------------------------------------------------------------------------------------------------
 # 실습환경
 ## Mysql
-> $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/docker-compose.yaml up -d
+> $ docker-compose -f ~/study/signature/ws/docker-compose/mysql/docker-compose.yaml up -d
 ```sql
 SET GLOBAL time_zone='Asia/Seoul';
 SET time_zone='Asia/Seoul';
 SELECT @@global.time_zone, @@session.time_zone;
 ```
 ## Redis
-> $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/redis/docker-compose-6-2.yaml up -d
+> $ docker-compose -f ~/study/signature/ws/Course7_Redis_Webflux/docker-composeredis/docker-compose-6-2.yaml up -d
 
 ## Jmeter
 > $ /usr/local/Cellar/jmeter/5.6.2/libexec/bin/jmeter
