@@ -31,7 +31,7 @@
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch03-02. CPU BOund vs. I/O Bound
+# Ch03-02. CPU Bound vs. I/O Bound
 ## CPU(Computer Processing Unit) Bound
 - Context Switching
 - Multi Core CPU
@@ -45,7 +45,7 @@
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch03-03. synca sync와 block non-block
+# Ch03-03. sync / async와 block / non-block
 ## Sync 동기작업
 - Request > Response > Next ...
 - example Code
@@ -1489,7 +1489,7 @@ reativeRedisTemplate
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch03-14. Spring MVC vs. Webflux
+# Ch03-14. Spring MVC vs. Webflux With JMeter
 - Spring MVC - JPA, Spring Data Redis
 - Spring Webflux- R2DBC, Spring Data Reactive Redis
 - Apach Jmeter
@@ -1526,8 +1526,9 @@ spring:
     username: root
     password: root1234!!
   data:
-    host: localhost
-    port: 6379
+    redis:
+        host: localhost
+        port: 6379
 ```
 - code
 ```java
