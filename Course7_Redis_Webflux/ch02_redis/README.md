@@ -952,8 +952,10 @@ class CacheConfig {
                 RedisCacheConfiguration
                     .defaultCacheConfig()
                     .disableCacheNullValues()
-                    .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                    .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(objectMapper)))
+                    .serializeKeysWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new StringRedisSerializer()))
+                    .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new GenericJackson2JsonRedisSerializer(objectMapper)))
                     .entryTtl(Duration.ofSeconds(ttl))
                 )
         })
