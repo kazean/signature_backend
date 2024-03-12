@@ -850,11 +850,13 @@ User getUser(final Long id) {
 > RedisTemplate: opsForValue() OperationString For Value > get/set()
 > (User 변환 필요)
 
+- interface RedisHashUserRepository extends CrudRepository<RedisHashUser, Long> { }
 
 # RedisHash
 - RedisHashUser
 @RedisHash(value ="redishash-user", timeToLive = 30L)
-class RedisHashUser{ }
+class RedisHashUser{ @Id, @Indexed }
+
 - UserService
 public RedisHashUser getUser2(final Long id) {
     // redis 값이 있으면 리턴
@@ -937,21 +939,25 @@ public class UserService {
 > organize
 ```java
 - CacheConfig
-@Bean
-RedisCacheManagerbuilderCustomerzer(){
-    BasicPolymorphicTypeValidator
-    new ObjectMapper
+@EnableCaching
+@Configuration
+class CacheConfig {
+    @Bean
+    RedisCacheManagerbuilderCustomerzer(){
+        BasicPolymorphicTypeValidator
+        new ObjectMapper
 
-    return (builder -> {
-        builder.withCacheConfiguration(name, 
-            RedisCacheConfiguration
-                .defaultCacheConfig()
-                .disableCacheNullValues()
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(objectMapper)))
-                .entryTtl(Duration.ofSeconds(ttl))
-            )
-    })
+        return (builder -> {
+            builder.withCacheConfiguration(name, 
+                RedisCacheConfiguration
+                    .defaultCacheConfig()
+                    .disableCacheNullValues()
+                    .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                    .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(objectMapper)))
+                    .entryTtl(Duration.ofSeconds(ttl))
+                )
+        })
+    }
 }
 - UserService
 @Cacheable(cacheNames = name, key ="'key:'' + #id")
