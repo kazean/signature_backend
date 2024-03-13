@@ -23,6 +23,5 @@ public class JediscacheApplication implements ApplicationRunner {
 		userRepository.save(User.builder().name("tony").email("tony@fastcampus.co.kr").build());
 		userRepository.save(User.builder().name("bob").email("bob@fastcampus.co.kr").build());
 		userRepository.save(User.builder().name("ryan").email("ryan@fastcampus.co.kr").build());
-
 	}
 }

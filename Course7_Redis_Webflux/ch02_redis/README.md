@@ -592,7 +592,46 @@ Cache aside pattern
 ## Mysql, Redis
 ## Project: jediscache
 - jedis, data-jpa, mysql, lombok, web, devtools, spring-boot-configuration-processor
+### 실습내용
+```text
+- build.gradle
+dependencies {
+    implementation 'redis.clients:jedis:4.3.1'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+}
+
+- app.yaml
+spring.
+    datasource, jpa.hibernate.ddl-auto
+logging.level
+    jpa logging(org.hibernate.SQL: debug, org.hibernate.orm.jdbc.bind: trace)
+
+- Entity
+User
+    Long id
+    String name, email 
+    @CreatedDate LocalDateTime createdAt, @LastModifiedDate updatedAt
+- UserRepository extends JPARepository
+- RedisConfig: JedisPool
+- UserController
+    /**
+     * /users/{id}/email
+     * id 입력받아 redis에 'email' 있으면 return
+     * 없으면 dp 조회후 jedis 설정
+     */
+    @Get("/users/{id}/email")
+    public String getUserEmail(@PathVariable Long id){ }
+- @EnableJpaAuditing JedisCacheApplication impl ApplicationRunner
+    void run(ApplicationArguments args) {
+        userRepository.save(User.builder().name("greg").email("greg@fastcampus.co.kr").build());
+		userRepository.save(User.builder().name("tony").email("tony@fastcampus.co.kr").build());
+		userRepository.save(User.builder().name("bob").email("bob@fastcampus.co.kr").build());
+		userRepository.save(User.builder().name("ryan").email("ryan@fastcampus.co.kr").build());
+    }
+```
+### Practice
 ```java
+@EntityListeners(AuditingEntityListener.class)
 @Entity
 public class User{ }
 
@@ -613,6 +652,11 @@ public class UserController {
     private final UserRepository userRepository;
     private final JedisPool jedisPool;
 
+    /**
+     * /users/{id}/email
+     * id 입력받아 redis에 'email' 있으면 return
+     * 없으면 dp 조회후 jedis 설정
+     */
     @GetMapping("/users/{id}/email")
     public String getUserEmail(@PathVariable Long id) {
         try (Jedis jedis = jedisPool.getResource()) {
@@ -630,8 +674,12 @@ public class UserController {
     }
 }
 ```
-> @Bean JedisPool  
-> jedisPool 활용하여 jedis 활용
+> - @Bean JedisPool  
+> - jedisPool 활용하여 jedis 활용  
+> - setex(key, expire_Long, value)
+> - @EntityListeners(AuditingEntityListener.class)
+> > @CreatedDate, @LastModifiedDate
+
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -662,9 +710,51 @@ public class UserController {
 ## 실습1
 1. RedisTemplate 사용
 2. RedisHash 사용
-### cache Project
+### Project - cache
 1. RedisTemplate 사용
-- `spring-boot-starter-data-redis`/jpa/web/lombok, devtools, configuration-processor, lombok
+- `spring-boot-starter-data-redis`/data-jpa/web, lombok/devtools/configuration-processor
+```text
+# 실습내용
+- User
+Long id
+String name
+String email
+LocalDateTime createdAt
+LocalDateTime updatedAt
+- RedisHashUser
+Long id
+String name
+String email
+LocalDateTime createdAt
+LocalDateTime updatedAt
+
+- RedisConfig
+- CacheConfig
+public static final String CACHE1 = "cache1";
+public static final String CACHE2 = "cache2";
+
+@AllArgsConstructor
+@Getter
+public static class CacheProperty {
+    private String name;
+    private Integer ttl;
+}
+
+- UserController
+/**
+ * @GetMapping("/users/{id}"): RedisTemplate 사용해서 User 객체얻기
+ * @GetMapping("/redishash-users/{id}"): @RedisHash 사용해서 User객체 얻기
+ */
+
+- UserService
+/**
+ * public User getUser(final Long id): RedisTemplate<String, User>/<String, Object>
+ * public RedisHashUser getUser2(final Long id): @RedisHash
+ * public User getUser3(final Long id): @Cacheable
+ */
+- UserRepository
+- RedisHashUSerRepository
+```
 ```java
 @EntityListeners(AuditingEntityListener.class)
 @Entity

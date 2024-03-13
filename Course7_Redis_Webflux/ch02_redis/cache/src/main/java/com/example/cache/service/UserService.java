@@ -14,6 +14,11 @@ import java.time.Duration;
 
 import static com.example.cache.config.CacheConfig.*;
 
+/**
+ * public User getUser(final Long id): RedisTemplate<String, User>/<String, Object>
+ * public RedisHashUser getUser2(final Long id): @RedisHash
+ * public User getUser3(final Long id): @Cacheable
+ */
 @Service
 @RequiredArgsConstructor
 public class UserService {

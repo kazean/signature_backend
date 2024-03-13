@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * @GetMapping("/users/{id}"): RedisTemplate or @Cacheable 사용해서 User 객체얻기 
+ * @GetMapping("/redishash-users/{id}"): @RedisHash 사용해서 User객체 얻기
+ */
 @RestController
 @RequiredArgsConstructor
 public class UserController {
