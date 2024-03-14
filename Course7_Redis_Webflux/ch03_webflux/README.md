@@ -524,6 +524,73 @@ public class SampleController {
 > > spring webflux 에서 따로 publisher 에 대한 것을 구독
 
 ### CRUD - 2. Service 3. Repository
+- build.gralde
+> - implementation 'org.springframework.boot:spring-boot-starter-validation'
+> - implementation 'org.springframework.boot:spring-boot-starter-webflux'
+```text
+# 실습 
+## repository
+- User
+    Long id
+    String name
+    String email
+    LocalDateTime createdAt
+    LocalDateTime updatedAt
+- UserResponse
+- dto/UserResponse, UserCreateReqeust, UserUpdateRequest
+### UserResponse
+    Long id
+    String name
+    String email
+    LocalDateTime createdAt
+    LocalDateTime updatedAt
+    ### UserCreateRequest, UserUpdateRequest
+    String name
+    String email
+
+- UserRepository
+    Mono<User> save(User user);
+    Flux<User> findAll();
+    Mono<User> findById(Long id);
+    Mono<Integer> deleteById(Long id);
+    - UserRepositoryImpl
+    final ConcurrentHashMap<Long, User> userHashMap = new ConcurrentHashMap<>()
+    AtomicLong sequence = new AtomicLong(1L)
+
+- UserService
+    // Mono Return 하는 이유 Spring webflux 에서 subscriber 를 하기 때문에 Publisher 되는 내용으로 Return
+    public Mono<User> create(String name, String email) {
+
+    public Flux<User> findAll() {
+
+    public Mono<User> findById(Long id) {
+
+    public Mono<Integer> deleteById(Long id) {
+
+    public Mono<User> update(Long id, String name, String email) {
+    // 1. 해당 사용자를 찾는다
+    // 2. 데이터를 변경하고 저장한다
+    // map을 하지않은 이유 map 을 하게 되면 Mono<Mono<User>>
+
+- UserController("/users")
+    @PostMapping("")
+    public Mono<?> createUser(@RequestBody UserCreateRequest request): ? <UserReesponse>
+
+    @GetMapping("")
+    public Flux<UserResponse> findAllUsers()
+
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<UserResponse>> findUser(@PathVariable Long id) // Empty: notFound
+
+    @DeleteMapping("/{id}")
+    public Mono<ResponseEntity<?>> deleteUser(@PathVariable Long id)
+    // 204(no content)
+
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<UserResponse>> updateUser(@PathVariable Long id, @RequestBody UserUpdateRequest request)
+    // user (x): 404 not found
+    // user (o): 200
+```
 ```java
 public interface UserRepository {
     // CRUD
