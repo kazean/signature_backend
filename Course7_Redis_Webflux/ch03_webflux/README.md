@@ -12,7 +12,7 @@
 - [11. R2DBC 실습(2)](#ch03-11-r2dbc-실습2)
 - [12. Reactive Redis 이론](#ch03-12-reactive-redis-이론)
 - [13. Reactive Redis 실습](#ch03-13-reactive-redis-실습)
-- [14. Spring MVC vs. Webflux 성능](#ch03-14-spring-mvc-vs-webflux)
+- [14. Spring MVC vs. Webflux 성능](#ch03-14-spring-mvc-vs-webflux-with-jmeter)
 - [15. Blockhound](#ch03-15-blockhound)
 
 
@@ -523,7 +523,7 @@ public class SampleController {
 > > publisher <---> subscriber  
 > > spring webflux 에서 따로 publisher 에 대한 것을 구독
 
-### CRUD - 2. Service 3. Repository
+### CRUD - 2. Service 3. Repository - Webflux1
 - build.gralde
 > - implementation 'org.springframework.boot:spring-boot-starter-validation'
 > - implementation 'org.springframework.boot:spring-boot-starter-webflux'
@@ -536,7 +536,6 @@ public class SampleController {
     String email
     LocalDateTime createdAt
     LocalDateTime updatedAt
-- UserResponse
 - dto/UserResponse, UserCreateReqeust, UserUpdateRequest
 ### UserResponse
     Long id
@@ -549,10 +548,10 @@ public class SampleController {
     String email
 
 - UserRepository
-    Mono<User> save(User user);
+    Mono<User> save(User user); // create, update
     Flux<User> findAll();
     Mono<User> findById(Long id);
-    Mono<Integer> deleteById(Long id);
+    Mono<Integer> deleteById(Long id); // 0, 1
     - UserRepositoryImpl
     final ConcurrentHashMap<Long, User> userHashMap = new ConcurrentHashMap<>()
     AtomicLong sequence = new AtomicLong(1L)
@@ -1267,6 +1266,20 @@ public class PostResponseV2 {
 - @Query
 - Custom Repository
 ## 실습 - webflux1 - User
+```text
+## 실습(1)
+public interface UserR2dbcRepository extends ReactiveCrudRepository<User, Long>
+    @Modifying
+    @Query("DELETE FROM users WHERE name = :name")
+    Mono<Void> deleteByName(String name);
+
+UserService 
+    Mono<Void> deleteByName(String name)
+
+UserController
+    @DeleteMapping("/search")
+    public Mono<ResponseEntity<?>> deleteUserByName(@RequestParam String name) //: 204
+```
 ```java
 public interface UserR2dbcRepository extends ReactiveCrudRepository<User, Long> {
     @Modifying
@@ -1299,6 +1312,54 @@ public class UserController {
 ```
 > `@Modifying`, `@Query("WHERE name = :name")`
 - Join
+```text
+# 실습(2) - CustomRepository
+Post
+    Long id;
+    Long userId;
+    String title;
+    String content;
+    @Transient
+    User user;
+    CreatedDate
+    LocalDateTime updatedAt;
+UserPostResponse
+    Long id;
+    String username;
+    String title;
+    String content;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
+
+<I> PostCustomR2dbcRepository
+    Flux<Post> findAllByUserId(Long userId);
+
+PostCustomR2dbcRepositoryImpl implements PostCustomR2dbcRepository{
+    private final DatabaseClient databaseClient;
+
+    @Override
+    public Flux<Post> findAllByUserId(Long userId) {
+        var sql = """
+                SELECT 
+                    p.id as pid, p.user_id as userId, p.title, p.content, p.created_at as createdAt, p.updated_at as updatedAt,
+                    u.id as uid, u.name as name, u.email as email, u.created_at as uCreatedAt, u.updated_at as uUpdatedAt 
+                FROM posts p 
+                LEFT JOIN users u 
+                ON p.user_id = u.id 
+                WHERE u.id = :userId
+                """;
+                ~
+    }
+<I> PostR2dbcRepository extends ReactiveCrudRepository<Post, Long>, PostCustomR2dbcRepository
+
+PostServiceV2
+    Flux<Post> findByAllUserId(Long id)
+
+class UserController {
+    @GetMapping("/{id}/posts")
+    Flux<UserPostResponse> getUserPosts(@PathVariable Long id)
+```
+
 ```java
 @RestController
 @RequiredArgsConstructor
@@ -1414,8 +1475,10 @@ public class Post {
     private LocalDateTime updatedAt;
 }
 ```
-> CustomRepository  
-> `DatabaseClient`.sql().bind().fetch().all().map(), `@Transient`
+> - @Transient: Join Mapping Colume
+> - CustomRepository (~CustomRepository/@Repo ~CustomRepositoryImpl)
+> > ~R2dbcRepositroy extends ReactiveR2dbcRepository, ~CustomRepository
+> - `DatabaseClient`.sql().bind().fetch().all().map(), `@Transient`
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -1447,6 +1510,11 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
+```
+```text
+# 실습
+RedisConfig: ReactiveRedisTemplate<String, String>
+UserService: findById, deleteById, update > redisTemplate 연동
 ```
 ```java
 @Configuration
@@ -1556,7 +1624,7 @@ reativeRedisTemplate
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch03-14. Spring MVC vs. Webflux With JMeter
+# Ch03-14. Spring MVC vs Webflux With JMeter
 - Spring MVC - JPA, Spring Data Redis
 - Spring Webflux- R2DBC, Spring Data Reactive Redis
 - Apach Jmeter
