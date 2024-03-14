@@ -597,7 +597,6 @@ Cache aside pattern
 - build.gradle
 dependencies {
     implementation 'redis.clients:jedis:4.3.1'
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 }
 
 - app.yaml
@@ -679,6 +678,7 @@ public class UserController {
 > - setex(key, expire_Long, value)
 > - @EntityListeners(AuditingEntityListener.class)
 > > @CreatedDate, @LastModifiedDate
+> > > Application @EnableJpaAuditing
 
 
 
@@ -1055,6 +1055,10 @@ class CacheConfig {
 @Cacheable(cacheNames = name, key ="'key:'' + #id")
 User getUser(final Long id){ }
 ```
+> > - RedisTemplate<String, T>/<String, Object>
+> > - RedisHash(value = "key", timeToLive = Long) // hgetall
+> > - @EnableCaching @Bean: RedisCacheManagerBuildCustomizer(PolymorphicTypeValidator, ObjectMapper > @FunctionalInterface void customize(RedisCacheManagerBuilder builder);)
+> > > - @Cacheable(cacheNames = "RedisCacheManagerBuilderCustomizer_name", keys="'key:' + #id")
 
 ## 실습3 - 부하테스트
 Cache와 DB Resource 사용량 비교
@@ -1081,8 +1085,8 @@ $ vegeta attack -timeout=30s -duration=15s -rate=5000/1s -targets=request1.txt -
 3. WebSession(WebFlux)
 - gradle.build
 > spring-session-core
-> > spring-boot-starter-data-redis  
-> > `spring-session-data-redis`
+> > - spring-boot-starter-data-redis  
+> > - `spring-session-data-redis`
 ### 활용
 1. Redis
 2. JDBC
@@ -1096,7 +1100,7 @@ $ vegeta attack -timeout=30s -duration=15s -rate=5000/1s -targets=request1.txt -
 - httpSession.setAttribute/getAttribute()
 
 ## 실습
-### session
+### Project - session
 - build.gradle
 > spring-session-data-redis
 - application.yaml
@@ -1209,16 +1213,25 @@ $ PSUBSCRIBE users:*
 ```
 ## 실습 - Spring boot
 - Spring Data Redis
-### Sub Project
-- @Service `impl MessageListener`
-- @Bean `MessageListenerAdapter`
-> new MessageListenerAdapter(messageListenService())
-- @Bean `RedisMessageListenerContainer`
-> new ().setConnectionFactory(con).addMessageListener(adapter, ChannelTopic.of("users:unregister"))
-- 발행
-> redisTemplate.convertAndSend()
 
-### pubsub
+### Project - pubsub
+```text
+# 실습내용
+- @Service MessageListenService `impl MessageListener`
+    >Message: getChannel, getBody 출력
+
+- @Configuration RedisConfig
+    @Bean `MessageListenerAdapter`
+    @Bean `RedisMessageListenerContainer`
+    // ChannelTopic.of("users:unregister")
+
+- PublishController
+    @PostMapping("events/users/deregister")
+    public void publishUserDeregisterEvent()
+        > redisTemplate.convertAndSend()
+```
+
+#### Pub
 - build.gradle
 > spring-boot-starter-data-redis
 ```java
