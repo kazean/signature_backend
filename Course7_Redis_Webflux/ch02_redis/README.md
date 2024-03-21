@@ -1378,7 +1378,8 @@ scrape_configs:
     static_configs:
       - targets: ['redis-exporter:9121']
 ```
-> prometheus/config/prometheus.yml: scrape 설정
+> prometheus/config/prometheus.yml: scrape 설정  
+> redis-cli info replication
 - redis: 6379
 - prometheus :9090
 - grafana :3000
