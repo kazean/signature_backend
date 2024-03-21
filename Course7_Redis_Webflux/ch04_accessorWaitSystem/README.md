@@ -609,7 +609,7 @@ public class UserQueueService {
 @RequestMapping("/api/v1/queue")
 public class UserQueueController {
     @GetMapping("/rank")
-    public Mono<RankNumberResponse> getRankUIser(
+    public Mono<RankNumberResponse> getRankUser(
             @RequestParam(name = "queue", defaultValue = "default") String queue,
             @RequestParam(name = "user_id") Long userId
     ) {
@@ -925,7 +925,7 @@ public Mono<Rendering> waitingRoomPage(/** */, ServerWebExchange exchange){
 - website 페이지 이동시 승인 안되있으면 대기페이지, 되있다면 접속페이지 이동시키기
 - JMeter Test
 
-## Code
+## 실습 - website, flow
 - website
 ```java
 @SpringBootApplication
