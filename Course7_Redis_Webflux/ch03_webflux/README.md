@@ -87,7 +87,7 @@ Kernel에 I/O Request 시 대기
 
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch03-04. Spring MVC. vs Webflux
+# Ch03-04. Spring MVC vs Webflux
 - Reactive Stack vs. Servlet Stack
 ## Spring Boot 2
 - Reactor
@@ -508,6 +508,16 @@ public class SampleHandler {
 > @Bean `RouterFunction` RouterFunctions.route().GET(pattern, handler).build()
 - annotation endpoint
 ```java
+@Configuration
+public class WebClientConfig {
+
+    @Bean
+    public WebClient webClient() {
+        return WebClient.builder().build();
+    }
+}
+
+
 @RestController
 public class SampleController {
 
