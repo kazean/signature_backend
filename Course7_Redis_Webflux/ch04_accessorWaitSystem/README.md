@@ -798,6 +798,7 @@ class UserQueueService {
 - code
 ```java
 public class UserQueueService {
+  // 쿠기 검증
   public Mono<Boolean> isAllowedByToken(final String queue, final Long userId, String token) {
     return this.generateToken(queue, userId)
       .filter(gen -> gen.equalsIgnoreCase(token))
@@ -868,6 +869,8 @@ public class UserQueueController {
 }
 
 public class WaitingRoomController {
+
+  // isAllowed(redis 캐시 확인에서 token 검증으로 변경)
   @GetMapping("/waiting-room")
   public Mono<Rendering> waitingRoomPage(
         @RequestParam(name = "queue", defaultValue = "default") String queue,
@@ -902,10 +905,14 @@ public class WaitingRoomController {
     const queue = '[[${queue}]]';
     const userId = '[[${userId}]]';
     const queryParam = new URLSearchParams({queue: queue, user_id: userId});
+    // 처음 @Get("waiting-room") 에서 진입가능 확인 or 대기열등록
+    // wait-queue rank 확인
     fetch('/api/v1/queue/rank?' + queryParam)
       .then(response => response.json())
       .then(data => {
+          // wait-queue에 없다면
           if(data.rank < 0) {
+            // schedule에 의해서 proceed queue로 넘어갔으므로 쿠키 생성
             fetch('/api/v1/queue/touch?' + queryParam)
               .then(response => {
                 document.querySelector('#number').innerHTML = 0;

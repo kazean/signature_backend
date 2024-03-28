@@ -7,6 +7,15 @@
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch00. OT
+## Spring Batch 
+- ![Batch Sterotypes](./images/batch_sterotypes.png)
+- ![SimpleTasklet](./images/SimpleTasklet.png)
+- ![FlatFileItemReader](./images/FlatFileItemReader.png)
+- ![Multi-threaded Step](./images/Mutli-threaded_Step.png)
+- ![LineAgggregator](./images/LineAggregator.png)
+
+
+--------------------------------------------------------------------------------------------------------------------------------
 
 
 # Ch01. Spring Batch 원리와 철학 이해
