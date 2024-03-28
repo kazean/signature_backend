@@ -43,11 +43,13 @@ massive -> queue -> Web Application
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch04-03. 개발 환경 준비
 ## website - 진입 페이지
+- org.fastcampus.website
 - build.gradle
 > web, thymeleaf
 - application.yml: server.port:9000
-- index.html
+- [index.html](https://github.com/kazean/signature_backend/blob/main/Course7_Redis_Webflux/ch04_accessorWaitSystem/website/src/main/resources/templates/index.html)
 ## flow - 접속자 대기 Web App
+- org.fastcampus.flow
 - build.gradle
 ```gradle
 dependencies {
@@ -81,13 +83,20 @@ spring:
 ```
 - code
 ```java
+// flow.controller
 @RestController
 @RequestMapping("/api/v1/queue")
 @RequiredArgsConstructor
 public class UserQueueController {
     private final UserQueueService userQueueService;
 
-    // 등록 할 수 있는 API path
+    /**
+     * 대기열 등록
+     * USER_QUEUE_WAIT_KEY
+     * zadd 후 zrank
+     *
+     * @return Mono<Long>: rank
+     */
     @PostMapping("")
     public Mono<RegisterUserResponse> registerUser(
             @RequestParam(name = "queue", defaultValue = "default") String queue,
@@ -98,6 +107,7 @@ public class UserQueueController {
     }
 }
 
+// flow.service
 @Service
 @RequiredArgsConstructor
 public class UserQueueService {
@@ -119,6 +129,7 @@ public class UserQueueService {
     }
 }
 
+// flow.exception
 // # 에러 관련 - ApplicationException, ErrorCode(enum), ApplicationAdvice(ExceptionHandler, ServerExceptionResponse(record))
 @AllArgsConstructor
 @Getter
@@ -128,6 +139,7 @@ public class ApplicationException extends RuntimeException{
     private String reason;
 }
 
+// flow.exception
 @AllArgsConstructor
 public enum ErrorCode {
     QUEUE_ALREADY_REGISTERED_USER(HttpStatus.CONFLICT, "UQ-0001", "Already registered in queue");
@@ -140,11 +152,12 @@ public enum ErrorCode {
         return new ApplicationException(httpStatus, code, reason);
     }
 
-    public ApplicationException build(Object ...args) {
+    public ApplicationException build(Object... args) {
         return new ApplicationException(httpStatus, code, reason.formatted(args));
     }
 }
 
+// flow.exception
 @RestControllerAdvice
 public class ApplicationAdvice {
 
@@ -160,6 +173,7 @@ public class ApplicationAdvice {
 
 }
 
+// flow.dto
 public record RegisterUserResponse(Long rank) {
 }
 ```
@@ -226,7 +240,6 @@ public class UserQueueService {
     private final String USER_QUEUE_WAIT_KEY = "users:queue:%s:wait";
     private final String USER_QUEUE_PROCEED_KEY = "users:queue:%s:proceed";
 
-    // 진입을 허용
     public Mono<Long> allowUser(final String queue, final Long count) {
         // 진입을 허용하는 단계
         // 1. wait queue 사용자를 제거
@@ -237,7 +250,7 @@ public class UserQueueService {
 
     }
 
-    // 진입이 가능한 상태인지 조회
+    // 진입이 가능한 상태인지 조회(proceed queue에 등록 되었는지)
     public Mono<Boolean> isAllowed(final String queue, final Long userId) {
         return reactiveRedisTemplate.opsForZSet().rank(USER_QUEUE_PROCEED_KEY.formatted(queue), userId.toString())
                 .defaultIfEmpty(-1L)
@@ -251,6 +264,12 @@ public class UserQueueService {
 public class UserQueueController {
     private final UserQueueService userQueueService;
 
+    /**
+     * 진입 허용
+     * WAIT_QUEUE > PROCEED_QUEUE
+     *
+     * @return Boolean
+     */
     @PostMapping("/allow")
     public Mono<AllowUserResponse> allowUser(
             @RequestParam(name = "queue", defaultValue = "default") String queue,
@@ -270,6 +289,7 @@ public class UserQueueController {
     }
 }
 
+// flow.dto
 public record AllowedUserResponse(Boolean allowed) {
 }
 public record AllowUserResponse(Long requestCount, Long allowedCount) {
@@ -568,11 +588,20 @@ class UserQueueServiceTest {
 </html>
 ```
 ```java
+// flow.controller
 @Controller
 @RequiredArgsConstructor
 public class WaitingRoomController {
     private final UserQueueService userQueueService;
 
+    /**
+     * 대기페이지
+     * allowed 확인(PROCEED) > Redirect
+     * switchIfEmpty > registerWaitQueue > waiting-room.html
+     *
+     * @return Rendering.redirectTo(url).build
+     *  switchIfEmpty Rendering.view(waiting-room.html)
+     */
     @GetMapping("/waiting-room")
     public Mono<Rendering> waitingRoomPage(
             @RequestParam(name = "queue", defaultValue = "default") String queue,
@@ -608,6 +637,13 @@ public class UserQueueService {
 
 @RequestMapping("/api/v1/queue")
 public class UserQueueController {
+
+    /**
+     * 랭크 확인
+     * USER_QUEUE_WAIT_KEY
+     *
+     * @return Mono<Long> rank
+     */
     @GetMapping("/rank")
     public Mono<RankNumberResponse> getRankUser(
             @RequestParam(name = "queue", defaultValue = "default") String queue,
@@ -618,6 +654,7 @@ public class UserQueueController {
     }
 }
 
+// flow.dto
 public record RankNumberResponse(Long rank) {
 }
 
@@ -721,6 +758,7 @@ public class UserQueueService {
 - application.yml
 ```yml
 spring:
+  ~
 schedule:
   enable: true
 ---
