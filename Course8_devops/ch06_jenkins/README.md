@@ -1,13 +1,13 @@
 # Ch06. 백엔드 개발자를 위한 빌드자동화 - Jenkins
-- [ch06-01. Git을 이용한 소스코드 버전관리](#ch06-01-git을-이용한-소스코드-버전관리)
-- [ch06-02. Git Branch를 통한 협업 개발하기](#ch06-02-git-branch를-통한-협업-개발하기)
-- [ch06-03. Jenkins 프로그램 소개 및 설치하기](#ch06-03-jenkins-프로그램-소개-및-설치하기)
-- [ch06-04. Git 연동을 위한 Jenkins 환경설정](#ch06-04-git-연동을-위한-jenkins-환경설정)
-- [ch06-05. Jenkins 파이프라인을 이용한 컨테이너 빌드](#ch06-05-jenkins-파이프라인을-이용한-컨테이너-빌드)
-- [ch06-06-01. Jenins Slack Webhook 연동하기(1)](#ch06-06-01-jenkins-slack-webhook-연동하기)
-- [ch06-06-02. Jenins Slack Webhook 연동하기(2)](#ch06-06-02-jenkins-slack-webhook-연동하기-2)
-- [ch06-07. 실전 빌드하기 Source push - container build - ecr upload](#ch06-07-실전-빌드하기-source-push---container-build---ecr에-업로드-flow-arch-설명)
-- [ch06-08. LAB - git 코드 업로드부터 컨테이너 빌드까지 - CI 구축하기](#ch06-08-lab--git-코드-업로드-부터-컨테이너-빌드까지---ci-구축하기)
+- [1. Git을 이용한 소스코드 버전관리](#ch06-01-git을-이용한-소스코드-버전관리)
+- [2. Git Branch를 통한 협업 개발하기](#ch06-02-git-branch를-통한-협업-개발하기)
+- [3. Jenkins 프로그램 소개 및 설치하기](#ch06-03-jenkins-프로그램-소개-및-설치하기)
+- [4. Git 연동을 위한 Jenkins 환경설정](#ch06-04-git-연동을-위한-jenkins-환경설정)
+- [5. Jenkins 파이프라인을 이용한 컨테이너 빌드](#ch06-05-jenkins-파이프라인을-이용한-컨테이너-빌드)
+- [6-01. Jenins Slack Webhook 연동하기(1)](#ch06-06-01-jenkins-slack-webhook-연동하기)
+- [6-02. Jenins Slack Webhook 연동하기(2)](#ch06-06-02-jenkins-slack-webhook-연동하기-2)
+- [7. 실전 빌드하기 Source push - container build - ecr upload](#ch06-07-실전-빌드하기-source-push---container-build---ecr에-업로드-flow-arch-설명)
+- [8. LAB - git 코드 업로드부터 컨테이너 빌드까지 - CI 구축하기](#ch06-08-lab--git-코드-업로드-부터-컨테이너-빌드까지---ci-구축하기)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
