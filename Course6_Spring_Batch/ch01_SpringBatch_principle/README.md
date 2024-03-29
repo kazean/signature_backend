@@ -310,7 +310,7 @@ class DormantBatchJobTest {
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch01-03. 스프링 배치처럼 개선하기
 ## 목표
-- Job, Tasklet, Item 3총사 역할 이해하기
+- `Job, Tasklet, Item` 3총사 역할 이해하기
 - 문제점 인식, 개선
 ## Code Smell
 - 뒤섞인 관심사
@@ -658,8 +658,17 @@ public class DormantBatchConfiguration {
 ## 요구사항 - Step
 1. 휴면 계정 전환 예정자 이메일 발송
 2. 휴면 계정 전환
-### Job > AbstractJob
+- job - Step
+> - ![jobStep](./images/jobStep.png)
+> - ![jobSteps](./images/jobSteps.png)
+## Template Method Pattern 
+- ![Job-Tempalte Method Pattern](./images/job-templateMethodPattern.png)
+## 실습 - batch-campus
+- Job: Interface로 변경
+- AbstractJob impl Job
 ```java
+// batch
+
 public interface Job {
     JobExecution execute();
 }
@@ -707,8 +716,10 @@ public abstract class AbstractJob implements Job {
 > TaskletJob과 StepJob 중복코드를 줄이기 위해 Abstract class AbstractJob 생성
 > public abstract void doExecute()
 
-- TaskletJob, StepJob
+### TaskletJob, StepJob
 ```java
+// batch
+
 public class TaskletJob extends AbstractJob {
     private final Tasklet tasklet;
 
@@ -729,20 +740,6 @@ public class TaskletJob extends AbstractJob {
     }
 }
 
-public class StepJob extends AbstractJob{
-    private final List<Step> steps;
-
-    public StepJob(List<Step> steps, JobExecutionListener jobExecutionListener) {
-        super(jobExecutionListener);
-        this.steps = steps;
-    }
-
-    @Override
-    public void doExecute() {
-        steps.forEach(Step::execute);
-    }
-}
-
 public class Step {
     private final Tasklet tasklet;
 
@@ -759,6 +756,21 @@ public class Step {
         tasklet.execute();
     }
 }
+
+public class StepJob extends AbstractJob{
+    private final List<Step> steps;
+
+    public StepJob(List<Step> steps, JobExecutionListener jobExecutionListener) {
+        super(jobExecutionListener);
+        this.steps = steps;
+    }
+
+    @Override
+    public void doExecute() {
+        steps.forEach(Step::execute);
+    }
+}
+
 
 public class StepJobBuilder {
     private final List<Step> steps;
@@ -802,6 +814,7 @@ StepJobBuilder build(): StepJob(steps, jobExecutionListener)
 
 ### Configuration
 ```java
+// application/step
 @Configuration
 public class StepExampleBatchConfiguration {
 
@@ -834,6 +847,7 @@ public class StepExampleBatchConfiguration {
     }
 }
 
+// application/dormant
 @Configuration
 public class DormantBatchConfiguration {
     @Bean
@@ -876,11 +890,77 @@ public class DormantBatchConfiguration {
 
     // 휴면전환 예정 1주일전인 사람에게 메일을 발송한다
 }
+
+// application.dormant # 기존 ItemReader
+
+@Component
+public class AllCustomerItemRedaer implements ItemReader<Customer> {
+    private final CustomerRepository customerRepository;
+    private int pageNo = 0;
+
+    public AllCustomerItemRedaer(CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
+    }
+
+    @Override
+    public Customer read() {
+        final PageRequest pageRequest = PageRequest.of(pageNo, 1, Sort.by("id").ascending());
+        final Page<Customer> page = customerRepository.findAll(pageRequest);
+
+        final Customer customer;
+        if (page.isEmpty()) {
+            pageNo = 0;
+            return null;
+        } else {
+            pageNo++;
+            return customer = page.getContent().get(0);
+        }
+    }
+}
+
+@Component
+public class PreDormantBatchItemProcessor implements ItemProcessor<Customer, Customer> {
+    @Override
+    public Customer process(Customer customer) {
+        LocalDate targetDate = LocalDate.now()
+                .minusDays(365)
+                .plusDays(7);
+        if (targetDate.equals(customer.getLoginAt().toLocalDate())) {
+            return customer;
+        } else {
+            return null;
+        }
+    }
+}
+
+@Component
+public class PreDormantBatchItemWriter implements ItemWriter<Customer> {
+    private final EmailProvider emailProvider;
+
+    @Autowired
+    public PreDormantBatchItemWriter() {
+        this.emailProvider = new EmailProvider.Fake();
+    }
+
+    public PreDormantBatchItemWriter(EmailProvider emailProvider) {
+        this.emailProvider = emailProvider;
+    }
+
+    @Override
+    public void write(Customer customer) {
+        emailProvider.send(
+                customer.getEmail(),
+                "곧 휴면계정으로 전환이 됩니다.",
+                "휴면계쩡으로 사용되기를 원치 않으신다면 1주일 내에 로그인을 해주세요"
+        );
+    }
+}
 ```
 > 알람 일주일전 대상자 preDormantBatchStep: Step  
 > 일년 이후 로그인 대상자 휴면계정 전환 dormantBatchStep: Step
 > dormantBatchJob: Job
-- testCode
+
+### testCode
 ```java
 class PreDormantBatchItemProcessorTest {
     private PreDormantBatchItemProcessor preDormantBatchItemProcessor;
