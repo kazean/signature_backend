@@ -41,10 +41,26 @@
 # Ch01-02. 프로젝트 세팅 및 (원시적인) 배치 프로그램 구현하기 - 기반 구현/본 구현
 ## batch-campus
 Customer 객체로 로그인 시간이 365일 지난 계정을 휴면계정으로 전환하기
+- com.
 - gradle
 > data-jpa, lombok, h2
 - Code
+> - Customer: @Entity
+> - CustomerRepository extends JpaRepository<Customer, Long>
+> - <I> EmailProvider 
+> > void send(~);
+> > - Fake Impl EmailProvider
+> - JobExecution batchStatus, startTime, endTime
+> - enum BatchStatus: STARTING, COMPLETE, FAILED
+> - DormantBatchJob
+> > customerRepository, emailProvider  
+> > JobExecution execute()
 ```java
+// /customer
+@Entity
+@NoArgsConstructor
+@Getter
+@ToString
 public class Customer {
     @Id @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
@@ -53,9 +69,34 @@ public class Customer {
     private LocalDateTime createAt;
     private LocalDateTime loginAt;
     private Status status;
-}
-// CustomerRepository
 
+    public Customer(String name, String email) {
+        this.name = name;
+        this.email = email;
+        this.createAt = LocalDateTime.now();
+        this.loginAt = LocalDateTime.now();
+        this.status = Status.NORMAL;
+    }
+
+    public void setLoginAt(LocalDateTime loginAt) {
+        this.loginAt = loginAt;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public enum Status {
+        NORMAL,
+        DORMANT;
+    }
+}
+
+// customer
+public interface CustomerRepository extends JpaRepository<Customer, Long> {
+}
+
+// ~/
 public interface EmailProvider {
     void send(String emilAddress, String title, String body);
 
@@ -68,6 +109,26 @@ public interface EmailProvider {
     }
 }
 
+// batch
+@Getter
+@ToString
+public enum BatchStatus {
+    STARTING,
+    FAILED,
+    COMPLETED;
+}
+
+// batch
+@Getter
+@Setter
+@ToString
+public class JobExecution {
+    private BatchStatus status;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
+}
+
+// ~/
 @Component
 public class DormantBatchJob {
     private final CustomerRepository customerRepository;
@@ -127,15 +188,6 @@ public class DormantBatchJob {
 
         return jobExecution;
     }
-}
-
-@Getter
-@Setter
-@ToString
-public class JobExecution {
-    private BatchStatus status;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
 }
 ```
 > static PageRequest.of(int page, int size[, Sort sort])  
@@ -257,6 +309,18 @@ class DormantBatchJobTest {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch01-03. 스프링 배치처럼 개선하기
+## 목표
+- Job, Tasklet, Item 3총사 역할 이해하기
+- 문제점 인식, 개선
+## Code Smell
+- 뒤섞인 관심사
+> - 이해하기 어렵다
+> - 수정하기 어렵다
+- 확장하기 어려운 구조
+## 배치 비지니스 로직 시나리오
+1. `Reads` a large number of records from a database, file, or queue
+2. `Processes` the data in some fashion.
+3. `Writes` back data in a modified form
 ## SRP, OCP
 DormantBatchJob > Job 관심사 분리하기
 - Job
@@ -266,20 +330,72 @@ DormantBatchJob > Job 관심사 분리하기
 - JobExecutionListener
 > beforeJob(jobExecution), afterJob(jobExecution)
 
+## 실습1 - batch-campus
+관심사 분리 - Tasklet, JobExecutionListener
 - code
 ```java
-// Tasklet, JobExeuctionListener
+// batch
+public interface Tasklet {
+    void execute();
+}
+public interface JobExecutionListener {
+    void beforeJob(JobExecution jobExecution);
+
+    void afterJob(JobExecution jobExecution);
+}
+
+// application
+@Component
+public class DormantBatchTasklet implements Tasklet {
+    private final CustomRepository customRepository;
+    private final EmailProvider emailProvider;
+    
+    public DormantBatchTasklet(CustomRepository customRepository) {
+        this.customerRepository = customerRepository;
+        this.emailProvider = new EmailProvider.Fake();
+    }
+
+    @Override
+    public void execute() {
+        // 비지니스로직
+        int pageNo = 0;
+        // 1. 유저를 조회한다.
+        final PageRequest pageRequest = PageRequest.of(pageNo, 1, Sort.by("id").ascending());
+        Page<Customer> page = customerRepository.findAll(pageRequest);
+
+        final Customer customer;
+        if (page.isEmpty()) {
+            break;
+        } else {
+            pageNo++;
+            customer = page.getContent().get(0);
+        }
+
+        // 2. 휴면계정 대상을 추출 및 변환한다.
+        final boolean isDormantTarget = LocalDate.now()
+                .minusDays(365)
+                .isAfter(customer.getLoginAt().toLocalDate());
+        if (isDormantTarget) {
+            customer.setStatus(Customer.Status.DORMANT);
+        } else {
+            continue;
+        }
+
+        // 3. 휴면계정으로 상태를 변경한다.
+        customerRepository.save(customer);
+
+        // 4. 메일을 보낸다
+        emailProvider.send(customer.getEmail(), "휴먼전환 안내메일입니다", "내용");
+    }
+}
+
+// batch - @component 제외 > @Configuration에서 bean 등록
 public class Job {
     private final Tasklet tasklet;
     private final JobExecutionListener jobExecutionListener;
 
     public Job(Tasklet tasklet) {
         this(tasklet, null);
-    }
-
-    @Builder
-    public Job(ItemReader<?> itemReader, ItemProcessor<?, ?> itemProcessor, ItemWriter<?> itemWriter, JobExecutionListener jobExecutionListener) {
-        this(new SimpleTasklet(itemReader, itemProcessor, itemWriter), jobExecutionListener);
     }
 
     public Job(Tasklet tasklet, JobExecutionListener jobExecutionListener) {
@@ -341,6 +457,40 @@ public class DormantBatchJobExecutionListener implements JobExecutionListener {
     }
 }
 
+@Configuration
+public class DormantBatchConfiguration {
+    @Bean
+    public Job dormantBatchJob(
+            DormantBatchTasklet dormantBatchTasklet,
+            DormantBatchJobExecutionListener dormantBatchJobExecutionListener
+    ) {
+        return new Job(
+            dormantBatchJobTasklet,
+            dormantBatchJobExecutionListener
+        );
+    }
+}
+```
+> Test 실행 및 생성자 수정
+
+## 실습2 - batch-campus
+- 비지니스의 3가지 단계로 분리
+> Read, Process, Write
+```java
+// batch
+public interface ItemReader<I> {
+    I read()
+}
+public interface ItemProcessor<I, O> {
+    O process(I item);
+}
+
+public interface ItemWriter<O> {
+    void write(O item);
+}
+
+// batch
+@Component
 // Tasklet, DormantBatchItemReader/Process/Writer
 public class SimpleTasklet<I,O> implements Tasklet {
     private final ItemReader<I> itemReader;
@@ -370,6 +520,117 @@ public class SimpleTasklet<I,O> implements Tasklet {
     }
 }
 
+// application
+@Component
+public class DormantBatchItemReader implements ItemReader<Customer> {
+    private final CustomerRepository customerRepository;
+    private int pageNo = 0;
+
+    public DormantBatchItemReader(CustomRepository customerRepository) {
+        this.customerRepository = customerRepository;
+    }
+
+    @Override
+    public Customer read() {
+        // 1. 유저를 조회한다.
+        final PageRequest pageRequest = PageRequest.of(pageNo, 1, Sort.by("id").ascending());
+        Page<Customer> page = customerRepository.findAll(pageRequest);
+
+        final Customer customer;
+        if (page.isEmpty()) {
+            pageNo = 0;
+            return null;
+        } else {
+            pageNo++;
+            customer = page.getContent().get(0);
+        }
+
+    }
+}
+
+@Component
+public class DormantBatchItemProcessor implements ItemProcessor<Customer, Customer> {
+    @Override
+    public Customer process(Customer item) {
+        final boolean isDormantTarget = LocalDate.now()
+                .minusDays(365)
+                .isAfter(item.getLoginAt().toLocalDate());
+        if (isDormantTarget) {
+            item.setStatus(Customer.Status.DORMANT);
+            return item;
+        } else {
+            return null;
+        }
+    }
+}
+
+@Component
+public class DormantBatchItemWriter implements ItemWriter<Customer> {
+    private final CustomerRepository customerRepository;
+    private final EmailProvider emailProvider;
+
+    public DormantBatchItemWriter(CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
+        this.emailProvider = new EmailProvider.Fake();
+    }
+
+    @Override
+    public void write(Customer item) {
+        customerRepository.save(item);
+        emailProvider.send(item.getEmail(), "휴먼전환 안내메일입니다", "내용");
+    }
+}
+
+public class Job {
+    private final Tasklet tasklet;
+    private final JobExecutionListener jobExecutionListener;
+
+    public Job(Tasklet tasklet) {
+        this(tasklet, null);
+    }
+
+    @Builder
+    public Job(ItemReader<?> itemReader, ItemProcessor<?, ?> itemProcessor, ItemWriter<?> itemWriter, JobExecutionListener jobExecutionListener) {
+        this(new SimpleTasklet(itemReader, itemProcessor, itemWriter), jobExecutionListener);
+    }
+
+    public Job(Tasklet tasklet, JobExecutionListener jobExecutionListener) {
+        this.tasklet = tasklet;
+        this.jobExecutionListener = Objects.requireNonNullElseGet(jobExecutionListener, () -> new JobExecutionListener() {
+            @Override
+            public void beforeJob(JobExecution jobExecution) {
+            }
+
+            @Override
+            public void afterJob(JobExecution jobExecution) {
+            }
+        });
+    }
+
+    public JobExecution execute() {
+        final JobExecution jobExecution = new JobExecution();
+        jobExecution.setStatus(BatchStatus.STARTING);
+        jobExecution.setStartTime(LocalDateTime.now());
+
+        // 비지니스 로직 전처리
+        jobExecutionListener.beforeJob(jobExecution);
+
+        try {
+            // 비지니스 로직
+            tasklet.execute();
+            jobExecution.setStatus(BatchStatus.COMPLETED);
+        } catch (Exception e) {
+            jobExecution.setStatus(BatchStatus.FAILED);
+        }
+        jobExecution.setEndTime(LocalDateTime.now());
+        // 비지니스 로직 후처리
+        jobExecutionListener.afterJob(jobExecution);
+
+
+        return jobExecution;
+    }
+}
+
 @Configuration
 public class DormantBatchConfiguration {
     @Bean
@@ -377,13 +638,13 @@ public class DormantBatchConfiguration {
             DormantBatchItemReader itemReader,
             DormantBatchItemProcessor itemProcessor,
             DormantBatchItemWriter itemWriter,
-            DormantBatchJobExecutionListener dormantBatchJobExecutionListener
+            DormantBatchJobExecutionListener listener
     ) {
         return Job.builder()
                 .itemReader(itemReader)
                 .itemProcessor(itemProcessor)
                 .itemWriter(itemWriter)
-                .jobExecutionListener(dormantBatchJobExecutionListener)
+                .jobExecutionListener(listener)
                 .build();
     }
 }
