@@ -1,21 +1,19 @@
 # Ch02. Spring Batch 적용
-- [Spring Batch 도메인 용어 익히기](#ch02-01-01-spring-batch-도메인-용어-익히기)
-- [Spring Batch 도메인 용어 익히기 - 적용](#ch02-01-02-spring-batch-도메인-용어-익히기---적용)
-- [Job](#ch02-02-job)
-- [Step](#ch02-03-01-step)
-- [Step-기본적용](#ch02-03-02-step---기본적용)
-- [Step - flow](#ch02-03-03-step---flow-적용)
-- [ItemReader](#ch02-04-01-itemreader)
-- [ItemReader - File](#ch02-04-02-itemreader---file)
-- [ItemReader - File](#ch02-04-02-itemreader---file-1)
-- [ItemReader - Database](#ch02-04-03-itemreader---database)
-- [ItemWriter](#ch02-05-01-itemwriter)
-- [ItemWriter - 적용](#ch02-05-02-itemwriter---적용)
-- [ItemProcessor](#ch02-06-itemprocessor)
-- [확장을 통한 성능 개선](#ch02-07-01-확장을-통한-성능-개선)
-- [확장 - MultiThread, Parallel](#ch02-07-02-확장을-통한-성능-개선---multi-threaded-parallel)
-- [확장 - Partitioning](#ch02-07-03-확장을-통한-성능-개선---partitioning)
-# [확장 - ](#)
+- [1-1. Spring Batch 도메인 용어 익히기](#ch02-01-01-spring-batch-도메인-용어-익히기)
+- [1-2. Spring Batch 도메인 용어 익히기 - 적용](#ch02-01-02-spring-batch-도메인-용어-익히기---적용)
+- [2. Job](#ch02-02-job)
+- [3-1. Step](#ch02-03-01-step)
+- [3-2. Step-기본적용](#ch02-03-02-step---기본적용)
+- [3-3. Step - flow](#ch02-03-03-step---flow-적용)
+- [4-1. ItemReader](#ch02-04-01-itemreader)
+- [4-2. ItemReader - File](#ch02-04-02-itemreader---file)
+- [4-3. ItemReader - Database](#ch02-04-03-itemreader---database)
+- [5-1. ItemWriter](#ch02-05-01-itemwriter)
+- [5-2. ItemWriter - 적용](#ch02-05-02-itemwriter---적용)
+- [6. ItemProcessor](#ch02-06-itemprocessor)
+- [7-1. 확장을 통한 성능 개선](#ch02-07-01-확장을-통한-성능-개선)
+- [7-2. 확장 - MultiThread, Parallel](#ch02-07-02-확장을-통한-성능-개선---multi-threaded-parallel)
+- [7-3. 확장 - Partitioning](#ch02-07-03-확장을-통한-성능-개선---partitioning)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -498,7 +496,9 @@ new JobBuilder("flowJob", jobRepository)
 ```
 
 ---------------------------------------------------------------------------------------------------------------------------
-# Ch02-04-02. ItemReader - File
+# Ch02-04-01. ItemReader
+## Item 3총사
+## ItemReader
 ## ItemReaderInterface
 ```java
 @FunctionalInterface
@@ -621,57 +621,6 @@ public ItemReader<User> jpaPagingItemReader(
           .build();
   }
 ```
-
-
-# Ch02-04-01. ItemReader
-## Item 3총사
-## ItemReader
-```java
-@FunctionalInterface
-public interface ItemReader<T> {
-
-	/**
-	 * Reads a piece of input data and advance to the next one. Implementations
-	 * <strong>must</strong> return <code>null</code> at the end of the input data set. In
-	 * a transactional setting, caller might get the same item twice from successive calls
-	 * (or otherwise), if the first call was in a transaction that rolled back.
-	 * @throws ParseException if there is a problem parsing the current record (but the
-	 * next one may still be valid)
-	 * @throws NonTransientResourceException if there is a fatal exception in the
-	 * underlying resource. After throwing this exception implementations should endeavour
-	 * to return null from subsequent calls to read.
-	 * @throws UnexpectedInputException if there is an uncategorised problem with the
-	 * input data. Assume potentially transient, so subsequent calls to read might
-	 * succeed.
-	 * @throws Exception if an there is a non-specific error.
-	 * @return T the item to be processed or {@code null} if the data source is exhausted
-	 */
-	@Nullable
-	T read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException;
-
-}
-```
-## 입력받기
-- File(Flat, Json, XML)
-- Database
-- HTTP API
-- MQ
-- ETC
-## Flat File
-### FlatFileItemReader
-> LineMapper
-> > LineTokenizer, FieldSetMapper
-## Json File
-- JsonObjectReader<T>
-> JacksonJsonObjectReader, GsonJsonObjectReader
-## 데이터베이스 읽기
-- Paging
-> - JpaPagingItemReader
-> - JdbcPagingItemReader
-- Cursor
-> - JpaCursorItemReader
-> - JdbcCursorItemReader
-> - StoredProcedureItemReader
 
 
 # Ch02-04-02. ItemReader - File
