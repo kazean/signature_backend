@@ -71,7 +71,11 @@
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-01-02. Spring Batch 도메인 용어 익히기 - 적용
-## batch-campus
+## 실습 - batch-campus
+1. Spring Batch 이용해서 Job 구현 (Step)
+> - Step, PlatformTransactionManager를 이용해 Job 구현
+> - Run Parameter 이용해 재실행(Mysql) Job: Key 변경 확인
+> - Error 발생시켜 확인
 - com.fastcampus.batchcampus
 - build.gradle
 ```gradle
@@ -128,7 +132,7 @@ public class JobConfiguration {
 }
 ```
 > `@Bean Job, Step: JobBuilder, StepBuilder`
-- cf, BatchAutoConfiguration
+- cf, @AutoConfiguration BatchAutoConfiguration
 > @Bean JobLauncherApplicationRunner, DataSourceInitializerConfiguration, SpringBootBatchConfiguration  
 > Job 실행, Database Schema, jobRepository
 
@@ -179,21 +183,14 @@ public interface Job {
 > isRestartable, execute
 ### Job 클래스 구조
 - Job > AbstractJob / GroupWareJob
-> AbstractJob > SimpleJob/ FlowJob
+> ![Job](./images/Job.png)
 > > `Template Method 패턴`
 - SimpleJob
-```
-- f
-steps: List<Step>
-- m
-setSteps(List<Step>): void
-addStep(Step): void
-doExecute(JobExecution) void
-...
-```
+> ![SimpleJob](./images/SimpleJob.png)
 ### SimpleJobBuilder 
-> `extends JobBuilderHelper<SimpleJobBuilder>`  
-> `abstract class JobBuilderHelper<B extends JobBuilderHelper<B>>`
+> ![JobBuilder](./images/JobBuilder.png)
+> > `extends JobBuilderHelper<SimpleJobBuilder>`  
+> > `abstract class JobBuilderHelper<B extends JobBuilderHelper<B>>`
 ### Restartability
 - Default 설정으론 Job은 실패하면 재시작할 수 있음
 - SimpleJobBuilder#preventRestart 를 설정하면 재시작할 수 없음
@@ -201,10 +198,12 @@ doExecute(JobExecution) void
 ### JobParameterIncrementer
 - 시퀀스에서 다음 JobParameters 객체를 얻기 위한 인터페이스
 - 주로 잡 파라미터의 변경없이 Job을 반복해서 실행하기 위해 사용
-> RunIdIncrementer
-### JobParameterValidator
+> ![JobParameterIncrementer](./images/JobParameterIncrementer.png)
+> > RunIdIncrementer
+### JobParametersValidator
 - 입력 받은 잡 파라미터 검증
-> DefaultJobParameterValidator
+> ![JobParametersValidator](./images/JobParametersValidator.png)
+> > DefaultJobParameterValidator
 ### JobExecutionListener
 - 스프링 배치 생명주기 중 Job 실행 전/후 로직을 추가할 수 있는 기능 제공
 - 주의
@@ -229,7 +228,7 @@ new StepBuilder("step2", jobRepository)
 ## Chunk-oriented Processing
 - Spring Batch는 일반적으로 `Chunk-oriented` 스타일을 사용
 - 읽은 항목의 수가 커밋 간격과 같으면 ItemWriter 가 전체 청크를 기록한 다음 트랜잭션을 커밋함
-- Tasklet > ChunkOrientedTasklet<I>
+- <I>Tasklet > `ChunkOrientedTasklet`
 ## Commit Interval
 - ChunkSize는 커밋 간격을 의미
 > new StepBuilder(~).chunk(chunSize: Int, transactionManager)
