@@ -214,10 +214,10 @@ public interface Job {
 # Ch02-03-01. Step
 ## Step 이란?
 - 배치 작업의 독립적이고, 순차적인 단계를 캡슐화한 도메인
+> ![Step](./images/Step.png)
 ## Step 클래스 다이어그램
 - Step
-> AbstractStep
-> > JobStep/ TaskletStep/ FlowStep/ PartitionStep
+> ![Step Class Diagram](./images/StepClassDiagram.png)
 ## Tasklet, Chunk-oriented
 ```java
 new StepBuilder("step2", jobRepository)
@@ -228,7 +228,7 @@ new StepBuilder("step2", jobRepository)
 ## Chunk-oriented Processing
 - Spring Batch는 일반적으로 `Chunk-oriented` 스타일을 사용
 - 읽은 항목의 수가 커밋 간격과 같으면 ItemWriter 가 전체 청크를 기록한 다음 트랜잭션을 커밋함
-- <I>Tasklet > `ChunkOrientedTasklet`
+- (I)Tasklet > `ChunkOrientedTasklet`
 ## Commit Interval
 - ChunkSize는 커밋 간격을 의미
 > new StepBuilder(~).chunk(chunSize: Int, transactionManager)
@@ -256,8 +256,12 @@ new StepBuilder("step2", jobRepository)
 > StepExecutionListener/ ChunkListener/ SkipListener/ ItemReaderListener / ...
 ## Late Binding
 - 어플리케이션 구동 시점이 아닌 빈의 실행 시점에 적용
+- 병렬 처리 시 개별의 Scope 빈이 할당되기에 Thread-safe
+- 주로 잡파라미터 사용할때 이용
 > @JobScope: Step  
 > @StepScope: Tasklet, Item 3총사
+> > ![LateBinding](./images/LateBinding.png)
+
 ## Sequentail Flow / Conditional Flow
 ```
 new JobBuilder(~)
