@@ -195,7 +195,7 @@ public interface Job {
 - Default 설정으론 Job은 실패하면 재시작할 수 있음
 - SimpleJobBuilder#preventRestart 를 설정하면 재시작할 수 없음
 - 비지니스 성격상 판단에 맡김
-### JobParameterIncrementer
+### JobParametersIncrementer
 - 시퀀스에서 다음 JobParameters 객체를 얻기 위한 인터페이스
 - 주로 잡 파라미터의 변경없이 Job을 반복해서 실행하기 위해 사용
 > ![JobParameterIncrementer](./images/JobParameterIncrementer.png)
@@ -242,7 +242,7 @@ new StepBuilder("step2", jobRepository)
 > .falutTolerant().skipLimit(10).skip(ClassCastException.class)  
 >   .noSkip(IllegalStateException.class)
 ### SkipPolicy
-- @FunctionalInterface boolean shoudSkip(Throwable t, long skipCount)
+- @FunctionalInterface boolean shouldSkip(Throwable t, long skipCount)
 ## Retry
 - 특정 에러의 경우 다시 시도하면 성공하는 케이스가 있을 경우, 재시도함으로써 회복탄력성을 가짐
 > .retry(~Exception.class)
@@ -262,7 +262,7 @@ new StepBuilder("step2", jobRepository)
 > @StepScope: Tasklet, Item 3총사
 > > ![LateBinding](./images/LateBinding.png)
 
-## Sequentail Flow / Conditional Flow
+## Sequential Flow / Conditional Flow
 ```
 new JobBuilder(~)
   .start(step1)
@@ -410,6 +410,16 @@ public class JobConfiguration {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-03-03. Step - Flow 적용
+## Flow 속성
+- on(String): ExitStatus의 반환물과 Match
+> - '*'
+> - '?'
+- to(step): on 조건에 만족하면 해당 step 이동
+- from(step): 이전에 등록한 단계로 돌아가서 `새 경로를 시작`
+## Flow Stop
+- COMPLETE, FAILED, STOPPED
+
+## 실습
 - Code
 ```java
 @Configuration
@@ -443,6 +453,7 @@ public class FlowConfiguration {
     return new StepBuilder("step1", jobRepository)
       .tasklet((a, b) -> {
         log.info("step1 실행");
+        // if(1 == 1) throw new IllegalStateException("fail");
         return null;
       }, platformTransactionManager)
       .build();
@@ -541,15 +552,42 @@ public interface ItemReader<T> {
 ### `FlatFileItemReader`
 - example Code
 ```java
-return new FlatFileItemReaderBuilder<User>()
-                .name("flatFileItemReader")
-                .resource(new ClassPathResource("users.txt"))
-                .linesToSkip(2)
-                .delimited().delimiter("|") // default ','
-                .names("name", "age", "region", "telephone") // field
-                .targetType(User.class)
-                .strict(true) // default: true, false > 읽지안고 정상적으로 종료
-                .build();
+@Bean
+public FlatFileItemReader<User> flatFileItemReader() {
+    return new FlatFileItemReaderBuilder<User>()
+            .name("flatFileItemReader")
+            .resource(new ClassPathResource("users.txt"))
+            .linesToSkip(2)
+            .delimited().delimiter("|") // default ','
+            .names("name", "age", "region", "telephone")
+            .targetType(User.class)
+            .strict(true) // default: true, false > 읽지안고 정상적으로 종료
+            .build();
+}
+
+// 옛날 방식이지만 종종 사용됨
+@Bean
+public FlatFileItemReader<User> fixedLengthFlatFileItemReader() {
+    return new FlatFileItemReaderBuilder<User>()
+            .name("fixedLengthFlatFileItemReader")
+            .resource(new ClassPathResource("usersFixedLength.txt"))
+            .linesToSkip(2)
+            .fixedLength()
+            .columns(new Range[]{new Range(1,2), new Range(3,4), new Range(5,6), new Range(7,19)})
+            .names("name", "age", "region", "telephone")
+            .targetType(User.class)
+            .strict(true) // default: true, false > 읽지안고 정상적으로 종료
+            .build();
+}
+
+//users.txt
+이름,나이,지역,전화번호
+
+민수,20,서울,010-1111-1111
+민주,10,부산,010-2222-2222
+민우,30,경기,010-3333-3333
+민욱,40,대구,010-4444-4444
+민구,50,강릉,010-5555-5555
 ```
 - LineMapper<T>
 > LineTokenizer, FieldSetMapper<T>
@@ -570,13 +608,35 @@ strict  boolean
 - example Code
 ```java
 @Bean
-public JsonItemReader<User> jsonItemReader() {
-  return new JsonItemReaderBuilder<User>()
-    .name("tradeJsonItemReader")
-    .resource(new ClassPathResource("users.json"))
-    .jsonObjectReader(new JacksonJsonObjectReader<>(User.class))
-    .build()
+public ItemReader<User> jsonItemReader() {
+    return new JsonItemReaderBuilder<User>()
+            .name("jsonItemReader")
+            .resource(new ClassPathResource("users.json"))
+            .jsonObjectReader(new JacksonJsonObjectReader<>(User.class))
+            .build();
 }
+
+// user.json
+[
+  {
+    "name": "민수",
+    "age": 20,
+    "region": "서울",
+    "telephone": "010-1111-2222"
+  },
+  {
+    "name": "민주",
+    "age": 10,
+    "region": "강릉",
+    "telephone": "010-2222-2222"
+  },
+  {
+    "name": "민우",
+    "age": 30,
+    "region": "제주도",
+    "telephone": "010-3333-3333"
+  }
+]
 ```
 > JsomItemReaderBuilder
 ### JSONObjectReader<T>
@@ -584,11 +644,11 @@ public JsonItemReader<User> jsonItemReader() {
 
 ## 데이터베이스 읽기
 - Paging
-> JpaPagingItemReader  
-> JdbcPagingItemReader
+> - `JpaPagingItemReader`
+> - JdbcPagingItemReader
 - Cursor
-> JpaCursorItemReader  
-> JdbcCursorItemReader/ StoredProcedureItemReader
+> - `JpaCursorItemReader`
+> - JdbcCursorItemReader/ StoredProcedureItemReader
 > > (단점) Connection을 물고 있음
 ### JpaPagingItemReader
 - `JpaPagingItemReaderBuilder<T>`
@@ -596,7 +656,7 @@ public JsonItemReader<User> jsonItemReader() {
 ```java
 @Bean
 public ItemReader<User> jpaPagingItemReader(
-  EntityMAnagerFactory entityManagerFactory
+  EntityManagerFactory entityManagerFactory
 ){
   return new JpaPagingItemReaderbuilder<User>()
     .name("jpaPagingItemReader")
@@ -699,6 +759,19 @@ public class ItemReaderJobConfiguration {
                 .build();
     }
 }
+
+@Data
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String age;
+    private String region;
+    private String telephone;
+}
+
 ```
 - File: FlatFileItemReder > FlatFileItemReaderBuilder
 > name, resource(new ClassPathResource("useres.txt")), linesToSkip(int)  
@@ -763,6 +836,21 @@ public class ItemReaderJobConfiguration {
                 .queryString("SELECT u From User u Order By u.id")
                 .build();
     }
+}
+
+@Data
+@NoArgsConstructor
+@Entity
+@Table(name = "user")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String age;
+    private String region;
+    private String telephone;
 }
 ```
 - Database: JpaPagingItemReader, JpaCursorItemReader
