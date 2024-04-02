@@ -905,7 +905,7 @@ public JsonFileItemWriter<User> jsonFileItemWriter() {
 }
 ```
 > `FlatFileItemWriterBuilder<T>, JsonFileItemWriter<T>`  
-> JsonFileItemWriter .jsonObjectMArshaller(new JacksonJsonObjectMarshaller)
+> JsonFileItemWriter .jsonObjectMarshaller(new JacksonJsonObjectMarshaller)
 #### FlatFileItemWriterBuilder
 - lineAggregator(LineAggregator<T>): FlatFileItemWriterBuilder
 - footerCallback
