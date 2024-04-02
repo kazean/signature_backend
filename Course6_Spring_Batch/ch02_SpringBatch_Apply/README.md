@@ -29,25 +29,25 @@
 - JobLauncher
 - ItemReader/Processor/Writer
 ### Job
-- 전체 배치 프로세스를 캡슐화한 도메인
+- `전체 배치 프로세스를 캡슐화한 도메인`
 - 단순히 Step 인스턴스를 위한 컨테이너
 - Job의 구성
 > - Job의 이름
 > - Step 정의 및 순서
 > - 작업을 다시 시작할 수 있는지 여부
 ### JobInstance
-- Job의 논리적 실행 단위를 나타내는 도메인
+- Job의 `논리적 실행 단위`를 나타내는 도메인
 - 하나의 Job이 여러개의 JobInstance를 가짐
 - 구성요소
 > - Job 이름
 > - 식별 파라미터
 - BATCH_JOB_INSTANCE 테이블에 저장
 ### JobParameters
-- Job을 실행할때 함께 사용되는 파라미터 도메인
+- `Job을 실행할때 함께 사용되는 파라미터 도메인`
 - 하나의 Job에 존재할 수 있는 여러개의 JobInstance를 구분
 - BATCH_JOB_EXECUTION_PARAMS 저장
 ### JobExeuction
-- Job의 단일 실행에 대한 도메인
+- `Job의 단일 실행에 대한 도메인`
 - Job 실행중에 실제로 일어난 일에 대한 기본 저장 메커니즘
 - BATCH_JOB_EXECUTION 저장
 ### Step
@@ -57,7 +57,7 @@
 - Step의 단일 실행에 대한 도메인
 - BATCH_STEP_EXECUTION
 ### ExecutionContext
-- Batch의 세션 역할을 하는 도메인
+- `Batch의 세션 역할을 하는 도메인`
 - Job, Step의 상태를 가진다
 - Key-Value 구조
 - BATCH_JOB_EXECUTION_CONTEXT, STEP_JOB_EXECUTION_CONTEXT 저장
@@ -67,13 +67,12 @@
 ### JobLauncher
 - Job을 실행 시키는 도메인
 ### ItemReader/Processor/Writer
-## 정리하기
-- Batch Stereotypes <그림>
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-01-02. Spring Batch 도메인 용어 익히기 - 적용
 ## batch-campus
+- com.fastcampus.batchcampus
 - build.gradle
 ```gradle
 dependencies {
