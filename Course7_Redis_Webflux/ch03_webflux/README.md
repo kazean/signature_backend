@@ -1322,7 +1322,7 @@ public class UserController {
     }
 }
 ```
-> `@Modifying`, `@Query("WHERE name = :name")`
+> `@Modifying`, `@Query("WHERE name = :name")` delete(String name)
 - Join
 ```text
 # 실습(2) - CustomRepository
