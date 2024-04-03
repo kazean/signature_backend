@@ -207,6 +207,15 @@ public interface Job {
 ### JobExecutionListener
 - 스프링 배치 생명주기 중 Job 실행 전/후 로직을 추가할 수 있는 기능 제공
 - 주의
+```java
+public void afterJob(JobExecution jobExecution) { 
+  if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
+    // job success
+  } else if (jobExecution.getStatus() == BatchStatus.FAILED) {
+    // job failure
+  }
+}
+```
 > jobExecution.getStatus() == BatchStatus.COMPLETED/FAILED 두 가지 다 정의해야 함
 
 
@@ -1317,7 +1326,29 @@ public PartitionHandler partitionHandler() {
 @Override
 public Map<String, ExecutionContext> partition(int gridSize) {
   Map<String, ExecutionContext> result = new HashMap<>();
-  // ...
+  int min = jdbcTemplate.queryForObject("SELECT MIN(" + colume + ") from table " + table, Integer.class);
+  int max = jdbcTemplate.queryForObject("SELECT MAX(" + colume + ") from table " + table, Integer.class);
+  int targetSize = (max - min) / gridSize + 1;
+
+  Map<String, ExecutionContext> result = new HashMap<>();
+  int number = 0;
+  int start = min;
+  int end = start + targetSize - 1;
+
+  while (start <= max) {
+    ExecutionContext value = new ExecutionContexT();
+    result.put("partition" + number, value);
+
+    if (end >= max) {
+      end = max;
+    }
+    value.putInt("minValue", start);
+    value.puntInt("maxValue", end);
+
+    start += targetSize;
+    end += targetSzie;
+    number++;
+  }
 
   return result;
 }
@@ -1334,17 +1365,26 @@ public JpaPagingItemReader<User> itemReader(
 
   return new JpaPagingItemReaderBuilder<User>()
     .name("itemReader")
-    // .~
+    .entityManagerFactory(emf)
+    .pageSize(5)
+    .queryString("""
+      SELECT u FROM User u
+      WHERE u.id BETWEEN :minValue AND :maxValue
+      """)
     .parameterValues(params)
     .build();
 }
 ```
 > @Bean PartitionHandler, Partitionner, @Bean ItemReaderBuilder.parameterValues(params)
+> > @StepScope @Value("#{stepExecutionContext([minValue])}")  
+> > Map params .put("minValue", minValue)  
+> > parameterValues(params)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-07-02. 확장을 통한 성능 개선 - Multi-threaded, Parallel 
 ## MutliThread
+## 실습 - batch-campus
 ### code
 ```java
 @Slf4j
