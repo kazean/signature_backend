@@ -528,7 +528,8 @@ public class SampleController {
     }
 }
 ```
-> - WebClient AsyncHttpRequest
+> - WebClient AsyncHttpRequest  
+> - Annotation endpoint
 > return Mono  
 > reactor
 > > publisher <---> subscriber  
