@@ -1242,7 +1242,7 @@ public Step sampleStep(
 
 
 ## Parallel Steps
-Step1 > Step2, Step3>Step4 > Step5
+![Parallel Steps](./images/ParallelStep.png)
 > Step을 Parallel하게 실행
 > > FlowStep을 사용해서 구현: FlowBuilder
 ```java
