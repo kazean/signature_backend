@@ -1,9 +1,9 @@
 # Ch03. 정산 시스템 만들기
-- [요구사항 분석](#ch03-01-요구사항-분석)
-- [API 호출 이력 배치 만들기](#ch03-02-api-호출-이력-배치-만들기)
-- [API 호출 이력 배치 확장하기](#ch03-03-api-호출-이력-배치-확장하기)
-- [일일 정산 배치 만들기](#ch03-04-일일-정산-배치-만들기)
-- [주간 정산 배치 만들기](#ch03-05-주간-정산-배치-만들기)
+- [03-01. 요구사항 분석](#ch03-01-요구사항-분석)
+- [03-02. API 호출 이력 배치 만들기](#ch03-02-api-호출-이력-배치-만들기)
+- [03-03. API 호출 이력 배치 확장하기](#ch03-03-api-호출-이력-배치-확장하기)
+- [03-04. 일일 정산 배치 만들기](#ch03-04-일일-정산-배치-만들기)
+- [03-05. 주간 정산 배치 만들기](#ch03-05-주간-정산-배치-만들기)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -21,9 +21,11 @@
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-02. API 호출 이력 배치 만들기
-유료 API 사용(ApiOrder) 출력하기
-## Code
+유료 API 사용(ApiOrder) 만들고 출력하기
+## 실습 - batch-campus
+- com.fastcampus.batchcampus
 ```java
+// batch.generator
 @Configuration
 @RequiredArgsConstructor
 public class ApiOrderGenerateJobConfiguration {
@@ -33,7 +35,7 @@ public class ApiOrderGenerateJobConfiguration {
     @Bean
     public Job apiOrderGenerateJob(Step apiOrderGenerateStep) {
         return new JobBuilder("apiOrderGenerateJob", jobRepository)
-                .start(stapiOrderGenerateStepp)
+                .start(stapiOrderGenerateStep)
                 .incrementer(new RunIdIncrementer())
                 .validator(
                         new DefaultJobParametersValidator(
