@@ -21,7 +21,8 @@
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-02. API 호출 이력 배치 만들기
-유료 API 사용(ApiOrder) 만들고 출력하기
+- 유료 API 사용(ApiOrder) 만들고 출력하기
+> API 호출 이력 파일 만드는 배치
 ## 실습 - batch-campus
 - com.fastcampus.batchcampus
 ```java
@@ -119,7 +120,7 @@ public class ApiOrderGenerateProcessor implements ItemProcessor<Boolean, ApiOrde
     }
 }
 
-
+// domain
 @Data
 @NoArgsConstructor
 public class ApiOrder {
@@ -181,6 +182,8 @@ public enum ServicePolicy {
 - FlatFileItemWriterbuilder<ApiOrder>
 > ApiOrder 쓰기
 ```
+> > RUN
+> > - totalCount: 10,000, targetDate: 20230701
 
 
 ---------------------------------------------------------------------------------------------------------------------------
