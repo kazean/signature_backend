@@ -182,15 +182,16 @@ public enum ServicePolicy {
 - FlatFileItemWriterbuilder<ApiOrder>
 > ApiOrder 쓰기
 ```
-> > RUN
-> > - totalCount: 10,000, targetDate: 20230701
+> > Program Arguments
+> > - totalCount=10000 targetDate=20230701
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-03. API 호출 이력 배치 확장하기
 Partitioning을 활용해서 ApiOrder.csv 일주일치 만들기
-## Code
+## 실습 - batch-campus
 ```java
+// batch.generator
 @Configuration
 @RequiredArgsConstructor
 public class ApiOrderGeneratePartitionJobConfiguration {
@@ -307,8 +308,15 @@ public class ApiOrderGeneratePartitionJobConfiguration {
 일 csv 읽어서 Key(customerId, serviceId)로 나누고 serviceId별 KeyAndCount로 저장
 - 첫번째 스탭은 파일의 고객 + 서비스 별로 집계를 해서 ExecutionContext안에 넣는다
 - 두번째 스탭은 집계된 ExecutionContext 데이터를 가지고 DB에 넣는다
-## PreSettleDetail Code
+## 실습 - batch-campus(PreSettleDetail Code)
 ```java
+// batch.detail
+record Key(Long customerId, Long serviceId) implements Serializable {
+}
+
+public record KeyAndCount(Key key, Long count) {
+}
+
 @Configuration
 @RequiredArgsConstructor
 public class SettleDetailStepConfiguration {
@@ -460,10 +468,36 @@ public void beforeStep(StepExecution stepExecution)
 # ExecutionContextPromotionListener
 - listener = new ExecutionContextPromotionListener
 > listener.setKeys(new String[]{"snapshots"})
+> > StepExecutionContext > JobExecutionContext로 올려줌
 ```
 
-## SettleDetail Code
+## 실습 - batch.campus(SettleDetail Code)
 ```java
+// domain
+@Entity
+@Table(name = "settledetail")
+@NoArgsConstructor
+@ToString
+public class SettleDetail {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private Long customerId;
+    private Long serviceId;
+    private Long count;
+    private Long fee;
+    private LocalDate targetDate;
+
+    public SettleDetail(Long customerId, Long serviceId, Long count, Long fee, LocalDate targetDate) {
+        this.customerId = customerId;
+        this.serviceId = serviceId;
+        this.count = count;
+        this.fee = fee;
+        this.targetDate = targetDate;
+    }
+}
+
+// batch.detail
 @Configuration
 @RequiredArgsConstructor
 public class SettleDetailStepConfiguration {
@@ -540,6 +574,33 @@ public class SettleDetailProcessor implements ItemProcessor<KeyAndCount, SettleD
     }
 }
 
+// batch.support
+public class DateFormatJobParametersValidator implements JobParametersValidator {
+    private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private final String[] names;
+
+    public DateFormatJobParametersValidator(String[] names) {
+        this.names = names;
+    }
+
+    @Override
+    public void validate(JobParameters parameters) throws JobParametersInvalidException {
+        for (String name : names) {
+            validateDateFormat(parameters, name);
+        }
+    }
+
+    private void validateDateFormat(JobParameters parameters, String name) throws JobParametersInvalidException {
+        try {
+            final String string = parameters.getString(name);
+            LocalDate.parse(Objects.requireNonNull(string), dateTimeFormatter);
+        } catch (Exception e) {
+            throw new JobParametersInvalidException("yyyyMMdd 형식만을 지원합니다");
+        }
+    }
+}
+
+// batch
 @Configuration
 @RequiredArgsConstructor
 public class SettleJobConfiguration {
@@ -604,15 +665,18 @@ public SettleDetail process(KeyAndCount item) throws Exception
 
 # JpaItemWriter - settleDetailWriter
 ```
+> RUN @Configuration SettleJobConfiguration
+> > Program Args: targetDate=20230707 
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-05. 주간 정산 배치 만들기
-Customer 정보를 받아 일정산 테이블 정보를 주간 정보로 합산해 SettleGroup: List  
-DB, Email 보낸다
+- Customer 정보를 받아 일정산 테이블 정보를 주간 정보로 합산해 SettleGroup: List > DB, Email 보낸다
 
-## Code
+## 실습 - batch-campus
+### SettleJobConfiguration
 ```java
+// batch
 @Configuration
 @RequiredArgsConstructor
 public class SettleJobConfiguration {
@@ -677,8 +741,89 @@ public interface JobExecutionDecider {
 ```
 > FlowExecutionState.COMPLETED/STOPPED/FAILED/UNKNOW
 
-## Code - Step
+### domain
 ```java
+public interface CustomerRepository {
+    List<Customer> findAll(Pageable pageable);
+    Customer findById(Long id);
+
+    class Fake implements CustomerRepository {
+        @Override
+        public List<Customer> findAll(Pageable pageable) {  }
+
+        @Override
+        public Customer findById(Long id) { }
+    }
+
+}
+
+public interface SettleGroupRepository extends JpaRepository<SettleGroup, Long> {
+    @Query(
+            value = """
+                    SELECT new SettleGroup(detail.customerId, detail.serviceId, sum(detail.count), sum(detail.fee))
+                    FROM SettleDetail detail
+                    WHERE detail.targetDate between  :start and :end
+                    AND detail.customerId = :customerId
+                    GROUP BY  detail.customerId, detail.serviceId
+                    """
+    )
+    public List<SettleGroup> findGroupByCustomerIdAndServiceId(LocalDate start, LocalDate end, Long customerId);
+}
+
+// # Support
+public interface EmailProvider {
+    void send(String emailAddress, String title, String body);
+
+    @Slf4j
+    class Fake implements EmailProvider {}
+}
+
+@Data
+public class Customer {
+    private Long id;
+    private String name;
+    private String email;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    public Customer(Long id, String name, String email) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+}
+
+@Entity
+@Getter
+@NoArgsConstructor
+@ToString
+public class SettleGroup {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private Long customerId;
+    private Long serviceId;
+    private Long totalCount;
+    private Long totalFee;
+    private LocalDateTime createdAt;
+
+    public SettleGroup(Long customerId, Long serviceId, Long totalCount, Long totalFee) {
+        this.customerId = customerId;
+        this.serviceId = serviceId;
+        this.totalCount = totalCount;
+        this.totalFee = totalFee;
+        this.createdAt = LocalDateTime.now();
+    }
+}
+```
+> JpaRepository
+>> SELECT new SettleGroup(detail.~) FROM SettleDetail detail
+
+### 실습 - batch-campus(SettleGroupStepConfiguration)
+```java
+// batch.group
 @Configuration
 @RequiredArgsConstructor
 public class SettleGroupStepConfiguration {
@@ -837,81 +982,4 @@ public class SettleGroupItemMailWriter implements ItemWriter<List<SettleGroup>> 
 > SettleGroupItemDbWriter
 > > settleGroupRepository.saveAll(settleGroup)
 > SettleGroupItemMailWriter
-```
-## Code - ref
-```java
-public interface CustomerRepository {
-    List<Customer> findAll(Pageable pageable);
-    Customer findById(Long id);
-
-    class Fake implements CustomerRepository {
-        @Override
-        public List<Customer> findAll(Pageable pageable) {  }
-
-        @Override
-        public Customer findById(Long id) { }
-    }
-
-}
-
-public interface SettleGroupRepository extends JpaRepository<SettleGroup, Long> {
-    @Query(
-            value = """
-                    SELECT new SettleGroup(detail.customerId, detail.serviceId, sum(detail.count), sum(detail.fee))
-                    FROM SettleDetail detail
-                    WHERE detail.targetDate between  :start and :end
-                    AND detail.customerId = :customerId
-                    GROUP BY  detail.customerId, detail.serviceId
-                    """
-    )
-    public List<SettleGroup> findGroupByCustomerIdAndServiceId(LocalDate start, LocalDate end, Long customerId);
-}
-
-// # Support
-public interface EmailProvider {
-    void send(String emailAddress, String title, String body);
-
-    @Slf4j
-    class Fake implements EmailProvider {}
-}
-
-@Data
-public class Customer {
-    private Long id;
-    private String name;
-    private String email;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    public Customer(Long id, String name, String email) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-}
-
-@Entity
-@Getter
-@NoArgsConstructor
-@ToString
-public class SettleGroup {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private Long customerId;
-    private Long serviceId;
-    private Long totalCount;
-    private Long totalFee;
-    private LocalDateTime createdAt;
-
-    public SettleGroup(Long customerId, Long serviceId, Long totalCount, Long totalFee) {
-        this.customerId = customerId;
-        this.serviceId = serviceId;
-        this.totalCount = totalCount;
-        this.totalFee = totalFee;
-        this.createdAt = LocalDateTime.now();
-    }
-}
 ```
