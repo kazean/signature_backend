@@ -311,7 +311,7 @@ public class ApiOrderGeneratePartitionJobConfiguration {
 ## 실습 - batch-campus(PreSettleDetail Code)
 ```java
 // batch.detail
-record Key(Long customerId, Long serviceId) implements Serializable {
+public record Key(Long customerId, Long serviceId) implements Serializable {
 }
 
 public record KeyAndCount(Key key, Long count) {
