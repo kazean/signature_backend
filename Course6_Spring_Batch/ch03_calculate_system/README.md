@@ -966,7 +966,7 @@ public class SettleGroupItemMailWriter implements ItemWriter<List<SettleGroup>> 
     }
 }
 ```
-> organize
+> - organize
 ```
 - SettleGroupItemReader
 > 고객정보를 받는다
@@ -980,3 +980,6 @@ public class SettleGroupItemMailWriter implements ItemWriter<List<SettleGroup>> 
 > > settleGroupRepository.saveAll(settleGroup)
 > SettleGroupItemMailWriter
 ```
+> - Run @Configuration SettleGroupStepConfiguration
+> > > SettleDetail에 20230701 ~ 20230707까지 데이터를 다 넣은 다음에 
+> > > - Program Args: targetDate=20230707 
