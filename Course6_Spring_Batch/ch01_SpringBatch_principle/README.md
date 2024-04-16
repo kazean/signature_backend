@@ -41,7 +41,7 @@
 # Ch01-02. 프로젝트 세팅 및 (원시적인) 배치 프로그램 구현하기 - 기반 구현/본 구현
 ## batch-campus
 Customer 객체로 로그인 시간이 365일 지난 계정을 휴면계정으로 전환하기
-- com.
+- com.fastcampus.batchcampus
 - gradle
 > data-jpa, lombok, h2
 - Code
@@ -56,7 +56,7 @@ Customer 객체로 로그인 시간이 365일 지난 계정을 휴면계정으�
 > > customerRepository, emailProvider  
 > > JobExecution execute()
 ```java
-// /customer
+// customer
 @Entity
 @NoArgsConstructor
 @Getter
@@ -346,46 +346,47 @@ public interface JobExecutionListener {
 
 // application
 @Component
-public class DormantBatchTasklet implements Tasklet {
-    private final CustomRepository customRepository;
+public class DormantBatchTasklet  implements Tasklet {
+    private final CustomerRepository customerRepository;
     private final EmailProvider emailProvider;
-    
-    public DormantBatchTasklet(CustomRepository customRepository) {
+
+    public DormantBatchTasklet(CustomerRepository customerRepository) {
         this.customerRepository = customerRepository;
         this.emailProvider = new EmailProvider.Fake();
     }
 
     @Override
     public void execute() {
-        // 비지니스로직
         int pageNo = 0;
-        // 1. 유저를 조회한다.
-        final PageRequest pageRequest = PageRequest.of(pageNo, 1, Sort.by("id").ascending());
-        Page<Customer> page = customerRepository.findAll(pageRequest);
+        while (true) {
+            final PageRequest pageRequest = PageRequest.of(pageNo, 1, Sort.by("id").ascending());
+            Page<Customer> page = customerRepository.findAll(pageRequest);
+            final Customer customer;
 
-        final Customer customer;
-        if (page.isEmpty()) {
-            break;
-        } else {
-            pageNo++;
-            customer = page.getContent().get(0);
+            if (page.isEmpty()) {
+                break;
+            } else {
+                pageNo++;
+                customer = page.getContent().get(0);
+            }
+
+            // 2. 휴먼계정 대상을 추출 및 반환한다.
+            final boolean isDormantTarget = LocalDate.now()
+                    .minusDays(365)
+                    .isAfter(customer.getLoginAt().toLocalDate());
+            if (isDormantTarget) {
+                customer.setStatus(Customer.Status.DORMANT);
+            } else {
+                continue;
+            }
+
+            // 3. 휴먼계정으로 상태를 변경한다
+            customerRepository.save(customer);
+
+            // 4. 메일을 보낸다
+            emailProvider.send(customer.getEmail(), "휴먼전환 안내메일입니다.", "내용");
+
         }
-
-        // 2. 휴면계정 대상을 추출 및 변환한다.
-        final boolean isDormantTarget = LocalDate.now()
-                .minusDays(365)
-                .isAfter(customer.getLoginAt().toLocalDate());
-        if (isDormantTarget) {
-            customer.setStatus(Customer.Status.DORMANT);
-        } else {
-            continue;
-        }
-
-        // 3. 휴면계정으로 상태를 변경한다.
-        customerRepository.save(customer);
-
-        // 4. 메일을 보낸다
-        emailProvider.send(customer.getEmail(), "휴먼전환 안내메일입니다", "내용");
     }
 }
 
@@ -805,12 +806,7 @@ public class StepJobBuilder {
 }
 ```
 >  organize
-```
-TaskletJob(tasklet)
-StepJob(List<Step> steps, jobExecutionListener)
-Step(tasklet)
-StepJobBuilder build(): StepJob(steps, jobExecutionListener)
-```
+> > ![Class Diagram - Job](./images/InterfaceJob.png)
 
 ### Configuration
 ```java
