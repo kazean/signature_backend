@@ -691,7 +691,7 @@ public class SettleJobConfiguration {
         return new JobBuilder("settleJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
                 .validator(new DateFormatJobParametersValidator(new String[]{"targetDate"}))
-                .start(preSettleDetailStep)₩
+                .start(preSettleDetailStep)
                 .next(settleDetailStep)
                 // 주간정산하는 날이면
                 .next(isFridayDecider())
@@ -717,7 +717,7 @@ public class SettleJobConfiguration {
 }
 ```
 > JobBuilder
-> start(preSettleDetailShop)  
+> start(preSettleDetailStep)  
 > next(JobExecutionDecider).on("COMPLETED").to(settleGroupStep)
 - cf, `JobExecutionDecider`
 ```java
@@ -736,7 +736,7 @@ public interface JobExecutionDecider {
 
 }
 ```
-> FlowExecutionState.COMPLETED/STOPPED/FAILED/UNKNOW
+> FlowExecutionState.COMPLETED/STOPPED/FAILED/UNKNOWN
 
 ### domain
 ```java
