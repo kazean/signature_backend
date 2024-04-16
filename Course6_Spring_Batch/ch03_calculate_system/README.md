@@ -308,7 +308,8 @@ public class ApiOrderGeneratePartitionJobConfiguration {
 일 csv 읽어서 Key(customerId, serviceId)로 나누고 serviceId별 KeyAndCount로 저장
 - 첫번째 스탭은 파일의 고객 + 서비스 별로 집계를 해서 ExecutionContext안에 넣는다
 - 두번째 스탭은 집계된 ExecutionContext 데이터를 가지고 DB에 넣는다
-## 실습 - batch-campus(PreSettleDetail Code)
+## 실습 - batch-campus
+### PreSettleDetail Code
 ```java
 // batch.detail
 public record Key(Long customerId, Long serviceId) implements Serializable {
@@ -415,10 +416,6 @@ public class PreSettleDetailWriter implements ItemWriter<Key>, StepExecutionList
     // Step1:StepExecution -> JobExecution
     // Step2는 Step1 StepExecution 에 접근할 수 없음
 }
-
-record Key(Long customerId, Long serviceId) implements Serializable {
-}
-
 ```
 > organize
 ```
@@ -471,7 +468,7 @@ public void beforeStep(StepExecution stepExecution)
 > > StepExecutionContext > JobExecutionContext로 올려줌
 ```
 
-## 실습 - batch.campus(SettleDetail Code)
+### SettleDetail Code
 ```java
 // domain
 @Entity
