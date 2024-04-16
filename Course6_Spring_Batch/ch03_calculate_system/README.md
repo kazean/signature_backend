@@ -680,7 +680,7 @@ public class SettleJobConfiguration {
     private final JobRepository jobRepository;
 
     // 일일 정산 배치
-    // 1주일간의 데티러르 집계해서
+    // 1주일간의 데이터를 집계해서
     // 데이터베이스에 쌓고, 고객사의 Email 로 전송한다 (Fake)
     @Bean
     public Job settleJob(
@@ -691,12 +691,12 @@ public class SettleJobConfiguration {
         return new JobBuilder("settleJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
                 .validator(new DateFormatJobParametersValidator(new String[]{"targetDate"}))
-                .start(preSettleDetailStep)
+                .start(preSettleDetailStep)₩
                 .next(settleDetailStep)
                 // 주간정산하는 날이면
                 .next(isFridayDecider())
                 // 주간정산 실행시켜줘
-                .on("COMPLETED").to(settleGroupStep)
+                .on("COMPLETED").to(settleGroupStep)₩
                 .build()
                 .build();
     }
@@ -818,7 +818,7 @@ public class SettleGroup {
 > JpaRepository
 >> SELECT new SettleGroup(detail.~) FROM SettleDetail detail
 
-### 실습 - batch-campus(SettleGroupStepConfiguration)
+### SettleGroupStepConfiguration
 ```java
 // batch.group
 @Configuration
