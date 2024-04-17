@@ -108,6 +108,7 @@ spring:
 > spring.datasource
 - `JobConfiguration`
 ```java
+// ~/
 @Slf4j
 @Configuration
 public class JobConfiguration {
@@ -386,6 +387,10 @@ public class JobConfiguration {
 }
 ```
 > faultTolerant()/.skip(.class), skipLimit(count)/ .skipPolicy(t, skipCount)/ noRollback(.class)/ retry(.class), retrylimit(count)
+> - faultTolerant + skip & skipLimit 사용: 해당 에러 제한횟수까지 Skip하여 완료
+> - falutTolerant + skipPolicy 사용
+> - falutTolerant + noRollback 사용: 해당 에러 무시하고 커밋(COMPLETE)
+> - falutTolerant + retry & retryLimit
 - code3 - `@JobScope`, `@Value(<SPEL>)`
 ```java
 @Slf4j
@@ -696,10 +701,11 @@ public ItemReader<User> jpaPagingItemReader(
 
 # Ch02-04-02. ItemReader - File
 - build.gradle
-> implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'  
-> ObjectMapper
-- Code
+> implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+> > ObjectMapper
+## 실습 - batch-campus(ItemReaderJobConfiguration)
 ```java
+// ~/
 @Configuration
 public class ItemReaderJobConfiguration {
 
@@ -793,8 +799,9 @@ public class User {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-04-03. ItemReader - Database
-- Code
+## 실습 - batch-campus(ItemReaderJobConfiguration)
 ```java
+// ~/
 @Configuration
 public class ItemReaderJobConfiguration {
 
@@ -955,7 +962,9 @@ public JdbcBatchItemWriter<User> jdbcBatchItemWriter(DataSource dataSource) {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-05-02. ItemWriter - 적용
+## 실습 - batch-campus(ItemWriterJobConfiguration)
 ```java
+// ~/
 @Configuration
 public class ItemWriterJobConfiguration {
   @Bean
@@ -1128,8 +1137,9 @@ public class CompositeItemProcessor<I, O> implements ItemProcessor<I, O>, Initia
 }
 ```
 
-## code
+## 실습 - batch-campus(ItemProcessorJobConfiguration)
 ```java
+// ~/
 @Configuration
 public class ItemProcessorJobConfiguration {
     @Bean
@@ -1385,8 +1395,9 @@ public JpaPagingItemReader<User> itemReader(
 # Ch02-07-02. 확장을 통한 성능 개선 - Multi-threaded, Parallel 
 ## MutliThread
 ## 실습 - batch-campus
-### code
+### code(MultiThreadJobConfig)
 ```java
+// ~/
 @Slf4j
 @Configuration
 public class MultiThreadJobConfig {
@@ -1435,8 +1446,9 @@ public class MultiThreadJobConfig {
 
 
 ## ParallelStep
-### Code
+### Code(ParallelStepJobConfig)
 ```java
+// ~/
 @Slf4j
 @Configuration
 public class ParallelStepJobConfig {
@@ -1503,7 +1515,7 @@ public class ParallelStepJobConfig {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch02-07-03. 확장을 통한 성능 개선 - Partitioning
-## Code
+## 실습 - batch-campus(PartitionJobConfiguration)
 ```java
 @Slf4j
 @Configuration
