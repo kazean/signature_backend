@@ -22,9 +22,18 @@
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch03-02. API 호출 이력 배치 만들기
 - 유료 API 사용(ApiOrder) 만들고 출력하기
-> API 호출 이력 파일 만드는 배치
+> API 호출 이력 파일 만드는 배치, totalCount: 10000 (Reader) & Processor(ApiOrder) & Writer(_api_orders.csv)
 ## 실습 - batch-campus
 - com.fastcampus.batchcampus
+- build.gradle
+```gradle
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+	compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+```
 ```java
 // batch.generator
 @Configuration
@@ -301,6 +310,8 @@ public class ApiOrderGeneratePartitionJobConfiguration {
 # ItemWriter
   (@Value("#{stepExecutionContext['targetDate']}" String targetDate))
 ```
+> > Program Arguments
+> > - totalCount=10000 targetDate=20230707
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -740,20 +751,22 @@ public interface JobExecutionDecider {
 
 ### domain
 ```java
+// domain.repository
 public interface CustomerRepository {
     List<Customer> findAll(Pageable pageable);
     Customer findById(Long id);
 
     class Fake implements CustomerRepository {
         @Override
-        public List<Customer> findAll(Pageable pageable) {  }
+        public List<Customer> findAll(Pageable pageable) { /* ~ */  }
 
         @Override
-        public Customer findById(Long id) { }
+        public Customer findById(Long id) { /* ~ */ }
     }
 
 }
 
+// domain.repository
 public interface SettleGroupRepository extends JpaRepository<SettleGroup, Long> {
     @Query(
             value = """
@@ -767,7 +780,7 @@ public interface SettleGroupRepository extends JpaRepository<SettleGroup, Long> 
     public List<SettleGroup> findGroupByCustomerIdAndServiceId(LocalDate start, LocalDate end, Long customerId);
 }
 
-// # Support
+// batch.upport
 public interface EmailProvider {
     void send(String emailAddress, String title, String body);
 
@@ -775,6 +788,7 @@ public interface EmailProvider {
     class Fake implements EmailProvider {}
 }
 
+// domain
 @Data
 public class Customer {
     private Long id;
@@ -853,6 +867,7 @@ public class SettleGroupStepConfiguration {
     }
 }
 
+// batch.group
 @Component
 public class SettleGroupItemReader implements ItemReader<Customer> {
     private final CustomerRepository customerRepository;
