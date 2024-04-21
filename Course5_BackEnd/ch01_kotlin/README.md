@@ -31,7 +31,7 @@
 JetBrain에서 개발한 정적 타입의 프로그래밍 언어  
 Java와 동일하게 JVM에서 실행  
 이는 객체 지향 프로그래밍, 함수형 프로그래밍 두 가지 개발이 가능  
-Google에서 Kotli 안드로이드 공식 언어로 선언  
+Google에서 Kotlin을 안드로이드 공식 언어로 선언  
 > 굳이 자바와 비교하자면 간결하고 표현력이 뛰어나게 작성가능
 - 장점
 1. NULL 안정성
@@ -45,8 +45,102 @@ Google에서 Kotli 안드로이드 공식 언어로 선언
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-02. Kotilin과 Java 코드 비교하며 배워보기 - 1) 변수선언
-var, val
+## 실습 - kotlin-example
+> - Language: Kotlin
+> - Build System: Gradle
+> - Gradle DSL: Groovy(원래 코틀린 Project는 Kotlin을 사용하지만 기존 Groovy 사용했기에)
+> - JDK11
+> - org.example
+- build.gradle
+```gradle
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.7.20'
+    id 'application'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.jetbrains.kotlin:kotlin-test'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = '1.8'
+}
+
+compileTestKotlin {
+    kotlinOptions.jvmTarget = '1.8'
+}
+
+application {
+    mainClassName = 'MainKt'
+}
+```
+- Main.kt
 ```kotlin
+fun main(args: Array<String>) {
+    println("Hello World!")
+
+    // Try adding program arguments via Run/Debug configuration.
+    // Learn more about running applications: https://www.jetbrains.com/help/idea/running-applications.html.
+    println("Program arguments: ${args.joinToString()}")
+}
+```
+
+## 실습 - java-example
+> - kotlin-example과 동일, Language 만 JAVA
+
+## 실습 - 변수 선언(java-example/kotlin-example)
+### java-example
+- primitive/Reference Type: int/Integer
+> ex01.exam
+```java
+// ex01
+package org.example.ex01;
+
+public class Exam01 {
+
+    Exam01() {
+        // 코드 작성
+        String name = "홍길동";
+        String format = "사용자 이름은 : %s";
+        String result = String.format(format, name);
+        System.out.println(result);
+
+        int age = 10;
+        Integer _age = 10;
+
+        double d = 10d;
+        Double _d = 20.0;
+
+        float f = 20f;
+        Float _f = 20.0f;
+
+        long l = 20L;
+        Long _l = 20L;
+
+        boolean bool = false;
+        Boolean _bool = false;
+    }
+    public static void main(String[] args) {
+        new Exam01();
+    }
+}
+```
+### kotlin-example
+- var: mutable(가변)
+- val: immutable(불변)
+```kotlin
+// ex01.Exam01
 fun main() {
 
 	// var = mutable(가변)
@@ -56,7 +150,7 @@ fun main() {
 
 	val name: String = "홍길동"
 	var _name: String = "홍길동"
-	val n = "홍길동"
+	val n = "홍길동" // 타입 추론
 	val result = "사용자 이름은 $name"
 	println(result)
 	
@@ -74,17 +168,63 @@ fun main() {
 }
 ```
 > Organize
-```
 - var 가변 객체, val 불변 객체
-- 다 Reference Type
+- Kotlin은 모든게 `Reference Type`
 - ';'없다
-```
+- String.format 대신 "~~ $변수명"
+> ${수식}, 수식 표현이 가능하다. ex) ${if(true) name} 
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-03. Kotlin과 Java 코드 비교하며 배워보기 - 2) null 안정성과 엘비어스 연산자
+- Null
+> - new Integer(null)
+> > NumberFormatException
+> - Integer a = null
+> > NullPointException
+> > > Optional.ofNullable.orElseThrow() or default()
 - Elvis 연산자
+## 실습 - null 안정성과 엘비어스 연산자(java-example/kotlin-example)
+- java
+```java
+//ex02
+public class Exam02 {
+    private int a; // 0
+
+    Exam02() {
+        // 코드 작성
+        var b = 20; // 타입 추론
+//        var c = null; // X
+        int c = 30;
+//        int d;
+        Integer e = new Integer(100);
+        Integer f = 20;
+        Integer g = null;
+
+        callFunction(a);
+        callFunction(b);
+        callFunction(c);
+//        callFunction(d);
+        callFunction(e);
+        callFunction(f);
+        callFunction(g); //NPE
+        callFunction(null);
+
+    }
+
+    public void callFunction(Integer i) {
+        var _i = (i == null) ? Integer.valueOf(100) : Integer.valueOf(i);
+        var temp = _i;
+        System.out.println(temp * 20);
+    }
+    public static void main(String[] args) {
+        new Exam02();
+    }
+}
+```
+- kotlin
 ```kotlin
+// ex02.Exam02.kt
 fun main() {
 	val a: Int = 0
 	val b = 10
@@ -121,13 +261,14 @@ fun callFunction(i: Int? = 100) {
 }
 ```
 > Organize
-```
-- ?
+- ? Elvis 연산자
 - ?.let{ ~ }
+> null 아닐때
 - ?:run{ ~ }
-- fun callFunction(i: Int? = 100) >> null 일 경우 매개변수 초기화
-> callFunction() 가능
-```
+> null 일때
+- fun callFunction(i: Int? = 100)
+> - `?=` i 값이 넘어오지 않았을때 매개변수 초기화
+> - callFunction() 가능
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -156,6 +297,7 @@ fun callFunction(i: Int? = 100) {
 	userList.forEachIndexed { index, user ->
 		println("index: $index user : $user")
 	}
+	
 /*
 	userList.forEachIndexed(fun (index, user){
 		println("index: $index user : $user")
