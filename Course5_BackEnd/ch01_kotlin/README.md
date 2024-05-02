@@ -360,9 +360,11 @@ class User {
     }
 }
 ```
-> - new ArrayList<>(); List.of(<arrs>
-> - Collections.unmodifiableCollection(<col>)
-
+> organize
+```java
+new ArrayList<>(); List.of(<arrs>);
+Collections.unmodifiableCollection(<col>);
+```
 ### kotlin
 ```kotlin
 	// 가변 var, 불변 val
@@ -737,6 +739,7 @@ public class User { ~ }
 ```
 ### kotlin
 ```kotlin
+// ex07.Exam07
 data class User(
 	var name:String?=null,
 	var age:Int?=null,
@@ -767,8 +770,56 @@ fun main() {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-08. Kotlin과 Java 코드 비교하며 배워보기 - 7) default value
-## default value 생성자, 매개변수
+- default Value
+> Null
+## 실습 - default value 생성자, 매개변수(java-example/kotlin-example)
+### java
+```java
+// ex09
+public class Exam08 {
+    public Exam08(Store store) { //service logic
+        var stringRegisterAt = toLocalDateTimeString(
+                Optional.ofNullable(store.getRegisterAt())
+        );
+        System.out.println(stringRegisterAt);
+    }
+
+    public String toLocalDateTimeString(Optional<LocalDateTime> localDateTime) {
+        LocalDateTime temp = localDateTime.orElseGet(() -> LocalDateTime.now());
+        return temp.format(DateTimeFormatter.ofPattern("yyyy MM dd"));
+    }
+
+    public static void main(String[] args) {
+        // client ->
+        var registerDto = new Store();
+        registerDto.setRegisterAt(LocalDateTime.now());
+        new Exam08(registerDto); // example service logic
+    }
+}
+
+class Store {
+    private LocalDateTime registerAt;
+
+    public LocalDateTime getRegisterAt() {
+        return registerAt;
+    }
+
+    public void setRegisterAt(LocalDateTime registerAt) {
+        this.registerAt = registerAt;
+    }
+}
+```
+> Organize
+```java
+//Optional
+Optional<LocalDateTime> ldt;
+ldt.getOrElseGet(Consumeer<LocalDatetime> consumer)
+Optional.ofNuallable(T): Optional<T>
+```
+
+### kotlin
 ```kotlin
+// ex08.Exam08.kt
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -810,16 +861,89 @@ class DateTimeUtil{
 }
 ```
 > organize
-```
-- 매개변수에 아무것도 입력 안할시 매개변수 Null check
-- 매개변수에 null 입력시 값 입력으로 인식 > 매개변수 안에서 ?= default value 동작 X 
-> 코드에서 null check
-```
+> - 매개변수가 들어오지 않을때
+> > fun localDateTimeToString(localDateTime: LocalDateTime ?= LocalDateTiem.of(2020, 2, 2, 13, 0, 0)): String { }
+> - Null Check
+> > localDateTime?: LocalDateTime.nwo.format(DateTiemFormatter.ofPattern(pattern))
+> - 클래스 init Scope, 생성자
+> > class init{}/constructor()
+> - 이외에 예외를 터트려야 될 경우 with throw 메소드 or utility를 만들어 사용
+
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-09. Kotlin과 Java 코드 비교하며 배워보기 - 8) when
-## when
+- when
+> - if, switch, type casting
+## 실습 - when(java-example/kotlin-example)
+### java
+```java
+public class Exam09 {
+    public Exam09(StoreUser storeUser) {
+        // service logic
+        if (("MASTER").equals(storeUser.getRole())) {
+            //master
+        } else if (("ADMIN").equals(storeUser.getRole())) {
+            //admin
+        } else if (("USER").equals(storeUser.getRole())) {
+            // user
+        } else {
+            // default
+        }
+
+        var role = "";
+        switch (storeUser.getRole()) {
+            case "MASTER":
+            case "ADMIN":
+                role = "MASTER";
+                break;
+            case "USER":
+                break;
+            default:
+                // default
+        }
+
+        try {
+
+        } catch (Exception e) {
+            var result = "";
+            if (e instanceof NullPointerException) {
+
+            } else if (e instanceof NumberFormatException) {
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        var storeUser = new StoreUser();
+        new Exam09(storeUser);
+    }
+}
+
+class StoreUser {
+    private String name;
+    private String role;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+}
+```
+> - if, switch, try-catch
+
+### kotlin
 ```kotlin
 fun main() {
 	var result = when ("") {
@@ -872,38 +996,69 @@ fun main() {
 	println(r)
 }
 ```
-> organize
-```
-1) 
-when( 매개변수 ) {
-	값 or type -> {
-
-	}
-	...
-	else -> {
-
-	}
-}
-
-2) when(매개변수) {
-	is ~  -> {
-
-	}
-	is -> {
-
-	}
-}
-
-3)
-val r = when {
-	표현식
-}
-```
+> - when
+> > - else
+> > - is: Type Casting
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-10. Kotlin과 Java 코드 비교하며 배워보기 - 9) 확장함수
-## StringUtils, ObjectUtils - isBlank()...
+- 확장함수
+> - Java: ObjectUtils.isNotNull, StringUtils.isNotNull()
+> - Kotlin
+> > - ?.isNullOrBlack()
+> > - 기존 Util 클래스에 함수 추가
+> > > fun String?.isNotNullOrBlank()
+
+## 실습 - StringUtils, ObjectUtils - isBlank()...(java-example/kotlin-example)
+### java
+```java
+// ex10
+public class Exam10 {
+    public Exam10(ExamUser examUser) {
+        Optional<ExamUser> optionalUser = Optional.ofNullable(examUser);
+        optionalUser.ifPresent(it -> {
+            Optional.ofNullable(examUser.getName()).ifPresent(name -> {
+                if (!name.isBlank()) {
+                    System.out.println(name);
+                }
+            });
+        });
+
+        // 더 직관적
+        if (ObjectUtils.isNotNull(examUser) && ObjectUtils.isNotNull(examUser.getName())) {
+            if (StringUtils.notBlank(examUser.getName())) {
+                System.out.println(examUser.getName());
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        ExamUser user = new ExamUser();
+        user.setName("abcd");
+        new Exam10(user);
+    }
+}
+
+class StringUtils {
+    public static boolean notBlank(String value) {
+        return !value.isBlank();
+    }
+}
+
+class ExamUser {
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+```
+### kotlin
 ```kotlin
 fun main() {
     var user = ExamUser(name = "abcd")
@@ -948,20 +1103,20 @@ fun Any?.isNotNull(): Boolean {
 }
 ```
 > organize
-```
-- extension function
-fun String?.isNotNullOrBlank(): Boolean {
-	return false
-}
-> 마치 String 클래스에 메소드가 있는 것처럼 동작
-> Object > Any
-```
+> - extension function
+> > 마치 String 클래스에 메소드가 있는 것처럼 동작
+> > Any 확장 함수
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-11. Kotlin - 표준함수 let
-## Let
+- 표준함수 - Let
+> - map처럼 사용, null에 대한 안정성
+> - keyword: it
+## 실습 - let(kotlin-example)
+### kotlin
 ```kotlin
+// ex10.Exam10.kt
 import java.time.LocalDateTime
 import kotlin.streams.toList
 
@@ -1031,16 +1186,22 @@ public inline fun <T, R> T.let(block: (T) -> R): R {
 ~.let{
 	it.~
 }
-> Null Check or 객체의 Map과 같다
-> 기본 args: it
-> 리턴: 마지막 줄, 리턴 명시적 선언 X
+
+> - Null Check or 객체의 Map과 같다
+> - 기본 args: it
+> - 리턴: 마지막 줄, 리턴 명시적 선언 X
 ```
 
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-12. Kotlin - 표준함수 also
-## also
+- also
+> - <T> also(((T) -> Unit): T
+> - .also Elvis연산자 가능
+- Unit: void와 같다
+## 실습 - also(kotlin-example)
 ```kotlin
+// ex11.Also.kt
 fun main() {
     // also / 또한
     val userDto = UserDto(
@@ -1075,8 +1236,13 @@ public inline fun <T> T.also(block: (T) -> Unit): T {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-13. Kotlin - 표준함수 apply
-## apply
+- apply
+> - keyword: this
+> - 초기화 해줄때 사용
+> - 익명 확장함수
+## 실습 - apply(kotlin-example)
 ```kotlin
+// ex11.Apply.kt
 fun main() {
     // apply, 생성자 패턴
     // 확장함수 람다, 익명 확장함수
@@ -1106,8 +1272,12 @@ public inline fun <T> T.apply(block: T.() -> Unit): T {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-14. Kotlin - 표준함수 run
-## run
+- run
+> - let과 같지만, 익명 확장함수(지역 Scope)
+> - keyword: this
+## 실습 - run(kotlin-example)
 ```kotlin
+// ex11.Run.kt
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
