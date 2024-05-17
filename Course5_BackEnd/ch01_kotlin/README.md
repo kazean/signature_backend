@@ -45,6 +45,12 @@ Google에서 Kotlin을 안드로이드 공식 언어로 선언
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-02. Kotilin과 Java 코드 비교하며 배워보기 - 1) 변수선언
+## Kotlin
+- Primitive/Reference Type
+> Kotlin은 Reference Type만 있다.
+> - var
+> - val
+
 ## 실습 - kotlin-example
 > - Language: Kotlin
 > - Build System: Gradle
@@ -140,7 +146,7 @@ public class Exam01 {
 - var: mutable(가변)
 - val: immutable(불변)
 ```kotlin
-// ex01.Exam01
+// ex01.Exam01.kt
 fun main() {
 
 	// var = mutable(가변)
@@ -177,13 +183,13 @@ fun main() {
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Ch01-03. Kotlin과 Java 코드 비교하며 배워보기 - 2) null 안정성과 엘비어스 연산자
-- Null
+- Null: Java
 > - new Integer(null)
 > > NumberFormatException
 > - Integer a = null
 > > NullPointException
 > > > Optional.ofNullable.orElseThrow() or default()
-- Elvis 연산자
+- Elvis 연산자: Kotlin
 ## 실습 - null 안정성과 엘비어스 연산자(java-example/kotlin-example)
 ### java
 ```java
@@ -367,6 +373,8 @@ Collections.unmodifiableCollection(<col>);
 ```
 ### kotlin
 ```kotlin
+// ex03.Exam03.kt
+fun main() {
 	// 가변 var, 불변 val
 	// mutable, immutable
 
@@ -453,6 +461,7 @@ public class Exam04 {
 
 ### kotlin
 ```kotlin
+// ex04.Exam04
 fun main() {
 	// java Object == Any
 	var map = mapOf<String, Any>(
@@ -537,6 +546,7 @@ public class Exam05 {
 
 ### kotlin
 ```kotlin
+// ex06.Exam06
 import java.util.function.Predicate
 
 fun main() {
@@ -594,7 +604,7 @@ fun lambda(x: Int, y: Int, method: (Int, Int) -> Int) {
 ## 실습 - 고차함수(java-example/kotlin-example)
 ### java
 ```java
-// ex06
+// ex06.Exam06
 interface Bark {
     void bark();
 }
@@ -659,6 +669,7 @@ public class Exam06 {
 
 ### Kotlin
 ```kotlin
+// ex06.Exam06
 fun main() {
 	val dog = Dog("해피")
 	println(dog.age)
