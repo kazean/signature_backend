@@ -178,7 +178,7 @@ fun main() {
 - Kotlin은 모든게 `Reference Type`
 - ';'없다
 - String.format 대신 "~~ $변수명"
-> ${수식}, 수식 표현이 가능하다. ex) ${if(true) name} 
+> ${수식}, 수식 표현이 가능하다. ex) ${if(true) name else null} 
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -423,7 +423,7 @@ class User(
 > - 기본적으로 listOf, 불변은 add/remove() 자체가 없다
 > - userList.forEach{...}/forEachIndexed{index, t -> ...}
 > - cf, val list 
-> > list = userList (X)
+> > list = userList (X, val 이기에)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -460,6 +460,7 @@ public class Exam04 {
 ```
 
 ### kotlin
+- mapOf, mutableMapOf<>()
 ```kotlin
 // ex04.Exam04
 fun main() {
@@ -545,8 +546,11 @@ public class Exam05 {
 > - Lambada
 
 ### kotlin
+- Predicate<>
+- filter
+- Lambda, args - method
 ```kotlin
-// ex06.Exam06
+// ex06.Exam05
 import java.util.function.Predicate
 
 fun main() {
