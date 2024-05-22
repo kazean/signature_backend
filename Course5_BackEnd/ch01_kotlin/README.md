@@ -1021,7 +1021,7 @@ fun main() {
 - 확장함수
 > - Java: ObjectUtils.isNotNull, StringUtils.isNotNull()
 > - Kotlin
-> > - ?.isNullOrBlack()
+> > - class?.~~~method()
 > > - 기존 Util 클래스에 함수 추가
 > > > fun String?.isNotNullOrBlank()
 
