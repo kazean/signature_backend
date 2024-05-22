@@ -1213,6 +1213,7 @@ public inline fun <T, R> T.let(block: (T) -> R): R {
 - also
 > - <T> also(((T) -> Unit): T
 > - .also Elvis연산자 가능
+> - it
 - Unit: void와 같다
 ## 실습 - also(kotlin-example)
 ```kotlin
