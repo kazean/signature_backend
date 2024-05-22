@@ -1,4 +1,17 @@
 # Ch02. Spring과 Kotlin
+- [1. Java에서 Kotlin 함께 사용하기](#ch02-01-java에서-kotlin-적용하기)
+- [2. Spring에서 Kotlin 적용하기](#ch02-02-spring에서-kotlin-적용하기)
+- [3. 기존 프로젝트를 Kotlin으로 변경하기 - 1) kotlin 설정 추가하기-1](#ch02-03-기존-프로젝트를-kotlin으로-변경하기---1-kotlin-설정-추가하기_1)
+- [4. 기존 프로젝트를 Kotlin으로 변경하기 - 2) common 모듈 옮기기](#ch02-04-기존-프로젝트를-kotlin으로-변경하기---2-common-모듈-옮기기)
+- [5. 기존 프로젝트를 Kotlin으로 변경하기 - 3) common 모듈 옮기기](#ch02-05-기존-프로젝트를-kotlin으로-변경하기---3-common-모듈-옮기기)
+- [6. 기존 프로젝트를 Kotlin으로 변경하기 - 4) JPA 다루기](#ch02-06-기존-프로젝트를-kotlin으로-변경하기---4-jpa-다루기)
+- [7. 기존 프로젝트를 Kotlin으로 변경하기 - 5) JPA 연관관계 설정](#ch02-07-기존-프로젝트를-kotlin으로-변경하기---5-jpa-연관관계-설정)
+- [8. 기존 프로젝트를 Kotlin으로 변경하기 - 6) Entity](#ch02-08-기존-프로젝트를-kotlin으로-변경하기---6-entity)
+- [9. 기존 프로젝트를 Kotlin으로 변경하기 - 7) Kotlin Entity](#ch02-09-기존-프로젝트를-kotlin으로-변경하기---7-kotlin-entity)
+- [10. 기존 프로젝트를 Kotlin으로 변경하기 - 8) 비지니스 로직 변경](#ch02-10-기존-프로젝트를-kotlin으로-변경하기---8-비지니스-로직-변경)
+
+
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-01. Java에서 Kotlin 적용하기
 ## Java > Koltin
 - build.gradle
@@ -122,6 +135,7 @@ class TempApiController {
 > Spring 과 사용법 같다
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-03. 기존 프로젝트를 Kotlin으로 변경하기 - 1 kotlin 설정 추가하기_1
 ## ApiApplication,Config - kotlin 변경
 ```kotlin
@@ -250,6 +264,7 @@ class WebConfig(
 ```
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-04. 기존 프로젝트를 Kotlin으로 변경하기 - 2 common 모듈 옮기기
 ## common/org.delivery.common.api/error
 ```kotlin
@@ -299,6 +314,8 @@ enum class ErrorCode( ~ ) : ErrorCodeIfs {
 }
 ```
 
+
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-05. 기존 프로젝트를 Kotlin으로 변경하기 - 3 common 모듈 옮기기
 ## common/org.delivery.common.exception/api/annotation
 ```kotlin
@@ -419,6 +436,7 @@ Api<T>(
 ```
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-06. 기존 프로젝트를 Kotlin으로 변경하기 - 4 JPA 다루기
 ## db: java to kotlin
 - build.gradle
@@ -454,6 +472,7 @@ interface UserRepository : JpaRepository<UserEntity, Long> {
 > > store-admin: sercice 마찬가지, build.gradle & impl kotlin-reflect
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-07. 기존 프로젝트를 Kotlin으로 변경하기 - 5 JPA 연관관계 설정
 ## 연관관계 설정
 - userorder - userordermenu 
@@ -526,6 +545,7 @@ public class UserOrderBusiness {
 > UserOrderBusiness, StoreMenuBusiness
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-08. 기존 프로젝트를 Kotlin으로 변경하기 - 6 Entity
 ## ToString.Exclude, @JsonIgnore
 ```java
@@ -662,6 +682,7 @@ public UserOrderDetailResponse read(User user, Long orderId) {
 ```
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-09. 기존 프로젝트를 Kotlin으로 변경하기 - 7 Kotlin Entity
 ## DB/ UserOrderEntity
 ```kotlin
@@ -765,6 +786,7 @@ public class User {
 > Elvis Op, UserOrderResponse: data class
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-10. 기존 프로젝트를 Kotlin으로 변경하기 - 8 비지니스 로직 변경
 ## Api/ UserOrderBusiness - common/Log, controller/model/UserOrderResponse, UserOrderDetailResponse, converter/UserOrderConverter
 ```kotlin
