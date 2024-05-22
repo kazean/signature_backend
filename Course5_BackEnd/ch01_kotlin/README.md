@@ -1131,7 +1131,7 @@ fun Any?.isNotNull(): Boolean {
 ## 실습 - let(kotlin-example)
 ### kotlin
 ```kotlin
-// ex10.Exam10.kt
+// ex11.Let.kt
 import java.time.LocalDateTime
 import kotlin.streams.toList
 
