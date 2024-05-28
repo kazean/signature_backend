@@ -260,6 +260,7 @@ class TempApiController {
 # Ch02-03. 기존 프로젝트를 Kotlin으로 변경하기 - 1 kotlin 설정 추가하기_1
 ## 실습 (service)
 ### ApiApplication,Config - kotlin 변경
+- 기존 것은 주석처리
 ```kotlin
 package org.delivery.api
 
@@ -268,29 +269,6 @@ class ApiApplication
 
 fun main(args: Array<String>) {
   runApplication<ApiApplication>(*args)
-}
-
-
-package org.delivery.api.config.health
-
-@RestController
-@RequestMapping("/open-api")
-class HealthOpenApiController {
-  private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
-
-  @GetMapping("/health")
-  fun health() {
-    logger.info("health call")
-  }
-}
-
-
-package org.delivery.api.config.jpa
-
-@Configuration
-@EntityScan(basePackages = ["org.delivery.db"])
-@EnableJpaRepositories(basePackages = ["org.delivery.db"])
-class JpaConfig {
 }
 ```
 
@@ -324,10 +302,10 @@ class ObjectMapperConfig {
       // kotlin module
       val kotlinModule = KotlinModule.Builder().apply {
         withReflectionCacheSize(512)
-        configure(KotlinFeature.NullToEmptyCollection, false) // Collection: null  > null, true 일 경우 size = 0인 컬렉션
+        configure(KotlinFeature.NullToEmptyCollection, false) // false > Collection: null, true 일 경우 size = 0인 컬렉션
         configure(KotlinFeature.NullToEmptyMap, false)
-        configure(KotlinFeature.NullIsSameAsDefault, false)
-        configure(KotlinFeature.SingletonSupport, false)
+        configure(KotlinFeature.NullIsSameAsDefault, false) // 자료형
+        configure(KotlinFeature.SingletonSupport, false) 
         configure(KotlinFeature.StrictNullChecks, false)
       }.build()
 
@@ -343,6 +321,39 @@ class ObjectMapperConfig {
       }
       return  objectMapper
   }
+}
+```
+> - build.gralde jackson-module-kotlin
+
+```kotlin
+package org.delivery.api.config.health
+
+@RestController
+@RequestMapping("/open-api")
+class HealthOpenApiController {
+  private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
+
+  @GetMapping("/health")
+  fun health() {
+    logger.info("health call")
+  }
+}
+```
+
+```java
+@Configuration
+@EntityScan(basePackages = "org.delivery.db")
+@EnableJpaRepositories(basePackages = "org.delivery.db")
+public class JpaConfig {
+}
+```
+```kotlin
+package org.delivery.api.config.jpa
+
+@Configuration
+@EntityScan(basePackages = ["org.delivery.db"])
+@EnableJpaRepositories(basePackages = ["org.delivery.db"])
+class JpaConfig {
 }
 ```
 
@@ -428,6 +439,17 @@ class RabbitMqConfig {
 }
 ```
 
+```kotlin
+@Configuration
+class SwaggerConfig {
+    @Bean
+    fun modelResolver(objectMapper: ObjectMapper)
+    : ModelResolver {
+        return ModelResolver(objectMapper)
+    }
+}
+```
+
 ```java
 @RequiredArgsConstructor
 @Configuration
@@ -502,6 +524,15 @@ class WebConfig(
   }
 }
 ```
+> - swagger-ui/index.html 통해서 확인
+> - health
+> - user-open-api-controller: /open-api/user/login
+> > - user argument resolver 동작 확인
+> > - ID/PW (steve@gmail.com/1234)
+> - user-api-controller: /api/user/me
+> > - snake_case 확인
+
+
 - 정리
 > - Logger
 ```kotlin
@@ -542,7 +573,8 @@ class WebConfig(
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-04. 기존 프로젝트를 Kotlin으로 변경하기 - 2 common 모듈 옮기기
-## common/org.delivery.common.api/error
+## 실습 (service)
+### common/org.delivery.common.api/error
 ```kotlin
 data class Api<T>(
   var result: Result?=null,
