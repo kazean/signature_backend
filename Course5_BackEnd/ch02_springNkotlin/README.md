@@ -13,7 +13,8 @@
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-01. Java에서 Kotlin 적용하기
-## 실습 (java-example을 kotlin으로 변경하기)
+## 실습
+### java-example을 kotlin으로 변경하기
 - build.gradle 변경
 ```gradle
 plugins {
@@ -47,9 +48,12 @@ compileTestKotlin {
 }
 ```
 > plugins, compileKotlin, compileTestKotlin, dependencies
-- UserDto
+- UserDto.java
 ```java
-// java/org.example.model
+package org.example.model;
+
+import java.time.LocalDateTime;
+
 public class UserDto {
     private String name;
     private Integer age;
@@ -122,7 +126,8 @@ public class UserDto {
 ```
 - UserService.kt
 ```kotlin
-// kotlin/org.example.user
+package org.example.user
+
 import org.example.model.UserDto
 import java.time.LocalDateTime
 
@@ -153,7 +158,7 @@ fun main() {
 > - `!` 연산자, kt에서 null로 인식 안하는 문제
 > - userDto.name `!` 연산자 null로 인지하는 것이 불가능, 그래서 `?. ?:`을 사용해야한다 
 
-### Kotlin > Java
+### kotlin-example > Java
 - UserModel.kt
 ```kotlin
 package org.example.user
@@ -179,6 +184,8 @@ public class Main {
     }
 }
 ```
+- 정리
+> - UserModel.kt를 Java에서 사용하기
 
 
 --------------------------------------------------------------------------------------------------------------------------------
