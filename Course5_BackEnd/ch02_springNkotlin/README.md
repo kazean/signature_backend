@@ -190,7 +190,12 @@ public class Main {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-02. Spring에서 Kotlin 적용하기
-## service
+- Spring Project에 kotlin 적용하기
+> - library
+## 실습 (service Course4.ch02~08)
+- service 프로젝트 복사
+- rabbitmq, mysql
+> - ApiApplication Run
 - service/build.gradle, api/build.gralde
 ```gradle
 // service/build.gradle
@@ -227,11 +232,16 @@ tasks.withType(KotlinCompile) {
     }
 }
 ```
-> plugins: kotlin.jvm, kotlin.plugin.spring/jpa  
-> dependencies: jackson-module-kotlin, kotlin-reflect  
-> tasks.withType(KotlinCompile) { ~ }
-- api/main/kotlin/org.delivery.api.domain.temp.TempApiController
+- 정리
+> - plugins: kotlin.jvm, kotlin.plugin.spring/jpa  
+> > service.build.gralde 버전 지정(plugins), api.build.gralde 버전 생략
+> - dependencies: jackson-module-kotlin, kotlin-reflect  
+> - tasks.withType(KotlinCompile) { ~ }
+
+- api/kotlin/TempApiController.kt
 ```kotlin
+packages org.delivery.api.domain.temp
+
 @RestController
 @RequestMapping("/api/temp")
 class TempApiController {
@@ -242,6 +252,7 @@ class TempApiController {
     }
 }
 ```
+> - localhost:8080/swagger-ui/index.html
 > Spring 과 사용법 같다
 
 
