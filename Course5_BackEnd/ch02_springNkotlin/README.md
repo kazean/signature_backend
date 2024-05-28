@@ -258,14 +258,20 @@ class TempApiController {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-03. 기존 프로젝트를 Kotlin으로 변경하기 - 1 kotlin 설정 추가하기_1
-## ApiApplication,Config - kotlin 변경
+## 실습 (service)
+### ApiApplication,Config - kotlin 변경
 ```kotlin
+package org.delivery.api
+
 @SpringBootApplication
 class ApiApplication
 
 fun main(args: Array<String>) {
   runApplication<ApiApplication>(*args)
 }
+
+
+package org.delivery.api.config.health
 
 @RestController
 @RequestMapping("/open-api")
@@ -278,11 +284,38 @@ class HealthOpenApiController {
   }
 }
 
+
+package org.delivery.api.config.jpa
+
 @Configuration
 @EntityScan(basePackages = ["org.delivery.db"])
 @EnableJpaRepositories(basePackages = ["org.delivery.db"])
 class JpaConfig {
 }
+```
+
+```java
+@Configuration
+public class ObjectMapperConfig {
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new Jdk8Module()); // JDK 8 버전 이후 클래스
+        objectMapper.registerModule(new JavaTimeModule()); // LDT
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false); // 모르는 json field에 대해서는 무시한다.
+        objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+
+        // 날짜 관련 직렬화
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        // 스네이크 케이스
+        objectMapper.setPropertyNamingStrategy(new PropertyNamingStrategies.SnakeCaseStrategy());
+
+        return objectMapper;
+    }
+}
+```
+```kotlin
+package org.delivery.api.config.objectmapper
 
 @Configuration
 class ObjectMapperConfig {
@@ -311,11 +344,132 @@ class ObjectMapperConfig {
       return  objectMapper
   }
 }
+```
+
+```java
+@Configuration
+public class RabbitMqConfig {
+
+    @Bean
+    public DirectExchange directExchange() {
+        return new DirectExchange("delivery.exchange");
+    }
+
+    @Bean
+    public Queue queue() {
+        return new Queue("delivery.queue");
+    }
+
+    @Bean
+    public Binding binding(DirectExchange directExchange, Queue queue) {
+        return BindingBuilder.bind(queue).to(directExchange).with("delivery.key");
+    }
+
+    // end queue 설정
+    @Bean
+    public RabbitTemplate rabbitTemplate(
+            ConnectionFactory connectionFactory,
+            MessageConverter messageConverter
+    ) {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+        rabbitTemplate.setMessageConverter(messageConverter);
+        return rabbitTemplate;
+    }
+
+    @Bean
+    public MessageConverter messageConverter(ObjectMapper objectMapper) {
+        return new Jackson2JsonMessageConverter(objectMapper);
+    }
+}
+```
+```kotlin
+package org.delivery.api.config.rabbitmq
 
 @Configuration
 class RabbitMqConfig {
-  ~
+    @Bean
+    fun directExchange(): DirectExchange {
+        return DirectExchange("delivery.exchange")
+    }
+
+    @Bean
+    fun queue(): Queue {
+        return Queue("delivery.queue")
+    }
+
+    @Bean
+    fun binding(
+        directExchange: DirectExchange,
+        queue: Queue,
+    ): Binding {
+        return BindingBuilder.bind(queue)
+            .to(directExchange)
+            .with("delivery.key")
+
+    }
+
+    @Bean
+    fun rabbitTemplate(
+        connectionFactory: ConnectionFactory,
+        messageConverter: MessageConverter
+    ): RabbitTemplate {
+        val rabbitTemplate = RabbitTemplate().apply {
+            setConnectionFactory(connectionFactory)
+            setMessageConverter(messageConverter)
+        }
+        return rabbitTemplate
+
+    }
+
+    @Bean
+    fun messageConverter(objectMapper: ObjectMapper): MessageConverter {
+        return Jackson2JsonMessageConverter(objectMapper)
+    }
 }
+```
+
+```java
+@RequiredArgsConstructor
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    private final AuthorizationInterceptor authorizationInterceptor;
+    private final UserSessionResolver userSessionResolver;
+    private List<String> OPEN_API = List.of(
+            "/open-api/**"
+    );
+    private List<String> DEFAULT_EXCLUDE = List.of(
+            "/",
+            "/favicon.ico",
+            "/error"
+    );
+
+    private List<String> SWAGGER = List.of(
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs/**"
+    );
+
+    /**
+     * open-api 검증 X
+     * api 검증
+     * @param registry
+     */
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(authorizationInterceptor)
+                .excludePathPatterns(OPEN_API)
+                .excludePathPatterns(DEFAULT_EXCLUDE)
+                .excludePathPatterns(SWAGGER);
+    }
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(userSessionResolver);
+    }
+}
+```
+```kotlin
+package org.delivery.api.config.web
 
 @Configuration
 class WebConfig(
@@ -348,15 +502,15 @@ class WebConfig(
   }
 }
 ```
-> organize
-```
-# Logger
+- 정리
+> - Logger
+```kotlin
 private val logger: Logger = LoggerFactory.getLogger(this.javaClass)  
-
-# ObjectMapper
-// kotlin module
-- KotlinModule.Builder()
-- apply > configure(KotlinFeature.NullToEmptyCollection / NullToEmptyMap / NullIsSameAsDefault / SingletonSupport / StrictNullChecks)
+```
+> - ObjectMapper
+> > - KotlinModule.Builder()
+> > - apply > configure(KotlinFeature.NullToEmptyCollection / NullToEmptyMap / NullIsSameAsDefault / SingletonSupport / StrictNullChecks)
+```kotlin
 val kotlinModule = KotlinModule.Builder().apply {
   withReflectionCacheSize(512)
   configure(KotlinFeature.NullToEmptyCollection, false) // Collection: null  > null, true 일 경우 size = 0인 컬렉션
@@ -373,8 +527,9 @@ val objectMapper = ObjectMapper().apply {
   registerModule(kotlinModule)
   ~
 }
-
-# impl, @RequireArgumentConstructor
+```
+> - impl, @RequireArgumentConstructor
+```kotlin
 @Configuration
 class WebConfig(
     private val authorizationInterceptor: AuthorizationInterceptor,
