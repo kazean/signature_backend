@@ -272,6 +272,7 @@ fun main(args: Array<String>) {
 }
 ```
 
+
 ```java
 @Configuration
 public class ObjectMapperConfig {
@@ -325,6 +326,7 @@ class ObjectMapperConfig {
 ```
 > - build.gralde jackson-module-kotlin
 
+
 ```kotlin
 package org.delivery.api.config.health
 
@@ -339,6 +341,7 @@ class HealthOpenApiController {
   }
 }
 ```
+
 
 ```java
 @Configuration
@@ -356,6 +359,7 @@ package org.delivery.api.config.jpa
 class JpaConfig {
 }
 ```
+
 
 ```java
 @Configuration
@@ -439,6 +443,7 @@ class RabbitMqConfig {
 }
 ```
 
+
 ```kotlin
 @Configuration
 class SwaggerConfig {
@@ -449,6 +454,7 @@ class SwaggerConfig {
     }
 }
 ```
+
 
 ```java
 @RequiredArgsConstructor
@@ -574,15 +580,37 @@ class WebConfig(
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-04. 기존 프로젝트를 Kotlin으로 변경하기 - 2 common 모듈 옮기기
 ## 실습 (service)
-### common/org.delivery.common.api/error
+### common module
+- common/build.gradle
+```gradle
+plugins {
+    id 'java'
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+tasks.withType(KotlinCompile) {
+    kotlinOptions {
+        freeCompilerArgs += '-Xjsr305=strict'
+        jvmTarget = '11'
+    }
+}
+```
+
+- common/kotlin
 ```kotlin
+package org.delivery.common.api
+
 data class Api<T>(
   var result: Result?=null,
   var body: T?=null,
 )
 
+package org.delivery.common.api
 class Result {
 }
+
+
+package org.delivery.common.error
 
 interface ErrorCodeIfs {
   fun getHttpStatusCode(): Int
@@ -612,11 +640,60 @@ enum class ErrorCode(
     return this.description
   }
 }
-// TokenErrorCode, UserErrorCode.kt
+
+enum class TokenErrorCode(
+    private val httpStatusCode: Int,
+    private val errorCode: Int,
+    private val description: String
+) : ErrorCodeIfs {
+    INVALID_TOKEN(400, 2000, "유효하지 않은 토큰"),
+    EXPIRED_TOKEN(400, 2001, "만료된 토큰"),
+    TOKEN_EXCEPTION(400, 2002, "토큰 알수 없는 에러"),
+    AUTHORIZATION_TOKEN_NOT_FOUND(400, 2003, "인증 헤더 도큰 없음")
+    ;
+
+    override fun getHttpStatusCode(): Int {
+        return this.httpStatusCode
+    }
+
+    override fun getErrorCode(): Int {
+        return this.errorCode
+    }
+
+    override fun getDescription(): String {
+        return this.description
+    }
+}
+
+enum class UserErrorCode(
+    private val httpStatusCode: Int,
+    private val errorCode: Int,
+    private val description: String
+) : ErrorCodeIfs {
+    USER_NOT_FOUND(400, 1404, "사용자를 찾을 수 없음"),
+    ;
+
+    override fun getHttpStatusCode(): Int {
+        return this.httpStatusCode
+    }
+
+    override fun getErrorCode(): Int {
+        return this.errorCode
+    }
+
+    override fun getDescription(): String {
+        return this.description
+    }
+}
 ```
-> 
-```
-# enum Class
+- import api.common > common 으로 변경
+> - import org.delivery.api.common.error >  import org.delivery.common.error
+- 실행
+
+
+- 정리
+> - enum Class
+```kotlin
 enum class ErrorCode( ~ ) : ErrorCodeIfs {
 
 }
