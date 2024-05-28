@@ -13,8 +13,8 @@
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-01. Java에서 Kotlin 적용하기
-## Java > Koltin
-- build.gradle
+## 실습 (java-example을 kotlin으로 변경하기)
+- build.gradle 변경
 ```gradle
 plugins {
     id 'java'
@@ -47,8 +47,82 @@ compileTestKotlin {
 }
 ```
 > plugins, compileKotlin, compileTestKotlin, dependencies
+- UserDto
+```java
+// java/org.example.model
+public class UserDto {
+    private String name;
+    private Integer age;
+    private String email;
+    private String phoneNumber;
+    private LocalDateTime registeredAt;
+
+    public UserDto() {
+    }
+
+    public UserDto(String name, Integer age, String email, String phoneNumber, LocalDateTime registeredAt) {
+        this.name = name;
+        this.age = age;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.registeredAt = registeredAt;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public LocalDateTime getRegisteredAt() {
+        return registeredAt;
+    }
+
+    public void setRegisteredAt(LocalDateTime registeredAt) {
+        this.registeredAt = registeredAt;
+    }
+
+    @Override
+    public String toString() {
+        return "UserDto{" +
+                "name='" + name + '\'' +
+                ", age=" + age +
+                ", email='" + email + '\'' +
+                ", phoneNumber='" + phoneNumber + '\'' +
+                ", registeredAt=" + registeredAt +
+                '}';
+    }
+}
+```
 - UserService.kt
 ```kotlin
+// kotlin/org.example.user
 import org.example.model.UserDto
 import java.time.LocalDateTime
 
@@ -73,12 +147,41 @@ fun main() {
     UserService().logic()
 }
 ```
-> `!` 연산자, kt에서 null로 인식 안하는 문제
->> Elvis연산자 사용
-## Kotlin > Java
-생략
+- 정리
+> - UserService.kt(kotlin class file) 에서 Java UserDto 사용하기
+> > - name Parameter는 사용할 수 없고 직접 넣어주어야함
+> - `!` 연산자, kt에서 null로 인식 안하는 문제
+> - userDto.name `!` 연산자 null로 인지하는 것이 불가능, 그래서 `?. ?:`을 사용해야한다 
+
+### Kotlin > Java
+- UserModel.kt
+```kotlin
+package org.example.user
+
+data class UserModel(
+    var name: String?=null,
+    var age: Int?=null,
+    var email: String?=null
+)
+``` 
+- Main.java
+```java
+package org.example;
+
+import org.example.user.UserModel;
+
+public class Main {
+    public static void main(String[] args) {
+        var userModel = new UserModel(
+                "홍길동", 10, "gmail.com"
+        );
+        System.out.println(userModel);
+    }
+}
+```
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch02-02. Spring에서 Kotlin 적용하기
 ## service
 - service/build.gradle, api/build.gralde
