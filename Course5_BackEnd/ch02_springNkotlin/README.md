@@ -1049,7 +1049,8 @@ Api<T>(
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-06. 기존 프로젝트를 Kotlin으로 변경하기 - 4 JPA 다루기
-## db: java to kotlin
+## 실습 (service)
+### db: java to kotlin
 - build.gradle
 ```gradle
 plugins {
@@ -1065,7 +1066,18 @@ tasks.withType(KotlinCompile) {
   }
 }
 ```
+- Repository
+```java
+package org.delivery.db.user;
+
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
+    Optional<UserEntity> findFirstByIdAndStatusOrderByIdDesc(Long userId, UserStatus status);
+    Optional<UserEntity> findFirstByEmailAndPasswordAndStatusOrderByIdDesc(String userEmail, String password, UserStatus status);
+}
+```
 ```kotlin
+package org.delivery.db.user
+
 interface UserRepository : JpaRepository<UserEntity, Long> {
   fun findFirstByIdAndStatusOrderByIdDesc(userId: Long, userStatus: UserStatus): UserEntity?
   fun findFirstByEmailAndPasswordAndStatusOrderByIdDesc(
@@ -1076,8 +1088,57 @@ interface UserRepository : JpaRepository<UserEntity, Long> {
 }
 
 // UserOrderRepository, UserOrderMenuRepository
+package org.delivery.db.userorder
+
+interface UserOrderRepository : JpaRepository<UserOrderEntity, Long> {
+    // 특정 유저의 모든 주문
+    fun findAllByUserIdAndStatusOrderByIdDesc(userId: Long?, status: UserOrderStatus?): List<UserOrderEntity>
+    fun findAllByUserIdAndStatusInOrderByIdDesc(userId: Long?, status: List<UserOrderStatus>?): List<UserOrderEntity>
+
+    // 특정 주문
+    fun findAllByIdAndStatusAndUserId(id: Long?, status: UserOrderStatus?, userId: Long?): UserOrderEntity?
+    fun findAllByIdAndUserId(id: Long?, userId: Long?): UserOrderEntity?
+}
+
+package org.delivery.db.userordermenu
+
+import org.delivery.db.userordermenu.enums.UserOrderMenuStatus
+import org.springframework.data.jpa.repository.JpaRepository
+
+interface UserOrderMenuRepository : JpaRepository<UserOrderMenuEntity, Long> {
+    fun findAllByUserOrderIdAndStatus(userOrderId: Long?, status: UserOrderMenuStatus?): List<UserOrderMenuEntity>
+}
 // StoreRepository, StoreMenuRepository, StoreUserRepository
 ```
+
+- store-admin/build.gradle
+```gradle
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+dependencies {
+    ~
+    
+    // kotlin
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+}
+```
+> - java fun 복사 붙여넣기하면 Intellij에서 자동으로 변경
+> > or class파일 통째로 복사한 다음 Convert Java File to Kotlin File
+> - Optional 대신 Elvis 연산자
+> > UserService.java Optioanl.ofNullable로 일단 처리, UserOrderService, store-admin/StoreUserService, AuthorizationService
+> - store-admin: sercice 마찬가지, build.gradle & impl kotlin-reflect
+
+- 실행
+> - ApiApplication, StoreAdminApplication Run
+> > 실행하여 Optional 부분 수정
+
+- 정리
 > kt 는 Optional 대신 Elvis 연산자 사용
 > > cf, api: service 일단 kt로 코드바꾸기전 Optional.ofNullable() 처리  
 > > store-admin: sercice 마찬가지, build.gradle & impl kotlin-reflect
