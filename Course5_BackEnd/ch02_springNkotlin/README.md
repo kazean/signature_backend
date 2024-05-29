@@ -13,8 +13,12 @@
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-01. Java에서 Kotlin 적용하기
+- 순수 자바 프로젝트에서 kotlin 사용하기
+- kotlin 프로젝트에서 java 사용하기
+
 ## 실습
 ### java-example을 kotlin으로 변경하기
+- UserDto.java > UserService.kt 에서 사용하기
 - build.gradle 변경
 ```gradle
 plugins {
@@ -155,8 +159,8 @@ fun main() {
 - 정리
 > - UserService.kt(kotlin class file) 에서 Java UserDto 사용하기
 > > - name Parameter는 사용할 수 없고 직접 넣어주어야함
-> - `!` 연산자, kt에서 null로 인식 안하는 문제
-> - userDto.name `!` 연산자 null로 인지하는 것이 불가능, 그래서 `?. ?:`을 사용해야한다 
+> - userDto.name에 `!` 연산자 강제, kt에서 null로 인식 안하는 문제
+> > 그래서 `?. ?:`을 사용해야한다 
 
 ### kotlin-example > Java
 - UserModel.kt
@@ -233,7 +237,7 @@ tasks.withType(KotlinCompile) {
 }
 ```
 - 정리
-> - plugins: kotlin.jvm, kotlin.plugin.spring/jpa  
+> - plugins: org.jetbrain.kotlin.jvm, org.jetbrain.kotlin.plugin.spring/jpa  
 > > service.build.gralde 버전 지정(plugins), api.build.gralde 버전 생략
 > - dependencies: jackson-module-kotlin, kotlin-reflect  
 > - tasks.withType(KotlinCompile) { ~ }
@@ -258,8 +262,9 @@ class TempApiController {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-03. 기존 프로젝트를 Kotlin으로 변경하기 - 1 kotlin 설정 추가하기_1
+- Spring project에서 kotlin 사용
 ## 실습 (service)
-### ApiApplication,Config - kotlin 변경
+### ApiApplication,Api.Config - kotlin 변경
 - 기존 것은 주석처리
 ```kotlin
 package org.delivery.api
@@ -544,6 +549,7 @@ class WebConfig(
 ```kotlin
 private val logger: Logger = LoggerFactory.getLogger(this.javaClass)  
 ```
+> > 추후 @Slf4j Lombok ?
 > - ObjectMapper
 > > - KotlinModule.Builder()
 > > - apply > configure(KotlinFeature.NullToEmptyCollection / NullToEmptyMap / NullIsSameAsDefault / SingletonSupport / StrictNullChecks)
@@ -579,6 +585,7 @@ class WebConfig(
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-04. 기존 프로젝트를 Kotlin으로 변경하기 - 2 common 모듈 옮기기
+- 순수 자바(common) module을 kotlin 으로 변경
 ## 실습 (service)
 ### common module
 - common/build.gradle
@@ -687,6 +694,7 @@ enum class UserErrorCode(
 }
 ```
 - import api.common > common 으로 변경
+> - Api, Result
 > - import org.delivery.api.common.error >  import org.delivery.common.error
 - 실행
 
@@ -702,7 +710,9 @@ enum class ErrorCode( ~ ) : ErrorCodeIfs {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-05. 기존 프로젝트를 Kotlin으로 변경하기 - 3 common 모듈 옮기기
-## common/org.delivery.common.exception/api/annotation
+
+## 실습 (service)
+### common/org.delivery.common.exception/api/annotation
 ```kotlin
 # exception
 interface ApiExceptionIfs {
