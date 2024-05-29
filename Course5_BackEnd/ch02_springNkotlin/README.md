@@ -713,8 +713,30 @@ enum class ErrorCode( ~ ) : ErrorCodeIfs {
 
 ## 실습 (service)
 ### common/org.delivery.common.exception/api/annotation
+- build.gradle
+```gradle
+dependencies {
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+
+    // validation
+    implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
+    // Spring context
+    implementation 'org.springframework:spring-context:5.3.28'
+    // Spring core
+    implementation 'org.springframework:spring-core:5.3.28'
+
+//    implementation 'org.projectlombok:lombok:1.18.22'
+
+//    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+//    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+```
+- common/org.delivery.common.exception
 ```kotlin
 # exception
+package org.delivery.common.exception
+
 interface ApiExceptionIfs {
   val errorCodeIfs: ErrorCodeIfs?
   val errorDescription: String?
@@ -739,45 +761,205 @@ class ApiException : RuntimeException, ApiExceptionIfs{
 
   // ~
 }
+```
 
-# api
+- api/org.delivery.api.common.api/Result
+```java
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Result {
+    private Integer resultCode;
+    private String resultMessage;
+    private String resultDescription;
+
+    public static Result OK() {
+        return Result.builder()
+                .resultCode(ErrorCode.OK.getErrorCode())
+                .resultMessage(ErrorCode.OK.getDescription())
+                .resultDescription("성공")
+                .build();
+    }
+
+    public static Result ERROR(ErrorCodeIfs errorCodeIfs) {
+        return Result.builder()
+                .resultCode(errorCodeIfs.getErrorCode())
+                .resultMessage(errorCodeIfs.getDescription())
+                .resultDescription("에러발생")
+                .build();
+    }
+    // 비추천
+    public static Result ERROR(ErrorCodeIfs errorCodeIfs, Throwable tx) {
+        return Result.builder()
+                .resultCode(errorCodeIfs.getErrorCode())
+                .resultMessage(errorCodeIfs.getDescription())
+                .resultDescription(tx.getLocalizedMessage())
+                .build();
+    }
+    // 일반적
+    public static Result ERROR(ErrorCodeIfs errorCodeIfs, String description) {
+        return Result.builder()
+                .resultCode(errorCodeIfs.getErrorCode())
+                .resultMessage(errorCodeIfs.getDescription())
+                .resultDescription(description)
+                .build();
+    }
+}
+```
+```kotlin
+package org.delivery.common.api
+
 data class Result(
-  val resultCode: Int?=null,
-  val resultMessage: String?=null,
-  val resultDescription: String?=null
+    val resultCode: Int?=null,
+    val resultMessage: String?=null,
+    val resultDescription: String?=null
 ){
-  companion object {
-    @JvmStatic
-    fun OK(): Result{
-      return Result(
-        resultCode = ErrorCode.OK.getErrorCode(),
-        resultMessage = ErrorCode.OK.getDescription(),
-        resultDescription = "성공"
-      )
+    companion object {
+        @JvmStatic
+        fun OK(): Result{
+            return Result(
+                resultCode = ErrorCode.OK.getErrorCode(),
+                resultMessage = ErrorCode.OK.getDescription(),
+                resultDescription = "성공"
+            )
+        }
+
+        @JvmStatic
+        fun ERROR(errorCodeIfs: ErrorCodeIfs): Result{
+            return Result(
+                resultCode = errorCodeIfs.getErrorCode(),
+                resultMessage = errorCodeIfs.getDescription(),
+                resultDescription = "에러발생"
+            )
+        }
+
+        @JvmStatic
+        fun ERROR(
+            errorCodeIfs: ErrorCodeIfs,
+            tx: Throwable
+        ): Result{
+            return Result(
+                resultCode = errorCodeIfs.getErrorCode(),
+                resultMessage = errorCodeIfs.getDescription(),
+                resultDescription = tx.localizedMessage
+            )
+        }
+
+        @JvmStatic
+        fun ERROR(
+            errorCodeIfs: ErrorCodeIfs,
+            description: String
+        ): Result{
+            return Result(
+                resultCode = errorCodeIfs.getErrorCode(),
+                resultMessage = errorCodeIfs.getDescription(),
+                resultDescription = description
+            )
+        }
+    }
+}
+```
+
+- api/org.delivery.api.common.api/Api
+```java
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Api<T> {
+    private Result result;
+    @Valid
+    private T body;
+
+    public static <T> Api<T> OK(T data) {
+        Api<T> api = new Api<>();
+        api.result = Result.OK();
+        api.body = data;
+        return api;
     }
 
-    // ~
-  }
-}
+    public static Api<Object> ERROR(Result result) {
+        Api api = new Api<Object>();
+        api.result = result;
+        return api;
+    }
 
+    public static Api<Object> ERROR(ErrorCodeIfs errorCodeIfs) {
+        Api api = new Api<Object>();
+        api.result = Result.ERROR(errorCodeIfs);
+        return api;
+    }
+
+    public static Api<Object> ERROR(ErrorCodeIfs errorCodeIfs, Throwable tx) {
+        Api api = new Api<Object>();
+        api.result = Result.ERROR(errorCodeIfs, tx);
+        return api;
+    }
+
+    public static Api<Object> ERROR(ErrorCodeIfs errorCodeIfs, String description) {
+        Api api = new Api<Object>();
+        api.result = Result.ERROR(errorCodeIfs, description);
+        return api;
+    }
+}
+```
+```kotlin
 data class Api<T>(
-  var result: Result?=null,
-  @field:Valid
-  var body: T?=null,
+    var result: Result?=null,
+    @field:Valid
+    var body: T?=null,
 ){
-  companion object {
-    @JvmStatic
-    fun <T> OK(body: T?): Api<T> {
-      return Api(
-        result = Result.OK(),
-        body = body
-      )
-    }
-    // ~
-  }
-}
+    companion object {
+        @JvmStatic
+        fun <T> OK(body: T?): Api<T> {
+            return Api(
+                result = Result.OK(),
+                body = body
+            )
+        }
 
-# annotation
+        @JvmStatic
+        fun <T> ERROR(result: Result): Api<T> {
+            return Api(
+                result = result
+            )
+        }
+
+        @JvmStatic
+        fun <T> ERROR(errorCodeIfs: ErrorCodeIfs): Api<T> {
+            return Api(
+                result = Result.ERROR(errorCodeIfs)
+            )
+        }
+        @JvmStatic
+        fun <T> ERROR(errorCodeIfs: ErrorCodeIfs, tx: Throwable): Api<T> {
+            return Api(
+                result = Result.ERROR(errorCodeIfs, tx)
+            )
+        }
+        @JvmStatic
+        fun <T> ERROR(errorCodeIfs: ErrorCodeIfs, description: String): Api<T> {
+            return Api(
+                result = Result.ERROR(errorCodeIfs, description)
+            )
+        }
+    }
+}
+```
+
+- common/org.delivery.common.annotation
+```java
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Service
+public @interface Business {
+    @AliasFor(annotation = Service.class)
+    String value() default "";
+}
+```
+```kotlin
+package org.delivery.common.annotation
+
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 @Service
@@ -786,12 +968,23 @@ annotation class Business(
   val value: String = ""
 )
 
-// Converter, UserSession
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+@Service
+annotation class Converter(
+    @get:AliasFor(annotation = Service::class)
+    val value: String = ""
+)
+
+@Target(AnnotationTarget.VALUE_PARAMETER)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class UserSession()
 ```
-> organize
-```
-# interface
-- 생성자 매개변수 가능
+
+- 정리
+> - interface
+> > -생성자 매개변수 가능
+```kotlin
 interface ApiExceptionIfs {
   val errorCodeIfs: ErrorCodeIfs?
   val errorDescription: String?
@@ -802,28 +995,36 @@ class ApiException : RuntimeException, ApiExceptionIfs{
   override val errorDescription: String
   ~
 }
+```
 
-# companion object : static 메서드 구현
+> - companion object : static 메서드 구현
+```
 class ~ {
   companion object {
     @JvmStatic
     fun ~
   }
 }
+```
 
-# annotation: Spring 관련
-> 해당 Jar만 build.gradle: dependencies 추가
+> - annotation: Spring 관련
+> > 해당 Jar만 build.gradle: dependencies 추가
+```gradle
 // validation
 implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
 // Spring context
 implementation 'org.springframework:spring-context:5.3.28'
 // Spring core
 implementation 'org.springframework:spring-core:5.3.28'
+```
+```kotlin
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 - @get:AliasFor(annotation = Service::class)
+```
 
-# validation
+> - validation
+```kotlin
 Api<T>(
   @field:Valid
   var body: T? = null
