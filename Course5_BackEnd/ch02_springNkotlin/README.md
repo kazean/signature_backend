@@ -904,6 +904,8 @@ public class Api<T> {
 }
 ```
 ```kotlin
+package org.delivery.common.api
+
 data class Api<T>(
     var result: Result?=null,
     @field:Valid
@@ -946,6 +948,9 @@ data class Api<T>(
     }
 }
 ```
+> - Static 메서드 접근: Java에서 Kotlin에 접근할 대 Companion이라는 것을 통해 접근해야 한다. (마이그레이션)
+> > StoreOpenApiController.java > Api.Companion,OK(response)
+> > > `@JvmStatic이용하면 Companion을 사용안해도된다`
 
 - common/org.delivery.common.annotation
 ```java
@@ -1006,10 +1011,20 @@ class ~ {
   }
 }
 ```
+> - package 변경
+> > org.delivery.api.common.annotation > org.delivery.common
 
+- 실행
+> - ApiApplication Run
+
+- 정리
 > - annotation: Spring 관련
 > > 해당 Jar만 build.gradle: dependencies 추가
 ```gradle
+// lombok
+compileOnly 'org.projectlombok:lombok:1.18.22'
+annotationProcessor 'org.projectlombok:lombok:1.18.22'
+
 // validation
 implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
 // Spring context
