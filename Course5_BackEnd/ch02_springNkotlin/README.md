@@ -1122,7 +1122,7 @@ plugins {
 
 dependencies {
     ~
-    
+
     // kotlin
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
     implementation 'org.jetbrains.kotlin:kotlin-reflect'
@@ -1139,20 +1139,25 @@ dependencies {
 > > 실행하여 Optional 부분 수정
 
 - 정리
-> kt 는 Optional 대신 Elvis 연산자 사용
-> > cf, api: service 일단 kt로 코드바꾸기전 Optional.ofNullable() 처리  
-> > store-admin: sercice 마찬가지, build.gradle & impl kotlin-reflect
+> - kt 는 Optional 대신 Elvis 연산자 사용
+> > - cf, api: service 일단 kt로 코드바꾸기전 Optional.ofNullable() 처리  
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-07. 기존 프로젝트를 Kotlin으로 변경하기 - 5 JPA 연관관계 설정
-## 연관관계 설정
+- ERD 연관관계 설정
+> 그림
+
+## 실습 (service)
 - userorder - userordermenu 
 - userordermenu > storemenu
 - storemenu > store
 - userorder > store
 > user - userorder 와 같이 많은 데이터량은 페이징 쿼리 이용
-```kotlin
+### db: Spring JPA 연관관계 설정
+```java
+package org.delivery.db.userorder;
+
 public class UserOrderEntity extends BaseEntity {
   // ~
   @JoinColumn(nullable = false)
@@ -1162,6 +1167,7 @@ public class UserOrderEntity extends BaseEntity {
   @OneToMany(mappedBy = "userOrder")
   List<UserOrderMenuEntity> userOrderMenuList;
 }
+
 
 public class UserOrderMenuEntity extends BaseEntity {
   // ~
@@ -1181,7 +1187,7 @@ public class StoreMenuEntity extends BaseEntity {
   private StoreEntity store;
 }
 
-> effect
+// > effect
 public class UserOrderConverter {
   public UserOrderEntity toEntity(
         User user,
@@ -1212,9 +1218,15 @@ public class UserOrderBusiness {
     // ~
   }
 }
+// > UserOrderConverter, UserOrderMenuConverter, StoreMenuConverter  
+// > UserOrderBusiness, StoreMenuBusiness
 ```
-> UserOrderConverter, UserOrderMenuConverter, StoreMenuConverter  
-> UserOrderBusiness, StoreMenuBusiness
+- 실행
+> ApiApplication Run 실행하며 연관되있는 Converter, Business 수정
+
+- 정리
+> - @ManyToOne ~Entity
+> - @JoinColumn(nullable = false, name= "col") @OneToMany(mappedby = "field")
 
 
 --------------------------------------------------------------------------------------------------------------------------------
