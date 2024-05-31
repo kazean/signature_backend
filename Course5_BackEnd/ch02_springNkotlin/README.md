@@ -1233,7 +1233,22 @@ public class UserOrderBusiness {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-08. 기존 프로젝트를 Kotlin으로 변경하기 - 6 Entity
-## @ToString.Exclude, @JsonIgnore
+## 실습 (service)
+### db:~Entity @ToString.Exclude, @JsonIgnore - 기존 Entity Loop 제거
+- 실행 ApiApplication
+> - swagger-ui, /open-api/user/login: steve@gmail.com/1234
+> > mode header: authorization-token: "access-token"
+> - /api/user-order/current     
+> > `문제점 userOrder <-> userOrderMenu Entity 서로 Loop`
+
+- db:build.gradle
+```gradle
+dependencies {
+  // kotlin
+  implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+}
+```
+
 ```java
 public class UserOrderEntity extends BaseEntity {
   // ~
@@ -1243,14 +1258,8 @@ public class UserOrderEntity extends BaseEntity {
   List<UserOrderMenuEntity> userOrderMenuList;
 }
 ```
-- db:build.gradle
-```gradle
-dependencies {
-  // kotlin
-  implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
-}
-```
-## store-admin
+
+### effect: store-admin
 - build.gradle
 ```gradle
 plugins {
@@ -1265,8 +1274,10 @@ dependencies {
 ```
 > UserOrderBusiness, UserOrderConverter
 
-## api/UserOrderBusiness.current/history/read() Refactoring
+### api/UserOrderBusiness.current/history/read() Refactoring
 ```java
+package org.delivery.api.domain.userorder.business;
+
 public List<UserOrderDetailResponse> current(User user) {
   var userOrderEntityList = userOrderService.current(user.getId());
   // 주문 1건씩 처리
@@ -1317,7 +1328,7 @@ public List<UserOrderDetailResponse> history(User user) {
       var userOrderMenuEntityList = userOrderEntity.getUserOrderMenuList().stream()
         .filter(it -> UserOrderMenuStatus.REGISTERED.equals(it.getStatus()))
         .collect(toList());
-      var storeMenuEntityList = userOrderMenuEntityList.stream()
+      var storeMenuEntityList = us erOrderMenuEntityList.stream()
         // .map(userOrderMenuEntity -> {
         //     var storeMenuEntity = storeMenuService.getStoreMenuWithThrow(userOrderMenuEntity.getStoreMenu().getId());
         //     return storeMenuEntity;
@@ -1370,29 +1381,38 @@ public UserOrderDetailResponse read(User user, Long orderId) {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-09. 기존 프로젝트를 Kotlin으로 변경하기 - 7 Kotlin Entity
-## DB/ UserOrderEntity
+## 실습 (service)
+### db: UserOrderEntity - kotlin으로 변경
 ```kotlin
+package org.delivery.db.userorder
+
 @Entity
 @Table(name = "user_order")
 class UserOrderEntity (
     @field:Id
     @field:GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long?=null,
+
     @field:Column(nullable = false)
     var userId:Long?=null,
+
     @field:JoinColumn(nullable = false)
     @field:ManyToOne
     var store:StoreEntity?=null,
+
     @field:Enumerated(EnumType.STRING)
     @field:Column(length = 50, nullable = false)
     var status:UserOrderStatus?=null,
+
     @field:Column(precision = 11, scale = 4, nullable = false)
     var amount:BigDecimal?=null,
+
     var orderedAt:LocalDateTime?=null,
     var acceptedAt:LocalDateTime?=null,
     var cookingStartedAt:LocalDateTime?=null,
     var deliveryStartedAt:LocalDateTime?=null,
     var receivedAt:LocalDateTime?=null,
+
     @field:OneToMany(mappedBy = "userOrder")
     @JsonIgnore
     var userOrderMenuList: MutableList<UserOrderMenuEntity>?=null,
@@ -1402,11 +1422,16 @@ class UserOrderEntity (
     }
 }
 ```
-> kotlin 의 경우 data class X :@ToString.Exclude (Lombok)  
-> @JsonIgnore: jackson  
-> overrride toString 활용
-## API/ UserOrderConverter, UserOrderResponse, UserOrderBusiness
+> - data class hashcode, toString, equals 자동제공(OneToMany:LAZY)
+> > JPA와는 맞지 않다. data class (X)
+> - `kotlin 의 경우 data class X :@ToString.Exclude (Lombok)` lombok은 동작하지 않는다
+> - `@JsonIgnore: jackson` jackson library이기에 동작한다
+> - overrride toString 활용
+
+### api: UserOrderConverter, UserOrderResponse, UserOrderBusiness
 ```kotlin
+package org.delivery.api.domain.userorder.~
+
 @Converter
 class UserOrderConverter {
     fun toEntity(
@@ -1469,13 +1494,21 @@ public class User {
   // ~
 }
 ```
-> Elvis Op, UserOrderResponse: data class
+- 정리
+> - Elvis Op, UserOrderResponse: data class
+> - User.class @Data Lombok 대신에 ToString, EqualsAndHashCode, Getter/Setter 설정
+- 실행: ApiApplication.kt
+> 정상실행 확인: swagger > /api/user-order/current
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-10. 기존 프로젝트를 Kotlin으로 변경하기 - 8 비지니스 로직 변경
-## Api/ UserOrderBusiness - common/Log, controller/model/UserOrderResponse, UserOrderDetailResponse, converter/UserOrderConverter
+## 실습 (service)
+### api - kotlin 변경, 비지니스 로직변경
+- UserOrderBusiness - common/Log, controller/model/UserOrderResponse, UserOrderDetailResponse, converter/UserOrderConverter
 ```kotlin
+package org.delivery.api.domain.userorder.business
+
 @Business
 class UserOrderBusiness (
     private val userOrderService: UserOrderService,
@@ -1582,8 +1615,49 @@ class UserOrderBusiness (
     }
 }
 
+
+package org.delivery.api.common
+
 interface Log {
     val log: Logger get() = LoggerFactory.getLogger(this.javaClass)
 }
+
+
+//lombok 제거
+package org.delivery.api.domain.userorder.controller.model;
+
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserOrderRequest {
+    @NotNull
+    private Long storeId;
+    // 주문
+    // 특정 사용자가, 특정 메뉴를 주문
+    // 특정 사용자 = 로그인된 세션에 들어있는 사용자
+    // 특정 메뉴 id
+    @NotNull
+    private List<Long> storeMenuIdList;
+
+    public Long getStoreId() {
+        return storeId;
+    }
+
+    public void setStoreId(Long storeId) {
+        this.storeId = storeId;
+    }
+
+    public List<Long> getStoreMenuIdList() {
+        return storeMenuIdList;
+    }
+
+    public void setStoreMenuIdList(List<Long> storeMenuIdList) {
+        this.storeMenuIdList = storeMenuIdList;
+    }
+}
 ```
-> stream() 대신 kotlin Collection 사용: map() 즉시로딩 주의
+- 정리
+> - log: companion object Log
+> > kotlin에서는 Lombok 사용이 불가능해 singleton으로 상속해서 사용
+> - stream() 대신 kotlin Collection 사용: map() 즉시로딩 주의
+> - .run 연산자 .let 연산자
+> - 어떨때 stream 사용 / Collection 연산자 바로 사용하는지?
