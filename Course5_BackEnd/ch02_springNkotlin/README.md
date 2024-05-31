@@ -16,7 +16,7 @@
 - 순수 자바 프로젝트에서 kotlin 사용하기
 - kotlin 프로젝트에서 java 사용하기
 
-## 실습
+## 실습 (java-example)
 ### java-example을 kotlin으로 변경하기
 - UserDto.java > UserService.kt 에서 사용하기
 - build.gradle 변경
@@ -213,6 +213,8 @@ plugins {
 }
 
 // api/build.gradle
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
   id 'java'
   id 'org.springframework.boot'
@@ -590,6 +592,8 @@ class WebConfig(
 ### common module
 - common/build.gradle
 ```gradle
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     id 'java'
     id 'org.jetbrains.kotlin.jvm'
@@ -696,8 +700,6 @@ enum class UserErrorCode(
 - import api.common > common 으로 변경
 > - Api, Result
 > - import org.delivery.api.common.error >  import org.delivery.common.error
-- 실행
-
 
 - 정리
 > - enum Class
@@ -706,6 +708,8 @@ enum class ErrorCode( ~ ) : ErrorCodeIfs {
 
 }
 ```
+
+- ch02-05 까지한 후 실행
 
 
 --------------------------------------------------------------------------------------------------------------------------------
