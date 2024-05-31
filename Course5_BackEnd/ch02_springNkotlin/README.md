@@ -1020,9 +1020,6 @@ class ~ {
 > - package 변경
 > > org.delivery.api.common.annotation > org.delivery.common
 
-- 실행
-> - ApiApplication Run
-
 - 정리
 > - annotation: Spring 관련
 > > 해당 Jar만 build.gradle: dependencies 추가
@@ -1051,6 +1048,9 @@ Api<T>(
   var body: T? = null
 )
 ```
+
+- 실행
+> - ApiApplication Run
 
 
 --------------------------------------------------------------------------------------------------------------------------------
