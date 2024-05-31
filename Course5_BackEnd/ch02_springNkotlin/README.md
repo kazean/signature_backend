@@ -716,7 +716,7 @@ enum class ErrorCode( ~ ) : ErrorCodeIfs {
 # Ch02-05. 기존 프로젝트를 Kotlin으로 변경하기 - 3 common 모듈 옮기기
 
 ## 실습 (service)
-### common/org.delivery.common.exception/api/annotation
+### api: org.delivery.api.common.annotation/* > common: org.delivery.common.annotation/*
 - build.gradle
 ```gradle
 dependencies {
