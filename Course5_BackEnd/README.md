@@ -9,7 +9,7 @@
 ## Git
 ## 실행환경
 ### Mysql
-docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/docker-compose.yaml up -d
+docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/mysql/docker-compose.yaml up -d
 ### rabbitMQ
 docker-compose -f /Users/admin/study/signature/ws/docker-compose/rabbitmq/docker-compose.yaml up -d
 - rabbitMQ Container console
