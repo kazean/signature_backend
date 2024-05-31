@@ -1497,6 +1497,7 @@ public class User {
 - 정리
 > - Elvis Op, UserOrderResponse: data class
 > - User.class @Data Lombok 대신에 ToString, EqualsAndHashCode, Getter/Setter 설정
+
 - 실행: ApiApplication.kt
 > 정상실행 확인: swagger > /api/user-order/current
 
@@ -1654,6 +1655,30 @@ public class UserOrderRequest {
         this.storeMenuIdList = storeMenuIdList;
     }
 }
+
+
+package org.delivery.api.domain.userorder.controller.model
+
+data class UserOrderDetailResponse (
+    var userOrderResponse: UserOrderResponse? = null,
+    var storeResponse: StoreResponse? = null,
+    var storeMenuResponseList: List<StoreMenuResponse>? = null,
+)
+
+
+package org.delivery.api.domain.userorder.controller.model
+
+data class UserOrderResponse (
+    var id:Long?=null,
+    var status:UserOrderStatus?=null,
+    var amount:BigDecimal?=null,
+    var orderedAt:LocalDateTime?=null,
+    var acceptedAt:LocalDateTime?=null,
+    var cookingStartedAt:LocalDateTime?=null,
+    var deliveryStartedAt:LocalDateTime?=null,
+    var receivedAt:LocalDateTime?=null,
+)
+
 ```
 - 정리
 > - log: companion object Log
@@ -1661,3 +1686,7 @@ public class UserOrderRequest {
 > - stream() 대신 kotlin Collection 사용: map() 즉시로딩 주의
 > - .run 연산자 .let 연산자
 > - 어떨때 stream 사용 / Collection 연산자 바로 사용하는지?
+> - @Builder: Lombok > kotlin 변경 (Req, Res)
+
+- 실행: ApiApplication.kt
+> 정상실행 확인: swagger > /api/user-order/current
