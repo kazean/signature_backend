@@ -1165,6 +1165,8 @@ dependencies {
 package org.delivery.db.userorder;
 
 public class UserOrderEntity extends BaseEntity {
+//    @Column(nullable = false)
+//    private Long storeId;
   // ~
   @JoinColumn(nullable = false)
   @ManyToOne
@@ -1176,6 +1178,11 @@ public class UserOrderEntity extends BaseEntity {
 
 
 public class UserOrderMenuEntity extends BaseEntity {
+//    @Column(nullable = false)
+//    private Long userOrderId;
+//    @Column(nullable = false)
+//    private Long storeMenuId;
+
   // ~
   @JoinColumn(nullable = false)
   @ManyToOne
@@ -1194,6 +1201,8 @@ public class StoreMenuEntity extends BaseEntity {
 }
 
 // > effect
+package org.delivery.api.domain.userorder.converter;
+
 public class UserOrderConverter {
   public UserOrderEntity toEntity(
         User user,
