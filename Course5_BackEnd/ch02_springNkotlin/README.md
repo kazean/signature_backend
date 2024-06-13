@@ -1134,10 +1134,10 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-reflect'
 }
 ```
-> - java fun 복사 붙여넣기하면 Intellij에서 자동으로 변경
+> - java fun 복사 붙여넣기하면 `Intellij에서 자동으로 변경`
 > > or class파일 통째로 복사한 다음 Convert Java File to Kotlin File
-> - Optional 대신 Elvis 연산자
-> > UserService.java Optioanl.ofNullable로 일단 처리, UserOrderService, store-admin/StoreUserService, AuthorizationService
+> - `Optional 대신 Elvis 연산자`
+> > UserService.java Optional.ofNullable로 일단 처리, UserOrderService, store-admin/StoreUserService, AuthorizationService
 > - store-admin: sercice 마찬가지, build.gradle & impl kotlin-reflect
 
 - 실행
@@ -1145,7 +1145,7 @@ dependencies {
 > > 실행하여 Optional 부분 수정
 
 - 정리
-> - kt 는 Optional 대신 Elvis 연산자 사용
+> - `kt 는 Optional 대신 Elvis 연산자 사용`
 > > - cf, api: service 일단 kt로 코드바꾸기전 Optional.ofNullable() 처리  
 
 
@@ -1240,8 +1240,8 @@ public class UserOrderBusiness {
 > ApiApplication Run 실행하며 연관되있는 Converter, Business 수정
 
 - 정리
-> - @ManyToOne ~Entity
-> - @JoinColumn(nullable = false, name= "col") @OneToMany(mappedby = "field")
+> - `@JoinColumn(nullable = false, name= "col") @ManyToOne ~Entity`
+> - @OneToMany(mappedby = "field") List<~Entity>
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -1286,6 +1286,7 @@ dependencies {
 }
 ```
 > UserOrderBusiness, UserOrderConverter
+>> Entity 관계로 변경
 
 ### api/UserOrderBusiness.current/history/read() Refactoring
 ```java
@@ -1390,6 +1391,8 @@ public UserOrderDetailResponse read(User user, Long orderId) {
     .build();
 }
 ```
+- 정리
+> - `JPA Entity 관계로 맵핑 및 변경하기`
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -1436,14 +1439,42 @@ class UserOrderEntity (
 }
 ```
 > - data class hashcode, toString, equals 자동제공(OneToMany:LAZY)
-> > JPA와는 맞지 않다. data class (X)
+> > data class 는 JPA와는 맞지 않다.
 > - `kotlin 의 경우 data class X :@ToString.Exclude (Lombok)` lombok은 동작하지 않는다
 > - `@JsonIgnore: jackson` jackson library이기에 동작한다
-> - overrride toString 활용
+> - overrride toString 활용: ~List 제외 ToString
 
 ### api: UserOrderConverter, UserOrderResponse, UserOrderBusiness
 ```kotlin
 package org.delivery.api.domain.userorder.~
+
+data class UserOrderResponse (
+    var id:Long?=null,
+    var status:UserOrderStatus?=null,
+    var amount:BigDecimal?=null,
+    var orderedAt:LocalDateTime?=null,
+    var acceptedAt:LocalDateTime?=null,
+    var cookingStartedAt:LocalDateTime?=null,
+    var deliveryStartedAt:LocalDateTime?=null,
+    var receivedAt:LocalDateTime?=null,
+){
+}
+
+data class UserOrderDetailResponse (
+    var userOrderResponse: UserOrderResponse? = null,
+    var storeResponse: StoreResponse? = null,
+    var storeMenuResponseList: List<StoreMenuResponse>? = null,
+)
+
+//@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@EqualsAndHashCode
+@Builder
+public class User {
+  // getter, setter
+}
 
 @Converter
 class UserOrderConverter {
@@ -1478,38 +1509,10 @@ class UserOrderConverter {
         )
     }
 }
-
-data class UserOrderResponse (
-    var id:Long?=null,
-    var status:UserOrderStatus?=null,
-    var amount:BigDecimal?=null,
-    var orderedAt:LocalDateTime?=null,
-    var acceptedAt:LocalDateTime?=null,
-    var cookingStartedAt:LocalDateTime?=null,
-    var deliveryStartedAt:LocalDateTime?=null,
-    var receivedAt:LocalDateTime?=null,
-){
-}
-
-data class UserOrderDetailResponse (
-    var userOrderResponse: UserOrderResponse? = null,
-    var storeResponse: StoreResponse? = null,
-    var storeMenuResponseList: List<StoreMenuResponse>? = null,
-)
-
-//@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@ToString
-@EqualsAndHashCode
-@Builder
-public class User {
-  // ~
-}
 ```
 - 정리
 > - Elvis Op, UserOrderResponse: data class
-> - User.class @Data Lombok 대신에 ToString, EqualsAndHashCode, Getter/Setter 설정
+> - User.class @Data Lombok 대신에 ToString, EqualsAndHashCode, Getter/Setter 설정(@Data는 너무 광범위해서 lombok 축소)
 
 - 실행: ApiApplication.kt
 > 정상실행 확인: swagger > /api/user-order/current
@@ -1538,7 +1541,8 @@ class UserOrderBusiness (
     private val storeConverter: StoreConverter,
     private val userOrderProducer: UserOrderProducer,
 ) {
-    companion object Log
+    companion object: Log
+    
     fun userOrder(
         user:User?,
         body:UserOrderRequest?
