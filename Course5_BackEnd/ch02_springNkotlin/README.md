@@ -1542,7 +1542,7 @@ class UserOrderBusiness (
     private val userOrderProducer: UserOrderProducer,
 ) {
     companion object: Log
-    
+
     fun userOrder(
         user:User?,
         body:UserOrderRequest?
@@ -1698,10 +1698,10 @@ data class UserOrderResponse (
 
 ```
 - 정리
-> - log: companion object Log
+> - log: `companion object: Log`
 > > kotlin에서는 Lombok 사용이 불가능해 singleton으로 상속해서 사용
-> - stream() 대신 kotlin Collection 사용: map() 즉시로딩 주의
-> - .run 연산자 .let 연산자
+> - `stream() 대신 kotlin Collection 사용`: map() 즉시로딩 주의
+> - `.run 연산자 .let 연산자`
 > - 어떨때 stream 사용 / Collection 연산자 바로 사용하는지?
 > - @Builder: Lombok > kotlin 변경 (Req, Res)
 
