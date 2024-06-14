@@ -1,4 +1,4 @@
-# Ch02. Spring과 Kotlin
+₩# Ch02. Spring과 Kotlin
 - [1. Java에서 Kotlin 함께 사용하기](#ch02-01-java에서-kotlin-적용하기)
 - [2. Spring에서 Kotlin 적용하기](#ch02-02-spring에서-kotlin-적용하기)
 - [3. 기존 프로젝트를 Kotlin으로 변경하기 - 1) kotlin 설정 추가하기-1](#ch02-03-기존-프로젝트를-kotlin으로-변경하기---1-kotlin-설정-추가하기_1)
@@ -26,23 +26,6 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.7.21'
 }
 
-group 'org.example'
-version '1.0-SNAPSHOT'
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
-    testImplementation 'org.jetbrains.kotlin:kotlin-test'
-}
-
-test {
-    useJUnitPlatform()
-}
-
 compileKotlin {
     kotlinOptions.jvmTarget = '11'
 }
@@ -50,6 +33,8 @@ compileKotlin {
 compileTestKotlin {
     kotlinOptions.jvmTarget = '11'
 }
+
+~
 ```
 > plugins, compileKotlin, compileTestKotlin, dependencies
 - UserDto.java
