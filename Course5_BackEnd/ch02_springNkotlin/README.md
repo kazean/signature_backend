@@ -1271,6 +1271,8 @@ public class UserOrderEntity extends BaseEntity {
   List<UserOrderMenuEntity> userOrderMenuList;
 }
 ```
+> - UserOrder-UserOrderMenu-StoreMenu
+> - UserOrder-Store
 
 ### effect: store-admin
 - build.gradle
@@ -1391,6 +1393,7 @@ public UserOrderDetailResponse read(User user, Long orderId) {
     .build();
 }
 ```
+> - Service에서 조회가 아닌 JPA에서 연관관계로 접근 Refactoring
 - 정리
 > - `JPA Entity 관계로 맵핑 및 변경하기`
 
@@ -1644,6 +1647,7 @@ interface Log {
 //lombok 제거
 package org.delivery.api.domain.userorder.controller.model;
 
+//@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserOrderRequest {
