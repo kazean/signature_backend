@@ -36,7 +36,7 @@ compileTestKotlin {
 
 ~
 ```
-> plugins, compileKotlin, compileTestKotlin, dependencies
+> plugins, compileKotlin, compileTestKotlin
 - UserDto.java
 ```java
 package org.example.model;
