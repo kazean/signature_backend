@@ -165,24 +165,23 @@ spring:
 > > id, uri, predicates, filters // 이름, 매핑될 uri, predicateds 설정
 > > > - filters: RewritePath, ServiceApiPublicFilter // 필터 등록
 - ServiceApiPrivateFilter.kt
-- ServiceApiFilter.kt
 ```kotlin
 package com.delivery.apigw.filter
 
 @Component
-class ServiceApiFilter: AbstractGatewayFilterFactory<ServiceApiPrivateFilter.Config>(Config::class.java){
+class ServiceApiPrivateFilter: AbstractGatewayFilterFactory<ServiceApiPrivateFilter.Config>(Config::class.java){
 
-    companion object: Log
-    class Config
+  companion object: Log
+  class Config
 
-    override fun apply(config: Config): GatewayFilter {
-        return GatewayFilter { exchange, chain ->
-            val uri = exchange.request.uri
-            log.info("service api private filter proxy uri : {}", uri)
-            val mono = chain.filter(exchange)
-            mono
-        }
+  override fun apply(config: Config): GatewayFilter {
+    return GatewayFilter { exchange, chain ->
+      val uri = exchange.request.uri
+      log.info("service api private filter proxy uri : {}", uri)
+      val mono = chain.filter(exchange)
+      mono
     }
+  }
 }
 ```
 > filter와 이름을 맞춰야한다  
@@ -510,6 +509,16 @@ class TokenService(
 ## 실습 - service:account(token validation)
 - api.token.controller/business/model > account.token.~
 ```kotlin
+package com.delivery.account.common
+
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+interface Log {
+    val log: Logger get() = LoggerFactory.getLogger(this.javaClass)
+}
+
+
 package org.delivery.account.domain.token.controller
 
 @RestController
@@ -536,6 +545,11 @@ data calss TokenValidationRequest(
   var tokenDto: TokenDto?=null
 )
 
+data class TokenValidationResponse(
+  var userId: Long?=null
+) {
+}
+
 
 package org.delivery.account.domain.token.business
 
@@ -551,15 +565,8 @@ class TokenBusiness(
     )
   }
 }
-
-
-package org.delivery.account.domain.token.controller.model
-
-data class TokenValidationResponse(
-  var userId: Long?=null
-) {
-}
 ```
+> - converter(x)
 
 - build.gradle
 ```gradle
@@ -609,19 +616,12 @@ class ObjectMapperConfig {
         return  objectMapper
     }
 }
-
-
-package org.delivery.account.common
-
-interface Log {
-    val log: Logger get() = LoggerFactory.getLogger(this.javaClass)
-}
 ```
 ## 실행
 - AccountApplication
-> http://localhost:8082/swagger/index.html
+> http://localhost:8082/swagger-ui/index.html
 - ApiApplication
-> localhost:8080/swagger/index.html
+> localhost:8080/swagger-ui/index.html
 > > /open-api/user/login (토근 생성후 아래 uri 실행)
 - AccountApplication
 > (Swagger) /internal-api/token/validation
@@ -638,6 +638,7 @@ interface Log {
 ```gradle
 dependencies {
     implementation(project(":common"))
+}
 ```
 - ServiceApiPrivateFilter.kt
 ```kotlin
@@ -664,7 +665,7 @@ class ServiceApiPrivateFilter: AbstractGatewayFilterFactory<ServiceApiPrivateFil
       log.info("authorization token : {}", token)
 
       // 2. 토큰의 유효성
-      val accountApiUrlUrl = UriComponentsBuilder
+      val accountApiUrl = UriComponentsBuilder
         .fromUriString("http://localhost")
         .port(8082)
         .path("/internal-api/token/validation")
@@ -735,7 +736,7 @@ data class TokenDto(
 
 ## 실행
 - ApiApplication(8080)/ApiGwApplicatio(9090)n/AccountApplication(8082).kt
-> - localhost:8080/open-api/user/login
+> - (api: 8080 swagger-ui) open-api/user/login
 > - localhost:9090/service-api/api/user/me
 
 ## 정리
@@ -914,6 +915,10 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 }
 ```
+## 실행
+- ApiApplication(8080)/ApiGwApplicatio(9090)n/AccountApplication(8082).kt
+> - localhost:9090/service-api/api/user/me
+> > exceptionHandler
 
 ## 정리
 - request header 추가
@@ -933,4 +938,3 @@ dependencies {
 > `Mono.fromSupplier(dataBuffer)`
 - DataBufferFactory, DataBuffer
 dataBuffer.wrap(bytes): DataBuffer
-```
