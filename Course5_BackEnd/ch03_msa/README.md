@@ -47,7 +47,7 @@
 - 그러나 여기선, 기존 Project에 agigw 프로젝트 넣기
 > - service - new Module 
 > - apigw (Java11, Gradle, GradleDSL: Kotlin, org.delivery.apigw)
-- settings.gradle
+- service.settings.gradle
 > include 'apigw'
 - build.gralde.kts
 ```gradle
@@ -144,6 +144,7 @@ interface Log {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-04. Spring Cloud API Gateway - 2
+- route
 ## 실습 - service:apigw
 ### 1) yaml 에서 route 설정 
 ```yaml
@@ -274,17 +275,19 @@ class RouteConfig(
 ```kotlin
 builder.routes()
 .route{ spec -> // route(Function<PredicateSpec, Buildable<Route>> fn)
-  .order(<orderInt>), .path("<path>")
-}.filters{ filterSpec -> // filters(Function<GatewayFilterSpec, UriSpec> fn)
+  spec.order(<orderInt>)
+  spec.path("<path>")
+  }.filters{ filterSpec -> // filters(Function<GatewayFilterSpec, UriSpec> fn)
   .rewritePath(), filter()
-}.uri("<uro>")
-.build()
+  }.uri("<uro>")
+}.build()
 ```
 > - .route/filters/uri()
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-05. API Gateway 인증 - 1
+- 인증: jwt
 ## 실습 - service:account
 - service > New > Module
 > - account, Java11, Groovy, org.delivery.account
@@ -506,6 +509,9 @@ class TokenService(
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-06. API Gateway 인증 - 2
+## account
+- Token(Controller)
+- Swagger(ObjectMapper)
 ## 실습 - service:account(token validation)
 - api.token.controller/business/model > account.token.~
 ```kotlin
@@ -633,7 +639,8 @@ class ObjectMapperConfig {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-07. API Gateway 인증 - 3
-## 실습 service:apigw - account로 검증요청
+- apigw - account로 인증요청
+## 실습 service:apigw
 - build.gradle
 ```gradle
 dependencies {
