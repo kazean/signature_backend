@@ -668,7 +668,7 @@ http://prometheus:9090 > Save & Test
 데이터 처리 엔진, 경고를 생성 하는 역할
 ### TICK(Telegraf, InfluxDB, Chorograf Kapacitor)
 - 서버 모니터링, IoT 데이터 분석, 실시간 애플리케이션 모니터링
-![그림](./images/Tick_Stack.png)
+- ![그림](./images/Tick_Stack.png)
 
 1. Application Gradle dependencies 추가
 - `micrometer-registry-statsd`
