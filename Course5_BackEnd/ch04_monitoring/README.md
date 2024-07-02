@@ -115,7 +115,7 @@ public class UserOpenApiController {
 - 대용량 데이터를 실시간 으로 처리
 - JSON 형태의 문서를 저장, 검색
 - 내부적으로 Apache Lucene을 사용, 풀 텍스트 검색 라이브러리
-> elasticsearch / AWS: open Search
+> elasticsearch / AWS: OpenSearch
 ### LogStash
 서버로부터 다양한 소의 로그 또는 이벤트 데이터를 수집 처하여 Elasticsearch와 같은 "스토리지"로 전송하는 `파이프라인 도구`
 - 다양한 유형의 입력(파일, 비트, syslog 등)에서 데이터를 수집
@@ -200,7 +200,7 @@ volumes:
 > - enviroment.discovery.type: single-node
 > > master/slave, failover, single-node(test)
 
-- elasticsearch.yml
+- config/elasticsearch.yml
 ```yaml
 # elasticsearch config/elasticsearch.yml
 ---
@@ -216,38 +216,6 @@ network.host: 0.0.0.0
 xpack.license.self_generated.type: trial
 xpack.security.enabled: true
 xpack.monitoring.collection.enabled: true
-```
-
-- kibana config/kibana.yaml
-```yaml
-# kibana config/kibana.yaml
----
-## Default Kibana configuration from Kibana base image.
-## https://github.com/elastic/kibana/blob/master/src/dev/build/tasks/os_packages/docker_generator/templates/kibana_yml.template.js
-#
-server.name: kibana
-server.host: "0"
-elasticsearch.hosts: [ "http://elasticsearch:9200" ]
-xpack.monitoring.ui.container.elasticsearch.enabled: true
-
-## X-Pack security credentials
-#
-elasticsearch.username: elastic
-elasticsearch.password: changeme
-
-# logstash config/logstash.yml
----
-## Default Logstash configuration from Logstash base image.
-## https://github.com/elastic/logstash/blob/master/docker/data/logstash/config/logstash-full.yml
-#
-http.host: "0.0.0.0"
-xpack.monitoring.elasticsearch.hosts: [ "http://elasticsearch:9200" ]
-
-## X-Pack security credentials
-#
-xpack.monitoring.enabled: true
-xpack.monitoring.elasticsearch.username: elastic
-xpack.monitoring.elasticsearch.password: changeme
 ```
 
 - logstash/pipeline/logstash.yml
@@ -292,6 +260,40 @@ output {
 > > Logstash port: 5000, 데이터를 json으로 변환
 > - output.elasticsearch
 > > - hosts => ~:9200, user/password
+
+- kibana config/kibana.yaml
+```yaml
+# kibana config/kibana.yaml
+---
+## Default Kibana configuration from Kibana base image.
+## https://github.com/elastic/kibana/blob/master/src/dev/build/tasks/os_packages/docker_generator/templates/kibana_yml.template.js
+#
+server.name: kibana
+server.host: "0"
+elasticsearch.hosts: [ "http://elasticsearch:9200" ]
+xpack.monitoring.ui.container.elasticsearch.enabled: true
+
+## X-Pack security credentials
+#
+elasticsearch.username: elastic
+elasticsearch.password: changeme
+
+# logstash config/logstash.yml
+---
+## Default Logstash configuration from Logstash base image.
+## https://github.com/elastic/logstash/blob/master/docker/data/logstash/config/logstash-full.yml
+#
+http.host: "0.0.0.0"
+xpack.monitoring.elasticsearch.hosts: [ "http://elasticsearch:9200" ]
+
+## X-Pack security credentials
+#
+xpack.monitoring.enabled: true
+xpack.monitoring.elasticsearch.username: elastic
+xpack.monitoring.elasticsearch.password: changeme
+```
+
+
 #### 실행
 - docker-compose
 ```sh
@@ -354,14 +356,37 @@ $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/doc
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch04-04. Spring Boot Admin을 통한 모니터링
-## Spring Boot Admin
-Spring Boot Actuator 하위 tools  
-logStash처럼 정보 수집하고 분석관리 도구
+## Application Monitoring
+- PUSH/PULL
+> - PUSH: Client > Server, Client 마다 추가
+> > ex) TIC(Telegraf + influxDB + Chronograf)
+> - PULL: Server > Client, 보안취약점
+> > ex) Prometheus + Grafana
 
-## bootadmin
-- build.gradle
+## SpringBoot Admin
+- SpringBoot Actuators 하위 tools  
+- logStash처럼 정보 수집하고 분석관리 도구
+- Default Dashboard
+
+## 실습(bootadmin, service)
+### bootadmin
+- Project/SpringBoot: Kotlin/Gradle-Kotlin/SpringBoot(2.7.13)/com.delivery.boot-admin
+- dependency: admin(codecentric's Spring Boot Admin(Server)), Spring Web
+- application.yml
+> server.port: 8085
+- BootadminApplication
+```kotlin
+@EnableAdminServer
+@SpringBootApplication
+class BootadminApplication
+
+fun main(args: Array<String>) {
+	runApplication<BootadminApplication>(*args)
+}
+```
+> `@EnableAdminServer`
+- build.gradle.kts
 ```gradle
-~
 extra["springBootAdminVersion"] = "2.7.4"
 
 dependencies {
@@ -382,19 +407,10 @@ dependencyManagement {
 > extra: springBootAdminVersion  
 > spring-boot-admin-starter-server  
 > dependecyManagement.imports.springboot-admin-depdencies:${property{"springBootAdminVersion"}}
-- BootadminApplication
-```kotlin
-@EnableAdminServer
-@SpringBootApplication
-class BootadminApplication
+### 실행
+> localhost:8085/application
 
-fun main(args: Array<String>) {
-	runApplication<BootadminApplication>(*args)
-}
-```
-> @EnableAdminServer
-
-## api
+### service:api
 - build.gradle
 ```gradle
 ext{
@@ -414,27 +430,10 @@ dependencyManagement {
 ```
 > spring-boot-admin-starter-client
 
-- WebConfig.kt
-```kotlin
-@Configuration
-class WebConfig(
-    private val authorizationInterceptor: AuthorizationInterceptor,
-    private val userSessionResolver: UserSessionResolver,
-): WebMvcConfigurer {
-    private val OPEN_API = listOf(
-        "/open-api/**"
-    )
-    private val DEFAULT_EXCLUDE = listOf(
-        "/",
-        "/favicon.ico",
-        "/error",
-        "/actuator/**"
-    )
-```
-> actuator 인증 제외(Interceptor)
-
 - application.yml
 ```yaml
+server:
+  name: delivery-api
 management:
   endpoints:
     web:
@@ -459,17 +458,69 @@ spring:
 ```
 > management.endpoints/endpoint, loggig.config/file, spring.boot.admin.client.url
 
+- WebConfig.kt
+```kotlin
+@Configuration
+class WebConfig(
+    private val authorizationInterceptor: AuthorizationInterceptor,
+    private val userSessionResolver: UserSessionResolver,
+): WebMvcConfigurer {
+    private val OPEN_API = listOf(
+        "/open-api/**"
+    )
+    private val DEFAULT_EXCLUDE = listOf(
+        "/",
+        "/favicon.ico",
+        "/error",
+        "/actuator/**"
+    )
+```
+> actuator 인증 제외(Interceptor)
+### 실행
+- localhost:8080/actuator
+- localhost:8080/actuator/metrics
+- localhost:8085/application
+> 로그 > 로그파일
+> > - !검색은 불가
+> > - ELK 보다는 떨어짐
+
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch04-05. Prometheus Grafana 를 통한 모니터링
-## Prometheus
-시스템 모니터링 및 경고를 위해 설계되었으며, 메트릭을 수집하고 저장하도록 설계된 플랫폼  
-본래 컨테이너화 된 환경을 위해 개발 K8s와 잘맞음
-## Grafana
-시계열 분석을 위한 오픈 소스 플랫폼, 대시보드 생성, 경고 설정
-> 다양한 데이터 소스 지원 (Prometheus, Graphite, Elasticsearch, InfluxDB)
+## Prometheus + Grafana
+### Prometheus
+- `시스템 모니터링 및 경고`를 위해 설계되었으며, `메트릭을 수집하고 저장`하도록 설계된 플랫폼  
+- 본래 컨테이너화 된 환경을 위해 개발 K8S 와 잘맞음
+### Grafana
+- `시계열` 분석을 위한 오픈 소스 플랫폼, 대시보드 생성, 경고 설정
+> - 다양한 데이터 소스 지원 (Prometheus, Graphite, Elasticsearch, InfluxDB)
+> - Slack 연동 가능
+### 설정방법
+1. Application Gradle dependencies 추가
+- spring-boot-starter-actuator
+- micrometer-registry-prometheus
+2. Application properties에 내용 추가
+- management.endpoint.metrics.enable=true
+- management.endpoint.prometheus.enabled=true
+- management.endpoints.web.exposure.include=*
+- management.metrics.export.prometheus.enable=true
+3. Prometheus config 추가(docker-compose)
+```yaml
+global:
+  scrape_interval:     5s # 5초마다 Metric을 Pulling
+  evaluation_interval: 5s
+scrape_configs:
+  - job_name: 'spring-server'
+    metrics_path: '/actuator/prometheus' # 위에서 작성한 Spring Application에서 노출시킨 메트릭 경로를 입력한다.
+    static_configs:
+      - targets: ['host.docker.internal:8080'] # 해당 타겟의 도메인과 포트를 입력한다.
+```
+> - global.scrape_interval
+> - scrape_configs
+> >  metrics_path/static_configs/targets
 
-- docker-compose
+## 실습(service:api)
+### docker-compose
 ```yaml
 version: '3.3'
 
@@ -512,10 +563,12 @@ scrape_configs:
 >   metrics_path    
 >   static_config/targets
 
-## api - actuator, prometheus
+### api - actuator, prometheus
 - build.gradle
-> implementation 'org.springframework.boot:spring-boot-starter-actuator'  
+```gradle.kts
+implementation 'org.springframework.boot:spring-boot-starter-actuator'  
 implementation 'io.micrometer:micrometer-registry-prometheus:1.11.1'
+```
 - application.yaml
 ```yaml
 management:
@@ -535,21 +588,98 @@ management:
 >   metrics.export.prometheus.enabled: true  
 >   endpoint.prometheus.enabled: true  
 >   endpoints.web.exposure.include: "*"
+- LoggerFilter
+```java
+package org.delivery.api.filter;
+
+@Slf4j
+@Component
+public class LoggerFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+        ContentCachingRequestWrapper req = new ContentCachingRequestWrapper((HttpServletRequest) request);
+        ContentCachingResponseWrapper res = new ContentCachingResponseWrapper((HttpServletResponse) response);
+        log.info("INIT URI : {}", req.getRequestURI());
+
+        chain.doFilter(req, res);
+
+        // request 정보
+        ~
+        log.info(">>>> uri : {}, method : {}, header : {}, body : {}", uri, method, requestHeaderValues, requestBody);
+        ~
+//        log.info("<<<< uri : {}, method : {}, header : {}, body : {}", uri, method, responseHeaderValues, responseBody);
+        res.copyBodyToResponse();
+    }
+}
+
+```
+
+### 실행
+- service:api 실행
+> - org.delivery.api.filter.LoggerFilter.doFilter (Log)
+```sh
+docker-compose -f /Users/admin/study/signature/ws/docker-compose/prometheus_grafana/docker-compose.yaml up -d 
+```
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000
+```txt
+- username/password: admin/admin
+- 메뉴 > Admin > Data source > Add datasource > Promethus
+http://prometheus:9090 > Save & Test
+
+- 메뉴 > Dashboards
+> New Dashboard + Add visualization
+> - Metrics
+> > http_server_requests_seconds_count
+> - Operations 
+> > Range Functions > Rate
+> - Run queries
+> > 0.2 (1초/5초_scrape )
+
+- 임의 호출
+> http://localhost:8080/actuator/prometheus
+> 그래프 확인
+
+- Save(Dashboard): Delivery Api
+
+- Add > Visualization
+> - Metrics: jvm_buffer_memory_used_bytes
+> - Op: Aggregations > Sum // sum(jvm_memory_used_bytes) * 100 / sum(jvm_memory_max_bytes)
+> - Run queries
+> - Time series: Gauge  
+> - Title: JVM Meomory > Save 
+```
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch04-06. TICK Stack을 통한 모니터링
-## Telegraf
-InfluxData 에서 개발한 플러그인 기반 서버 에이전트, 데이터를 수집하고 변환하고, 여러 소스로 보내는 역할(= logStash)
-## InfluxDB
-TICK 스택의 핵심 요소로, 고성능의 시계열 데이터베이스, 고속 쿼리를 지원
-## Chronograf
-InfluxDB 데이터를 시각화하고 대시보드를 만드는 도구, 경고 설정
-## Kapacitor
+## Tick Stack
+### Telegraf
+- InfluxData 에서 개발한 플러그인 기반 서버 에이전트
+- `데이터를 수집하고 변환하고, 여러 소스로 보내는 역할`(= logStash)
+### InfluxDB
+- TICK 스택의 핵심 요소로, 고성능의 시계열 `데이터베이스`, `고속 쿼리`를 지원
+### Chronograf
+- InfluxDB `데이터를 시각화`하고 대시보드를 만드는 도구, 경고 설정
+### Kapacitor
 데이터 처리 엔진, 경고를 생성 하는 역할
-## TICK(Telegraf, InfluxDB, Chorograf Kapacitor)
+### TICK(Telegraf, InfluxDB, Chorograf Kapacitor)
 서버 모니터링, IoT 데이터 분석, 실시간 애플리케이션 모니터링
+- ![그림]()
 
+1. Application Gradle dependencies 추가
+- micrometer-registry-statsd
+- spring-boot-starter-actuator
+2. Application properties 추가
+- management.endpoint.metrics.enable=true
+- management.endpoints.web.expsoure.include=*
+- management.metrics.export.statsd.enable=true
+- management.metrics.export.statsd.flavor=telegraf
+- management.metrics.export.statsd.port=${telegraf port}
+- management.metrics.export.statsd.hosts=${telegraf host}
+
+## 실습
+### Docker-compose
 - docker-compose.yaml
 ```yaml
 version: '3'
@@ -593,7 +723,7 @@ services:
       - "9092:9092"    
 ```
 - config/telegraf.config
-```
+```config
 [global_tags]
 
 [agent]
@@ -630,8 +760,21 @@ services:
     allowed_pending_messages = 10000
     percentile_limit = 1000
 ```
-## api
-### micrometer-statsd
+### 실행
+- docker-compose
+```sh
+docker-compose -f /Users/admin/study/signature/ws/docker-compose/tick/docker-compose.yaml up -d 
+```
+- Chronograf 접속
+> localhost:8888
+> - influxDB Connection
+> > http://influxdb:8086
+> - Dashboards > Next
+> - Kapacitor Connection
+> > http://kapacitor:9092 > Continue > View All Connection
+
+### service:api
+#### micrometer-statsd
 micrometer telegraf 형식에 맞춘 변환기
 - build.gradle
 > implementation 'io.micrometer:micrometer-registry-statsd:1.11.1'  
@@ -649,3 +792,9 @@ management:
         port: 8125
 ```
 > management.metrics.export.statsd.enabled/flavor/polling-frequency/host/port
+### 실행
+- ApiApplication.kt Run
+- Chronograf: http://localhost:8888 
+> - Explore: influx1
+> - http_server_requests: (url: /actuator/prometheus) / count (group bt:10s, Function: count)
+> - Send to Dashboard > Spring Boot / Http Request

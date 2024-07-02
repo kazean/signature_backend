@@ -16,6 +16,6 @@ docker-compose -f /Users/admin/study/signature/ws/docker-compose/rabbitmq/docker
 - rabbitMQ Container console
 > rabbitmq-plugins enable rabbitmq_management
 ### elk
-docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/docker-compose.yaml up -d
+docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/docker-compose.yml up -d 
 ### TICK
 docker-compose -f /Users/admin/study/signature/ws/docker-compose/tick/docker-compose.yaml up -d
