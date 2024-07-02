@@ -11,10 +11,13 @@
 # Ch04-01. 모니터링
 ## Application Log
 ### Slf4j
-Simple Logging Facade for Java  
-Java의 로깅을 위한 추상화 계층, 해당 추상화를 구현한(logback, log4j) 구현체를 개발자가 선택하여 로그 시스템을 일관적으로 적용할 수 있도록 해줍니다.
+- Simple Logging Facade for Java  
+- Java의 로깅을 위한 추상화 계층
+- 해당 추상화를 구현한(logback, log4j)
+- 구현체를 개발자가 선택하여 로그 시스템을 일관적으로 적용할 수 있도록 해줍니다.
+
 ### Logback
-slf4j의 구현체로써 다음과 같은 장점
+- slf4j의 구현체로써 다음과 같은 장점
 1. 비동기 로깅
 2. 효율적인 객체 생성
 3. 배치 작업
@@ -404,9 +407,9 @@ dependencyManagement {
 }
 ~
 ```
-> extra: springBootAdminVersion  
-> spring-boot-admin-starter-server  
-> dependecyManagement.imports.springboot-admin-depdencies:${property{"springBootAdminVersion"}}
+> - extra: springBootAdminVersion
+> - `spring-boot-admin-starter-server`
+> - dependecyManagement.imports.springboot-admin-depdencies:${property{"springBootAdminVersion"}}
 ### 실행
 > localhost:8085/application
 
@@ -428,7 +431,7 @@ dependencyManagement {
 	}
 }
 ```
-> spring-boot-admin-starter-client
+> - `spring-boot-admin-starter-client`
 
 - application.yml
 ```yaml
@@ -444,7 +447,7 @@ management:
       show-details: always
 
 logging:
-  config: classpath:logback-dev.xml
+  config: classpath:logback.xml
   file:
     name: logFile.log
 
@@ -497,13 +500,12 @@ class WebConfig(
 > - Slack 연동 가능
 ### 설정방법
 1. Application Gradle dependencies 추가
-- spring-boot-starter-actuator
-- micrometer-registry-prometheus
+- `spring-boot-starter-actuator`
+- `micrometer-registry-prometheus`
 2. Application properties에 내용 추가
-- management.endpoint.metrics.enable=true
-- management.endpoint.prometheus.enabled=true
+- `management.metrics.export.prometheus.enable=true`
+- `management.endpoint.prometheus.enabled=true`
 - management.endpoints.web.exposure.include=*
-- management.metrics.export.prometheus.enable=true
 3. Prometheus config 추가(docker-compose)
 ```yaml
 global:
@@ -623,11 +625,12 @@ docker-compose -f /Users/admin/study/signature/ws/docker-compose/prometheus_graf
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000
 ```txt
+Grafana: http://localhost:3000
 - username/password: admin/admin
 - 메뉴 > Admin > Data source > Add datasource > Promethus
 http://prometheus:9090 > Save & Test
 
-- 메뉴 > Dashboards
+메뉴 > Dashboards
 > New Dashboard + Add visualization
 > - Metrics
 > > http_server_requests_seconds_count
@@ -665,18 +668,17 @@ http://prometheus:9090 > Save & Test
 데이터 처리 엔진, 경고를 생성 하는 역할
 ### TICK(Telegraf, InfluxDB, Chorograf Kapacitor)
 서버 모니터링, IoT 데이터 분석, 실시간 애플리케이션 모니터링
-- ![그림](./images/Tick_Stack.png)
+![그림](./images/Tick_Stack.png)
 
 1. Application Gradle dependencies 추가
-- micrometer-registry-statsd
-- spring-boot-starter-actuator
+- `micrometer-registry-statsd`
+- `spring-boot-starter-actuator`
 2. Application properties 추가
-- management.endpoint.metrics.enable=true
-- management.endpoints.web.expsoure.include=*
 - management.metrics.export.statsd.enable=true
 - management.metrics.export.statsd.flavor=telegraf
 - management.metrics.export.statsd.port=${telegraf port}
 - management.metrics.export.statsd.hosts=${telegraf host}
+- management.endpoints.web.expsoure.include=*
 
 ## 실습
 ### Docker-compose
