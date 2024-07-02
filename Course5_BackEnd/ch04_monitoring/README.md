@@ -27,10 +27,15 @@ slf4j의 구현체로써 다음과 같은 장점
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch04-02. Spring Application Log 모니터링 하기
-## Logback
+## Logback - Configuration
+1) Code
+> Lombok, Logger
+2) XML(logback.xml)
+## 실습(service:api)
 - [Manual](https://logback.qos.ch/manual/index.html)
+### XML 방식
 - api/main/resources/logback.xml
-```
+```xml
 <configuration>
 	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
 		<!-- encoders are assigned the type
@@ -66,17 +71,60 @@ slf4j의 구현체로써 다음과 같은 장점
 ```
 > PatternLayoutEncoder, PatternLayout: Pattern 사용 변수들  
 > appender: console, file, RollingFileAppender
+- api/
+```java
+package org.delivery.api.domain.user.controller;
+
+@Slf4j
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/open-api/user")
+public class UserOpenApiController {
+  @PostMapping("/login")
+    public Api<TokenResponse> login(
+            @Valid @RequestBody
+            Api<UserLoginRequest> request
+    ) {
+        //log.info("@@@@@@@@@@@@")
+        if(true) throw new ApiException(ErrorCode.SERVER_ERROR);
+        
+        var response = userBusiness.login(request.getBody());
+        return Api.OK(response);
+    }
+}
+```
+
+## 정리
+### Logback
+- Configuration
+> - STDOUT(console), File
+> > - ConsoleAppender(STDOUT)
+> > > default encoder class: PatternLayoutEncoder
+> > - RolliRollingFileAppenderng(File)
+> > > 시간단위 등으로 설정 가능
+> > - Pattern: PatternLayout
+> > > - %d{HH:mm:ss.SSS} 시간, %thread, %level, %class, %method 등
+> > - 시작시 출력 class: StartupInfoLogger
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch04-03. ELK Stack을 통한 Log 모니터링
 ## ELK
 ### ElasticSearch
-실시간 검색 분석 엔진
+- 실시간 검색 분석 엔진
+- 대용량 데이터를 실시간 으로 처리
+- JSON 형태의 문서를 저장, 검색
+- 내부적으로 Apache Lucene을 사용, 풀 텍스트 검색 라이브러리
+> elasticsearch / AWS: open Search
 ### LogStash
-서버로부터 다양한 소의 로그 또는 이벤트 데이터를 수집 처하여 Elasticsearch와 같은 "스토리지"로 전송하는 파이프라인 도구
+서버로부터 다양한 소의 로그 또는 이벤트 데이터를 수집 처하여 Elasticsearch와 같은 "스토리지"로 전송하는 `파이프라인 도구`
+- 다양한 유형의 입력(파일, 비트, syslog 등)에서 데이터를 수집
+- 필터를 사용해 분석 및 변환 후 Elasticsearch와 같은 출력에 데이터를 색인화
 ### Kibana
-저장된 데이터를 시각화하고 이 데이터 기반으로 고급 데이터 분석을 수행하는 웹인터페이스 도구
+저장된 데이터를 `시각화`하고 이 데이터 기반으로 고급 데이터 분석을 수행하는 웹인터페이스 도구
+
+## 실습
+### Docker-compose(ELK)
 - docker-compose.yml
 ```yaml
 version: '3.2'
@@ -116,8 +164,8 @@ services:
         target: /usr/share/logstash/pipeline
         read_only: true
     ports:
-      - "5001:5001/tcp"
-      - "5001:5001/udp"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
       - "9600:9600"
     environment:
       LS_JAVA_OPTS: "-Xmx256m -Xms256m"
@@ -146,7 +194,14 @@ networks:
 
 volumes:
   elasticsearch:
+```
+> - elasticsearch
+> - port: 9200/9300
+> - enviroment.discovery.type: single-node
+> > master/slave, failover, single-node(test)
 
+- elasticsearch.yml
+```yaml
 # elasticsearch config/elasticsearch.yml
 ---
 ## Default Elasticsearch configuration from Elasticsearch base image.
@@ -161,7 +216,10 @@ network.host: 0.0.0.0
 xpack.license.self_generated.type: trial
 xpack.security.enabled: true
 xpack.monitoring.collection.enabled: true
+```
 
+- kibana config/kibana.yaml
+```yaml
 # kibana config/kibana.yaml
 ---
 ## Default Kibana configuration from Kibana base image.
@@ -190,13 +248,29 @@ xpack.monitoring.elasticsearch.hosts: [ "http://elasticsearch:9200" ]
 xpack.monitoring.enabled: true
 xpack.monitoring.elasticsearch.username: elastic
 xpack.monitoring.elasticsearch.password: changeme
+```
 
-```
 - logstash/pipeline/logstash.yml
+```yaml
+---
+## Default Logstash configuration from Logstash base image.
+## https://github.com/elastic/logstash/blob/master/docker/data/logstash/config/logstash-full.yml
+#
+http.host: "0.0.0.0"
+xpack.monitoring.elasticsearch.hosts: [ "http://elasticsearch:9200" ]
+
+## X-Pack security credentials
+#
+xpack.monitoring.enabled: true
+xpack.monitoring.elasticsearch.username: elastic
+xpack.monitoring.elasticsearch.password: changeme
 ```
+> elasticsearch로 데이터 전송
+- logstash/pipeline/logstash.conf
+```conf
 input {
 	tcp {
-		port => 5001
+		port => 5000
 		codec => json_lines
 	}
 }
@@ -214,7 +288,24 @@ output {
 	}
 }
 ```
-## api
+> - input.tcp.port => 5000/codec => json_lines
+> > Logstash port: 5000, 데이터를 json으로 변환
+> - output.elasticsearch
+> > - hosts => ~:9200, user/password
+#### 실행
+- docker-compose
+```sh
+$ docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/docker-compose.yml up -d 
+```
+- elasticsearch
+> - localhost:9200
+> > user/password: elastic/changeme
+- kibana
+> - localhist:5600
+> > user/password: elastic/changeme
+
+
+### service:api
 - build.gradle
 > dependencies: implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
 - resources/application.yml
