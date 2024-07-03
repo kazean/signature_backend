@@ -301,8 +301,6 @@ xpack.monitoring.elasticsearch.password: changeme
 - build.gradle
 > dependencies: implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
 - resources/application.yml
-> server.name: delivery-api
-- resources/application.yaml
 ```yaml
 server:
   name: delivery-api
@@ -354,6 +352,7 @@ server:
 ```sh
 docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/docker-compose.yml up -d 
 ```
+- servcice:api > ApiApplication.kt Run
 - elasticsearch
 > - localhost:9200
 > > user/password: elastic/changeme
@@ -459,11 +458,9 @@ management:
       show-details: always
 
 logging:
-  config: classpath:logback.xml
+  config: classpath:logback-dev.xml
   file:
     name: logFile.log
-
-
 spring:
   boot:
     admin:
@@ -471,7 +468,8 @@ spring:
         url:
           - http://localhost:8085
 ```
-> management.endpoints/endpoint, loggig.config/file, spring.boot.admin.client.url
+> - management.endpoints/endpoint, loggig.config/file, spring.boot.admin.client.url
+> - logback.xml > logback-devm.xml
 
 - WebConfig.kt
 ```kotlin
@@ -491,6 +489,7 @@ class WebConfig(
     )
 ```
 > actuator 인증 제외(Interceptor)
+
 ### 실행
 - localhost:8080/actuator
 - localhost:8080/actuator/metrics
@@ -658,7 +657,7 @@ http://prometheus:9090 > Save & Test
 - Save(Dashboard): Delivery Api
 
 - Add > Visualization
-> - Metrics: jvm_buffer_memory_used_bytes
+> - Metrics: jvm_memory_used_bytes
 > - Op: Aggregations > Sum // sum(jvm_memory_used_bytes) * 100 / sum(jvm_memory_max_bytes)
 > - Run queries
 > - Time series: Gauge  
@@ -805,7 +804,9 @@ management:
         host: localhost
         port: 8125
 ```
-> management.metrics.export.statsd.enabled/flavor/polling-frequency/host/port
+> - management.metrics.export.statsd.enabled/flavor/polling-frequency/host/port
+> - actuator + prometheus 띄운 상태에서 http_request 쿼리 대시보드 생성하기
+
 ### 실행
 - ApiApplication.kt Run
 - Chronograf: http://localhost:8888 
