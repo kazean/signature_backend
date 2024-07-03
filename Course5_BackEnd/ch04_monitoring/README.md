@@ -74,7 +74,8 @@
 ```
 > PatternLayoutEncoder, PatternLayout: Pattern 사용 변수들  
 > appender: console, file, RollingFileAppender
-- api/
+
+- api/UserOpenApiController
 ```java
 package org.delivery.api.domain.user.controller;
 
@@ -103,7 +104,7 @@ public class UserOpenApiController {
 > - STDOUT(console), File
 > > - ConsoleAppender(STDOUT)
 > > > default encoder class: PatternLayoutEncoder
-> > - RolliRollingFileAppenderng(File)
+> > - RollingFileAppenderng(File)
 > > > 시간단위 등으로 설정 가능
 > > - Pattern: PatternLayout
 > > > - %d{HH:mm:ss.SSS} 시간, %thread, %level, %class, %method 등
@@ -167,8 +168,8 @@ services:
         target: /usr/share/logstash/pipeline
         read_only: true
     ports:
-      - "5000:5000/tcp"
-      - "5000:5000/udp"
+      - "5001:5001/tcp"
+      - "5001:5001/udp"
       - "9600:9600"
     environment:
       LS_JAVA_OPTS: "-Xmx256m -Xms256m"
@@ -241,7 +242,7 @@ xpack.monitoring.elasticsearch.password: changeme
 ```conf
 input {
 	tcp {
-		port => 5000
+		port => 5001
 		codec => json_lines
 	}
 }
@@ -259,8 +260,8 @@ output {
 	}
 }
 ```
-> - input.tcp.port => 5000/codec => json_lines
-> > Logstash port: 5000, 데이터를 json으로 변환
+> - input.tcp.port => 5001/codec => json_lines
+> > Logstash port: 5001, 데이터를 json으로 변환
 > - output.elasticsearch
 > > - hosts => ~:9200, user/password
 
@@ -296,25 +297,16 @@ xpack.monitoring.elasticsearch.username: elastic
 xpack.monitoring.elasticsearch.password: changeme
 ```
 
-
-#### 실행
-- docker-compose
-```sh
-$ docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/docker-compose.yml up -d 
-```
-- elasticsearch
-> - localhost:9200
-> > user/password: elastic/changeme
-- kibana
-> - localhist:5600
-> > user/password: elastic/changeme
-
-
 ### service:api
 - build.gradle
 > dependencies: implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
 - resources/application.yml
 > server.name: delivery-api
+- resources/application.yaml
+```yaml
+server:
+  name: delivery-api
+```
 - resources/logback.xml
 ```xml
 <configuration>
@@ -354,7 +346,27 @@ $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/doc
 	</root>
 </configuration>
 ```
-> appender: LoggingEventCompositeJsonEncode
+> - appender: `LogstashTcpSocketAppender`
+> - encoder: LoggingEventCompositeJsonEncode
+
+#### 실행
+- docker-compose
+```sh
+docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/docker-compose.yml up -d 
+```
+- elasticsearch
+> - localhost:9200
+> > user/password: elastic/changeme
+- kibana
+> - localhost:5601
+> > user/password: elastic/changeme
+> - 메뉴 > Analytic > Discover
+> > - Create Index
+> > > - Name: logstash-*
+> > > - TimeStamp field: @timestamp
+> - 메뉴 > Analytic > Discover
+> > - fieldSelect: server-name, level, class, method, line, message
+> > > 검색: hikari, tomcat
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -362,7 +374,7 @@ $ docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/doc
 ## Application Monitoring
 - PUSH/PULL
 > - PUSH: Client > Server, Client 마다 추가
-> > ex) TIC(Telegraf + influxDB + Chronograf)
+> > ex) TIC(Telegraf + InfluxDB + Chronograf), ELK
 > - PULL: Server > Client, 보안취약점
 > > ex) Prometheus + Grafana
 
