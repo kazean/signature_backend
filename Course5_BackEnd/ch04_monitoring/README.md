@@ -11,9 +11,9 @@
 # Ch04-01. 모니터링
 ## Application Log
 ### Slf4j
-- Simple Logging Facade for Java  
+- `Simple Logging Facade for Java`
 - Java의 로깅을 위한 추상화 계층
-- 해당 추상화를 구현한(logback, log4j)
+- 해당 추상화를 구현한 `logback, log4j`
 - 구현체를 개발자가 선택하여 로그 시스템을 일관적으로 적용할 수 있도록 해줍니다.
 
 ### Logback
@@ -23,7 +23,7 @@
 3. 배치 작업
 4. 최적화된 문자열 처리
 5. 조건부 로깅: level
-6. 유연한 구성: XML Groovy
+6. 유연한 구성: XML, Groovy
 7. 다양한 로그 대상 지원: console, file, database
 8. 파일 로테이션
 
@@ -32,8 +32,9 @@
 # Ch04-02. Spring Application Log 모니터링 하기
 ## Logback - Configuration
 1) Code
-> Lombok, Logger
-2) XML(logback.xml)
+> `Lombok, Logger`
+2) XML(`logback.xml`)
+
 ## 실습(service:api)
 - [Manual](https://logback.qos.ch/manual/index.html)
 ### XML 방식
@@ -72,8 +73,8 @@
 	</root>
 </configuration>
 ```
-> PatternLayoutEncoder, PatternLayout: Pattern 사용 변수들  
-> appender: console, file, RollingFileAppender
+> `PatternLayoutEncoder`, PatternLayout: Pattern 사용 변수들  
+> appender: `Console/File/RollingFileAppender`
 
 - api/UserOpenApiController
 ```java
@@ -102,10 +103,8 @@ public class UserOpenApiController {
 ### Logback
 - Configuration
 > - STDOUT(console), File
-> > - ConsoleAppender(STDOUT)
+> > - Console/FileAppender
 > > > default encoder class: PatternLayoutEncoder
-> > - RollingFileAppenderng(File)
-> > > 시간단위 등으로 설정 가능
 > > - Pattern: PatternLayout
 > > > - %d{HH:mm:ss.SSS} 시간, %thread, %level, %class, %method 등
 > > - 시작시 출력 class: StartupInfoLogger
@@ -115,10 +114,10 @@ public class UserOpenApiController {
 # Ch04-03. ELK Stack을 통한 Log 모니터링
 ## ELK
 ### ElasticSearch
-- 실시간 검색 분석 엔진
-- 대용량 데이터를 실시간 으로 처리
-- JSON 형태의 문서를 저장, 검색
-- 내부적으로 Apache Lucene을 사용, 풀 텍스트 검색 라이브러리
+- `실시간 검색 분석 엔진`
+- 대용량 데이터를 실시간으로 처리
+- `JSON 형태`의 문서를 저장, 검색
+- 내부적으로 `Apache Lucene`을 사용, 풀 텍스트 검색 라이브러리
 > elasticsearch / AWS: OpenSearch
 ### LogStash
 서버로부터 다양한 소의 로그 또는 이벤트 데이터를 수집 처하여 Elasticsearch와 같은 "스토리지"로 전송하는 `파이프라인 도구`
@@ -299,7 +298,7 @@ xpack.monitoring.elasticsearch.password: changeme
 
 ### service:api
 - build.gradle
-> dependencies: implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
+> dependencies: implementation 'net.logstash.logback:`logstash-logback-encoder`:7.3'
 - resources/application.yml
 ```yaml
 server:
@@ -385,7 +384,7 @@ docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/docke
 ## 실습(bootadmin, service)
 ### bootadmin
 - Project/SpringBoot: Kotlin/Gradle-Kotlin/SpringBoot(2.7.13)/com.delivery.boot-admin
-- dependency: admin(codecentric's Spring Boot Admin(Server)), Spring Web
+- dependency: `admin(codecentric's Spring Boot Admin(Server))`, Spring Web
 - application.yml
 > server.port: 8085
 - BootadminApplication
@@ -422,7 +421,7 @@ dependencyManagement {
 > - `spring-boot-admin-starter-server`
 > - dependecyManagement.imports.springboot-admin-depdencies:${property{"springBootAdminVersion"}}
 ### 실행
-> localhost:8085/application
+> `localhost:8085/application`
 
 ### service:api
 - build.gradle
@@ -468,7 +467,11 @@ spring:
         url:
           - http://localhost:8085
 ```
-> - management.endpoints/endpoint, loggig.config/file, spring.boot.admin.client.url
+> - `management.endpoints.web.exposure.include: "*"`
+> - management.endpoint.health.show-details: always
+> - loggig.config: classpath:logback-dev.xml
+> - loggig.file: logfile.log
+> - `spring.boot.admin.client.url`
 > - logback.xml > logback-devm.xml
 
 - WebConfig.kt
@@ -504,7 +507,7 @@ class WebConfig(
 ## Prometheus + Grafana
 ### Prometheus
 - `시스템 모니터링 및 경고`를 위해 설계되었으며, `메트릭을 수집하고 저장`하도록 설계된 플랫폼  
-- 본래 컨테이너화 된 환경을 위해 개발 K8S 와 잘맞음
+- 본래 `컨테이너화` 된 환경을 위해 개발 K8S 와 잘맞음
 ### Grafana
 - `시계열` 분석을 위한 오픈 소스 플랫폼, 대시보드 생성, 경고 설정
 > - 다양한 데이터 소스 지원 (Prometheus, Graphite, Elasticsearch, InfluxDB)
@@ -685,10 +688,10 @@ http://prometheus:9090 > Save & Test
 - `micrometer-registry-statsd`
 - `spring-boot-starter-actuator`
 2. Application properties 추가
-- management.metrics.export.statsd.enable=true
+- `management.metrics.export.statsd`.enable=true
 - management.metrics.export.statsd.flavor=telegraf
-- management.metrics.export.statsd.port=${telegraf port}
 - management.metrics.export.statsd.hosts=${telegraf host}
+- management.metrics.export.statsd.port=${telegraf port}
 - management.endpoints.web.expsoure.include=*
 
 ## 실습
