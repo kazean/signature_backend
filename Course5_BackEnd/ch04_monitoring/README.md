@@ -76,6 +76,7 @@
 > `PatternLayoutEncoder`, PatternLayout: Pattern 사용 변수들  
 > appender: `Console/File/RollingFileAppender`
 
+### Code 방식
 - api/UserOpenApiController
 ```java
 package org.delivery.api.domain.user.controller;
