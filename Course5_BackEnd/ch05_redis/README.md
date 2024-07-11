@@ -30,12 +30,15 @@ services:
 ```
 > docker-compose -f /Users/admin/study/signature/ws/docker-compose/redis/docker-compose.yaml up -d
 ### redis
+- Practice
+> - 1. Notice(String)를 MVC 구조로 Redis이용해 Get/Add 구현하기
 - 환경
 > - Gradle - Kotlin
 > - Kotlin
 > - Spring Boot 2.7.14
 > - com.example.redis
 > - dependencies: Spring Data Redis, Spring Web
+
 - build.gradle.kts
 ```kts
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -83,11 +86,13 @@ tasks.withType<Test> {
 server:
   port: 8086
 spring:
-  redis:
-    host: localhost
-    port: 6379
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
 ```
-> - spring.redis.host/port
+> - `spring.data.redis.host/port`
 - Intellij Plugins
 > - Redis Helper, 다른 것은 paid
 > > - '+' 버튼 redis 연결
@@ -185,7 +190,7 @@ package com.example.redis.config
 class RedisConfig {
 }
 ```
-> - `@Cacheable/CachePut(cacheNames: Array<String>, keyGenerator: String)`
+> - `@Cacheable/CachePut(cacheNames: Array<String>, key: String)`
 > > - @CachePut(cacheNames = ["notice"], key = "#notice.id") // notice::id auto-gen
 > > > `#` 은 Spring Expression이며 매개변수의 notice를 뜻함
 > - `@EnableCaching`
@@ -198,7 +203,8 @@ class RedisConfig {
 
 # Ch05-03. 마치며 - 3. redis 의 도입
 ## 실습 (redis)
-Entity or Dto 사용
+- Practice
+> - NoticeDto를 이용하여 MVC 구조의 Get/Add Method 구현(Redis)
 - code
 ```kotlin
 package com.example.redis.model
