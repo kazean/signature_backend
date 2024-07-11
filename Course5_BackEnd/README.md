@@ -3,7 +3,7 @@
 - [Ch02. Spring과 Kotlin](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd/ch02_springNkotlin)
 - [Ch03. 마이크로서비스 맛보기](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd/ch03_msa)
 - [Ch04. 모니터링](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd/ch04_monitoring)
-- [Ch05.]()
+- [Ch05. Redis 기초](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd/ch05_redis)
 
 
 ---------------------------------------------------------------------------------------------------------------------------
@@ -19,3 +19,5 @@ docker-compose -f /Users/admin/study/signature/ws/docker-compose/rabbitmq/docker
 docker-compose -f /Users/admin/study/signature/ws/docker-compose/elk-stack/docker-compose.yml up -d 
 ### TICK
 docker-compose -f /Users/admin/study/signature/ws/docker-compose/tick/docker-compose.yaml up -d
+### Redis
+docker-compose -f /Users/admin/study/signature/ws/docker-compose/redis/docker-compose.yaml up -d
