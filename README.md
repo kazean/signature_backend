@@ -9,6 +9,7 @@
 > - Spring 과 Kotlin
 > - MSA
 > - Monotoring(ELK, Spring Boot Admin, Prometheus/Grafana, TICK)
+> - Redis 기초
 - [Course6. 대용량 데이터를 다루는 배치처리](https://github.com/kazean/signature_backend/tree/main/Course6_Spring_Batch)
 > - Spring Batch
 - [Course7. 대용량 트래픽 처리를 위한 백엔드 심화](https://github.com/kazean/signature_backend/tree/main/Course7_Redis_Webflux)
