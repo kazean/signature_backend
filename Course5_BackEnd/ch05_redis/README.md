@@ -107,17 +107,21 @@ package com.example.redis.repository
 @Service
 class NoticeRepository {
     companion object: Log
+
     private val noticeList = mutableListOf<String>()
 
     fun getNotice(notice: String?): String? {
         log.info("repository get notice method call: {}", notice)
-        return noticeList.filter { it.id == notice }.firstOrNull()
+        return noticeList.filter { it == notice }.firstOrNull()
     }
 
     fun addNotice(notice: String?): String? {
-        log.info("repository add notice method call : {}", notice)
-
-        return notice?.let { noticeList.add(it) }
+        log.info("repository add notice method call: {}", notice)
+        notice?.let {
+            noticeList.add(it)
+        }
+        return notice
+    }
 }
 
 
@@ -310,8 +314,8 @@ class RedisConfig {
 ```
 > - #notice.id: Return 된 값 기준으로 Set
 > - RedisConfig : `RedisCacheManager` > RedisConnectionFactory, RedisCacheConfiguration
-> - RedisCacheConfiguration .defaultCacheConfig() .serializeValueWith(~)
-> - RedisCacheManager.builder() .cacheDefaults()
+> - `RedisCacheConfiguration`: .defaultCacheConfig() .serializeValueWith(~)
+> - RedisCacheManager.builder(config) .cacheDefaults()
 
 ## 실행
 > - localhost:8086/notice/add-notice?notice=공지사항
