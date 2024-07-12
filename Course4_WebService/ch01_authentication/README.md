@@ -29,7 +29,7 @@
 ## HTTP SESSION
 - 특징
 1. HTTP 프로토콜 Stateless > 사용자 정보를 서버측에서 저장하고 관리, 세션ID를 클라이언트에서 관리
-2. Cookie와 구분
+2. Cookie를 사용하여 구현
 3. 로그인 정보를 관리 할때 사용
 4. `사용자가 임의로 세션 정보를 조작 할 수 없다`, HTTPS를 통해서 암호화
 
@@ -41,60 +41,393 @@
 4. 세션 ID는 쿠키(cookie)방식으로 사용자에게 전달, 웹 어플리케이션에서 사용(Hybrid App)
 > Native App에서는 불가
 
-## Project - session
-AccountApiController, UserRepository, UserDto, LoginRequest, UserService
+## 실습(session)
+- Practice
+> - httpSession 정보 저장하기
+- 환경
+> - Gradle - Groovy, JAVA11, com.example.session
+> - Dependencies: Lombok, Spring Web
+- Code
+```java
+// UserRepository
+package com.example.session.db;
 
-# Ch01-02. HTTP Session 인증 - 2
-## UserApiController
-"/api/user/me"
-> httpSession.getAttribute("USER")
+@Service
+public class UserRepository {
+    private List<UserDto> userList = new ArrayList<>();
 
-# Ch01-03. HTTP Cookie 인증 - 1
-## HTTP Cookie
-> `웹 브라우저`와 웹 서버 간에 상태 정보를 유지하기 위한 기술. 브라우저는 이를 로컬에 저장하고 필요할 때마다 서버에 전송하여 사용자 상태 정보를 유지
-- 특징
-1. 쿠키는 클라이언트 측에 저장
-2. 쿠키는 유효 기간을 가지고 있다
-3. 쿠키는 보안 문제가 있을 수 있습니다. > HTTPS
-4. 쿠키는 브라우저에서 관리
+    public Optional<UserDto> findByName(String name) {
+        return userList.stream()
+                .filter(it -> it.getName().equals(name))
+                .findFirst();
+    }
 
-## Project - cookie
-AccountApiController, UserRepository, UserDto, LoginRequest, UserService
-- UserService - 쿠키 생성
-```
-var cookie = new Cookie("authorization-cookie", userDto.getId());
-cookie.setDomain("localhost");
-cookie.setPath("/");
-cookie.setMaxAge(-1); // session 과 동일, 브라우저 닫을때까지
+    @PostConstruct
+    public void init() {
+        userList.add(new UserDto("홍길동", "1234"));
+        userList.add(new UserDto("유관순", "1234"));
+        userList.add(new UserDto("철수", "1234"));
+    }
+}
 
-httpServletResponse.addCookie(cookie);
-```
+// UserDto
+package com.example.session.model;
 
-# Ch01-03. HTTP Cookie 인증 - 2
-- UserApiController
-```
-@GetMapping("/me")
-public UserDto me(
-        HttpServletRequest httpServletRequest,
-        @CookieValue(name="authorization-cookie", required = false) String authorizationCookie
-) {
-    log.info("authorizationCookie : {}", authorizationCookie);
-    /*var cookies = httpServletRequest.getCookies();
+@Builder
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserDto {
+    private String name;
+    private String password;
+}
 
-    if (cookies != null) {
-        for (Cookie cookie : cookies) {
-            log.info("key: {}, value : {}", cookie.getName(), cookie.getValue());
+// AccountApiController
+package com.example.session.controller;
+
+@RestController
+@RequestMapping("/api/account")
+@RequiredArgsConstructor
+public class AccountApiController {
+
+    private final UserService userService;
+    @PostMapping("/login")
+    public void login(@RequestBody LoginRequest loginRequest,
+                      HttpSession httpSession) {
+        userService.login(loginRequest, httpSession);
+    }
+}
+
+// LoginRequest
+package com.example.session.model;
+
+@Builder
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class LoginRequest {
+    private String id;
+    private String password;
+}
+
+// UserService
+package com.example.session.service;
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+
+    public void login(LoginRequest loginRequest,
+                      HttpSession httpSession) {
+        var id = loginRequest.getId();
+        var pw = loginRequest.getPassword();
+
+        var optionalUser = userRepository.findByName(id);
+        if (optionalUser.isPresent()) {
+            var userDto = optionalUser.get();
+
+            if (userDto.getPassword().equals(pw)) {
+                // 세션에 정보저장
+                httpSession.setAttribute("USER", userDto);
+            } else {
+                throw new RuntimeException(("Password Not Match"));
+            }
+        } else {
+            throw new RuntimeException(("User Not Found"));
         }
-    }*/
-    var optionalUserDto = userRepository.findById(authorizationCookie);
-    return optionalUserDto.get();
+    }
 }
 ```
-> httpServletRequest.getCookies, @CookieValue(name="<cookieName>", require=true<D>)
-- UserService
-> cookie.setHttpOnly(true) //NO JS
-cookie.setSecure(true) // HTTPS
+## 정리
+- `HttpSession` setAttribute("key", value)
 
+
+--------------------------------------------------------------------------------------------------------------------------------
+# Ch01-02. HTTP Session 인증 - 2
+## 실습(session)
+- Practice
+> - 서버쪽에서 Session data 확인
+- index.html
+> - id, password from
+- UserApiController
+```java
+package com.example.session.controller;
+
+@RestController
+@RequestMapping("/api/user")
+public class UserApiController {
+
+    @GetMapping("/me")
+    public UserDto me(HttpSession httpSession) {
+        var userObject = httpSession.getAttribute("USER");
+        if (userObject != null) {
+            var userDto = (UserDto) userObject;
+            return userDto;
+        } else {
+            return null;
+        }
+    }
+}
+
+```
+> - HttpSession getAttribute("key"): Object
+## 실행
+- localhost:8080/
+> - 로그인, `JESSIONID`
+- localhost:8080/api/user/me
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------
+# Ch01-03. HTTP Cookie 인증 - 1
+## HTTP Cookie
+> - `웹 브라우저`와 웹 서버 간에 상태 정보를 유지하기 위한 기술
+> - 브라우저는 이를 로컬에 저장하고 필요할 때마다 서버에 전송하여 사용자 상태 정보를 유지
+> - Set-Cookie와 같은 헤더를 통해 서버 - 클라이언트 전송
+> - 키-값 쌍으로 이루어져 있으며, 이름, 값, 유효 기간, 도메인, 경로 등의 정보를 포함
+- 특징
+1. 쿠키는 `클라이언트 측에 저장`
+2. 쿠키는 유효 기간을 가지고 있다
+3. `!쿠키는 보안 문제`가 있을 수 있습니다.
+> 쿠키에 민감한 정보를 저장할 경우 HTTPS와 같은 보안 프로토콜을 사용해서 암호화
+4. 쿠키는 브라우저에서 관리
+
+## 실습(cookie)
+- 환경
+> - Gradle - Groovy, JAVA11, com.example.session
+> - Dependencies: Lombok, Spring Web
+- Practice
+> - Cookie 추가하기
+- Code
+```java
+// UserDto
+package com.example.cookie.model;
+
+@Builder
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserDto {
+    private String id;
+    private String name;
+    private String password;
+}
+
+// UserRepository 
+package com.example.cookie.db;
+
+@Service
+public class UserRepository {
+    private final List<UserDto> userList = new ArrayList<>();
+
+    public Optional<UserDto> findById(String id) {
+        return userList.stream()
+                .filter(it -> it.getId().equals(id))
+                .findFirst();
+    }
+
+    public Optional<UserDto> findByName(String name) {
+        return userList.stream()
+                .filter(it -> it.getName().equals(name))
+                .findFirst();
+    }
+
+    @PostConstruct
+    public void start() {
+        userList.add(new UserDto(
+                UUID.randomUUID().toString(),
+                "홍길동",
+                "1234"
+        ));
+        userList.add(new UserDto(
+                UUID.randomUUID().toString(),
+                "유관순",
+                "1234"
+        ));
+        userList.add(new UserDto(
+                UUID.randomUUID().toString(),
+                "철수",
+                "1234"
+        ));
+    }
+}
+
+// AccountApiController
+package com.example.cookie.controller;
+
+@RestController
+@RequestMapping("/api/account")
+@RequiredArgsConstructor
+public class AccountApiController {
+    private final UserService userService;
+
+    @PostMapping("/login")
+    public String login(@RequestBody LoginRequest loginRequest,
+                        HttpServletResponse httpServletResponse,
+                        HttpSession httpSession) {
+        return userService.login(loginRequest, httpServletResponse);
+    }
+}
+
+// UserRequest
+package com.example.cookie.model;
+
+@Builder
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class LoginRequest {
+    private String id;
+    private String password;
+}
+
+// UserService
+package com.example.cookie.service;
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+
+    public void login(LoginRequest loginRequest,
+                      HttpServletResponse httpServletResponse) {
+        var id = loginRequest.getId();
+        var password = loginRequest.getPassword();
+
+        var optionalUser = userRepository.findByName(id);
+        if (optionalUser.isPresent()) {
+            var userDto = optionalUser.get();
+            if (userDto.getPassword().equals(password)) {
+                var cookie = new Cookie("authorization-cookie", userDto.getId());
+                cookie.setDomain("localhost");
+                cookie.setPath("/");
+                cookie.setMaxAge(-1);
+                
+                httpServletResponse.addCookie(cookie)
+            }
+        } else {
+            throw new RuntimeException("User Not Found");
+        }
+
+        return null;
+    }
+}
+```
+> - `@RequestBody` LoginRequest loginRequest
+> - HttpServletResponse
+- index.html
+- UserService - 쿠키 생성
+## 실행
+- localhost:8080/ 
+> 로그인, 쿠키 확인
+## 정리
+- Cookie
+> - new Cookie("name", val)
+> - setDomain("domain"), setPath("path"), setMaxAge(-1)
+> > MaxAge(-1): 브라우저 닫을 때까지
+- httpServletResponse.addCookie(cookie)
+
+
+--------------------------------------------------------------------------------------------------------------------------------
+# Ch01-03. HTTP Cookie 인증 - 2
+## 실습(cookie)
+- Practice
+> - cookie 정보 확인하기
+- Code
+```java
+// UserApiController
+package com.example.cookie.controller;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/user")
+@RequiredArgsConstructor
+public class UserApiController {
+    private final UserRepository userRepository;
+
+    @GetMapping("/me")
+    public UserDto me(
+            HttpServletRequest httpServletRequest,
+            @CookieValue(name="authorization-cookie", required = false) String authorizationCookie
+    ) {
+        log.info("authorizationCookie : {}", authorizationCookie);
+        /*var cookies = httpServletRequest.getCookies();
+
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                log.info("key: {}, value : {}", cookie.getName(), cookie.getValue());
+            }
+        }*/
+        var optionalUserDto = userRepository.findById(authorizationCookie);
+        return optionalUserDto.get();
+    }
+
+    @GetMapping("/me2")
+    public UserDto me2(
+            HttpServletRequest httpServletRequest,
+            @RequestHeader(name = "authorization", required = false) String authorizationHeader
+    ) {
+        log.info("authorizationCookie : {}", authorizationHeader);
+        var optionalUserDto = userRepository.findById(authorizationHeader);
+        return optionalUserDto.get();
+    }
+}
+
+// UserService
+package com.example.cookie.service;
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+
+    public void login(LoginRequest loginRequest,
+                      HttpServletResponse httpServletResponse) {
+        var id = loginRequest.getId();
+        var password = loginRequest.getPassword();
+
+        var optionalUser = userRepository.findByName(id);
+        if (optionalUser.isPresent()) {
+            var userDto = optionalUser.get();
+            if (userDto.getPassword().equals(password)) {
+                var cookie = new Cookie("authorization-cookie", userDto.getId());
+                cookie.setDomain("localhost");
+                cookie.setPath("/");
+                cookie.setMaxAge(-1);
+                cookie.setHttpOnly(true);
+                cookie.setSecure(true)
+                httpServletResponse.addCookie(cookie)
+            }
+        } else {
+            throw new RuntimeException("User Not Found");
+        }
+
+        return null;
+    }
+}
+```
+## 실행
+## 정리
+- Cookie Get
+> - httpServletRequest.getCookies
+> - `@CookieValue(name="cookieName", require=true)`
+- Cookie Security
+> - cookie.setHttpOnly(true): JS에서 Cookie 정보 못읽게하기
+> - cookie.setSecure(true): HTTPS에서만 쿠키 교환
+
+
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch01-04. HTTP Header 인증
 ## HTTP Header
 Http Basic, Http Digest, Oauth와 같은 프로토콜을 통해서 구현 되는게 일반적
@@ -121,6 +454,8 @@ JWT는 `Header, Payload, Signature` 세 부분으로 구성
 2. `JWT는 한 번 발급된 후에는 내부 정보를 수정할 수 없으므로, 만료 시간을 짧게 설정해야 한다.`
 3. JWT를 탈취 당하면, 해당 토큰을 사용한 모든 요청이 인증 되므로, 보안 위협, HTTPS와 같은 보안 프로토콜 사용하여 JWT를 전송
 
+
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch01-05. JWT Token 인증 - 2
 ## JJWT
 - jjwt-api, jjwt-impl, jjwt-jackson
