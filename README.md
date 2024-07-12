@@ -3,7 +3,8 @@
 - [Course1. JAVA]()
 - [Course2. JAVA Advance]()
 - [Course3. 웹 입문과 데이터베이스]()
-- [Course4. 프로젝트로 시작하는 웹 서비스 개발]()
+- [Course4. 프로젝트로 시작하는 웹 서비스 개발](https://github.com/kazean/signature_backend/tree/main/Course4_WebService)
+> - Web 인증(Http Session/Cookie, JWT)
 - [Course5. 백엔드 개발 실전/최신](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd)
 > - Kotlin
 > - Spring 과 Kotlin
