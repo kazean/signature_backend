@@ -270,10 +270,10 @@ public class AccountApiController {
     private final UserService userService;
 
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest loginRequest,
+    public void login(@RequestBody LoginRequest loginRequest,
                         HttpServletResponse httpServletResponse,
                         HttpSession httpSession) {
-        return userService.login(loginRequest, httpServletResponse);
+        userService.login(loginRequest, httpServletResponse);
     }
 }
 
@@ -433,14 +433,150 @@ public class UserService {
 Http Basic, Http Digest, Oauth와 같은 프로토콜을 통해서 구현 되는게 일반적
 > Natvie App에서 보통 사용
 
+## 실습(cookie)
+- Practice
+> - header를 통해 데이터 받기(이를 인증으로 활용)
+- index.html
+```html
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(function () {
+        $('#login-btn').on('click', function () {
+            var username = $('#username').val();
+            var password = $('#password').val();
+
+            $.ajax({
+                url: '/api/account/login',
+                method: 'POST',
+                contentType: 'application/json', // JSON 형식으로 데이터 전송
+                // dataType: 'json', // 받아오는 데이터 타입을 JSON으로 설정
+                data: JSON.stringify({ id: username, password: password }), // 데이터를 JSON 문자열로 변환하여 전송
+                success: function (response) {
+                  console.log(response)
+                },
+                complete: function (xhr, status) {
+                    if (xhr.status == 200) {
+                        alert("로그인 성공")
+                    } else {
+                        alert("로그인 실패")
+                    }
+                }
+            });
+        });
+    });
+
+</script>
+```
+- code
+```java
+// AccountApiController
+package com.example.cookie.controller;
+
+@RestController
+@RequestMapping("/api/account")
+@RequiredArgsConstructor
+public class AccountApiController {
+    private final UserService userService;
+
+    @PostMapping("/login")
+    public String login(@RequestBody LoginRequest loginRequest,
+                        HttpServletResponse httpServletResponse,
+                        HttpSession httpSession) {
+        return userService.login(loginRequest, httpServletResponse);
+    }
+}
+
+
+// UserService
+package com.example.cookie.service;
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+
+    public String login(LoginRequest loginRequest,
+                      HttpServletResponse httpServletResponse) {
+        var id = loginRequest.getId();
+        var password = loginRequest.getPassword();
+
+        var optionalUser = userRepository.findByName(id);
+        if (optionalUser.isPresent()) {
+            var userDto = optionalUser.get();
+            if (userDto.getPassword().equals(password)) {
+                return userDto.getId();
+            }
+        } else {
+            throw new RuntimeException("User Not Found");
+        }
+
+        return null;
+    }
+}
+
+package com.example.cookie.controller;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/user")
+@RequiredArgsConstructor
+public class UserApiController {
+    private final UserRepository userRepository;
+
+    @GetMapping("/me")
+    public UserDto me(
+            HttpServletRequest httpServletRequest,
+            @CookieValue(name="authorization-cookie", required = false) String authorizationCookie
+    ) {
+        log.info("authorizationCookie : {}", authorizationCookie);
+        /*var cookies = httpServletRequest.getCookies();
+
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                log.info("key: {}, value : {}", cookie.getName(), cookie.getValue());
+            }
+        }*/
+        var optionalUserDto = userRepository.findById(authorizationCookie);
+        return optionalUserDto.get();
+    }
+
+    @GetMapping("/me2")
+    public UserDto me2(
+            HttpServletRequest httpServletRequest,
+            @RequestHeader(name = "authorization", required = false) String authorizationHeader
+    ) {
+        log.info("authorizationCookie : {}", authorizationHeader);
+        var optionalUserDto = userRepository.findById(authorizationHeader);
+        return optionalUserDto.get();
+    }
+}
+```
+## 실행
+- localhost:8080/api/user/me2
+> - localhost:8080/ 로그인 후 UUID 복사
+> - Taland API
+> > - Get: localhost:8080/api/user/me2
+> > - Header: authorization: UUID
+## 정리
+- `@RequestHeader`(name = "authorization", required = false) String authorizationHeader
+
+
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch01-05. JWT Token 인증 - 1
-JWT(JSON Web Token)는 웹 표준으로써, 데이터의 JSON객체를 사용하여 가볍고 자가 수용적인 방식으로 정보를 안전하게 설계된 토큰 기반의 인증방식  
-JWT는 URL, HTTP Header, HTML Form과 같은 다양한 방식으로 전달, 서버와 클라이언트 간의 인증정보 포함  
-JWT는 `Header, Payload, Signature` 세 부분으로 구성  
-`Header`는 JWT의 타입과 암호화 알고리즘 등을 포함하며, JSON 형식으로 인코딩됩니다.  
-`Payload`는 클래임 정보를 포함하며, JSON 형식으로 인코딩됩니다. 클레임 정보는 사용자ID, 권한 등의 정보를 포함할 수 있습니다.  
-`Signature`는 Header와 Payload를 조합한 후, 비밀 키를 사용하여 생성된 서명 값입니다. 무결성보장
-- JWT Token을 이용한 인증 방식
+## JWT(JSON Web Token)
+- 웹 표준으로써, 데이터의 JSON객체를 사용하여 가볍고 자가 수용적인 방식으로 정보를 안전하게 설계된 토큰 기반의 인증방식
+- `URL, HTTP Header, HTML Form`과 같은 다양한 방식으로 전달, 서버와 클라이언트 간의 인증정보 포함  
+- `Header, Payload, Signature` 세 부분으로 구성  
+1. `Header`
+> JWT의 타입과 암호화 알고리즘 등을 포함하며, JSON 형식으로 인코딩됩니다.  
+2. `Payload`
+> - 클래임 정보를 포함하며, JSON 형식으로 인코딩됩니다
+> - 클레임 정보는 사용자ID, 권한 등의 정보를 포함할 수 있습니다.  
+3. `Signature`
+- Header와 Payload를 조합한 후, 비밀 키를 사용하여 생성된 서명 값입니다. 무결성보장
+- jwt.io
+
+## JWT Token을 이용한 인증 방식
 1. 클라이언트 로그인 요청
 2. 서버는 로그인 검증 및 JWT를 생성하여 클라이언트에게 반환
 3. 클라이언트는 이후 요청에 JWT를 포함시켜 전송
@@ -457,17 +593,36 @@ JWT는 `Header, Payload, Signature` 세 부분으로 구성
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch01-05. JWT Token 인증 - 2
-## JJWT
-- jjwt-api, jjwt-impl, jjwt-jackson
-## build.gradle, JwtService
-```
-// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-api
-implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
-// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-impl
-runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
-// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-jackson
-runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+## 실습(jwt)
+- 환경
+> - Groovy-Gradle, Java11, SpringBoot 2.7.11, com.example.jwt
+> - dependencies: lombok, Spring Web, `jjwt-api, jjwt-impl, jjwt-jackson`
+- build.gradle
+```gradle
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
+	// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-api
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+	// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-impl
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+	// https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-jackson
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+}
+```
+- Code
+```java
+// JwtService
+package com.example.jwt.service;
+
+import io.jsonwebtoken.*;
+
+@Slf4j
+@Service
 public class JwtService {
     private String secretKey = "java11SpringBootJwtTokenIssueMethod";
     public String create(
@@ -506,6 +661,57 @@ public class JwtService {
         }
     }
 }
+
+
+package com.example.jwt;
+
+@SpringBootTest
+class JwtApplicationTests {
+	@Autowired
+	private JwtService jwtService;
+
+	@Test
+	void contextLoads() {
+	}
+
+	@Test
+	void tokenCreate() {
+		HashMap<String, Object> claims = new HashMap<>();
+		claims.put("user_id", 923);
+//		LocalDateTime expireAt = LocalDateTime.now().plusMinutes(10);
+		LocalDateTime expireAt = LocalDateTime.now().plusSeconds(30);
+
+		String jwtToken = jwtService.create(claims, expireAt);
+		System.out.println(jwtToken);
+	}
+
+	@Test
+	void tokenValidation() {
+		String token = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo5MjMsImV4cCI6MTY4ODAxMjQwMX0.EwTiAtFq2qvxuXGdEXxvqbH_-SR_GZqTsnURQVZ-rcI";
+		jwtService.validation(token);
+	}
+
+}
+
 ```
-> SecretKey Keys.hmacShaKeyFor(byte[] bytes)  
-Jwts.builder(), Jwts.parserBuilder()
+## 실행
+- JwtApplicationTests.tokenCreate()
+> token
+- jwt.io: 확인 및 데이터 변경하여 validation 확인
+- JwtApplicationTests.tokenValidation()
+
+## 정리
+- Keys
+> Keys.hmacShaKeyFor(strKey.getBytes()): SecretKey
+- Jwts
+> - .builder()
+> > - .signWith(key, SignatureAlgorithm.HS256)
+> > - .setClaims(objData)
+> > - .setExpiration(_dateExpireAt)
+> - .parserBuilder(): JwtParser
+> > - .setSingingKey(key)/.build()
+- JwtParser
+> - .parseClaimsJws(token): `Jws<Claims>`
+- Exception
+> - SignatureException: Token이 맞지 않을때
+> - ExpiredJwtException: Token이 만료되었을때
