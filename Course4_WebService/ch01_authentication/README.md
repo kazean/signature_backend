@@ -45,7 +45,7 @@
 - Practice
 > - httpSession 정보 저장하기
 - 환경
-> - Gradle - Groovy, JAVA11, com.example.session
+> - Gradle - Groovy, JAVA11, com.example.session, SpringBoot 2.7.11
 > - Dependencies: Lombok, Spring Web
 - Code
 ```java
@@ -311,7 +311,7 @@ public class UserApiController {
 
 ## 실습(cookie)
 - 환경
-> - Gradle - Groovy, JAVA11, com.example.session
+> - Gradle - Groovy, JAVA11, com.example.cookie
 > - Dependencies: Lombok, Spring Web
 - Practice
 > - Cookie 추가하기
@@ -414,24 +414,25 @@ public class UserService {
     public void login(LoginRequest loginRequest,
                       HttpServletResponse httpServletResponse) {
         var id = loginRequest.getId();
-        var password = loginRequest.getPassword();
+        var pw = loginRequest.getPassword();
 
         var optionalUser = userRepository.findByName(id);
         if (optionalUser.isPresent()) {
             var userDto = optionalUser.get();
-            if (userDto.getPassword().equals(password)) {
+            if (userDto.getPassword().equals(pw)) {
                 var cookie = new Cookie("authorization-cookie", userDto.getId());
                 cookie.setDomain("localhost");
                 cookie.setPath("/");
                 cookie.setMaxAge(-1);
-                
-                httpServletResponse.addCookie(cookie)
+
+                httpServletResponse.addCookie(cookie);
+            }else {
+                throw new RuntimeException("Password Not Match");
             }
         } else {
             throw new RuntimeException("User Not Found");
         }
 
-        return null;
     }
 }
 ```
@@ -483,16 +484,6 @@ public class UserApiController {
         var optionalUserDto = userRepository.findById(authorizationCookie);
         return optionalUserDto.get();
     }
-
-    @GetMapping("/me2")
-    public UserDto me2(
-            HttpServletRequest httpServletRequest,
-            @RequestHeader(name = "authorization", required = false) String authorizationHeader
-    ) {
-        log.info("authorizationCookie : {}", authorizationHeader);
-        var optionalUserDto = userRepository.findById(authorizationHeader);
-        return optionalUserDto.get();
-    }
 }
 
 // UserService
@@ -506,29 +497,38 @@ public class UserService {
     public void login(LoginRequest loginRequest,
                       HttpServletResponse httpServletResponse) {
         var id = loginRequest.getId();
-        var password = loginRequest.getPassword();
+        var pw = loginRequest.getPassword();
 
         var optionalUser = userRepository.findByName(id);
         if (optionalUser.isPresent()) {
             var userDto = optionalUser.get();
-            if (userDto.getPassword().equals(password)) {
+            if (userDto.getPassword().equals(pw)) {
                 var cookie = new Cookie("authorization-cookie", userDto.getId());
                 cookie.setDomain("localhost");
                 cookie.setPath("/");
                 cookie.setMaxAge(-1);
                 cookie.setHttpOnly(true);
-                cookie.setSecure(true)
-                httpServletResponse.addCookie(cookie)
+//                cookie.setSecure(true);
+                
+                httpServletResponse.addCookie(cookie);
+            }else {
+                throw new RuntimeException("Password Not Match");
             }
         } else {
             throw new RuntimeException("User Not Found");
         }
-
-        return null;
-    }
+     }
 }
 ```
 ## 실행
+- localhost:8080/ 
+> - 로그인
+- localhost:8080/user/api/me
+> - 쿠키 확인
+- localhost:8080/user/api/me2
+> - ModHeader: authorization: "id"
+> > - 해더확인
+
 ## 정리
 - Cookie Get
 > - httpServletRequest.getCookies
@@ -819,6 +819,7 @@ class JwtApplicationTests {
 > > - .signWith(key, SignatureAlgorithm.HS256)
 > > - .setClaims(objData)
 > > - .setExpiration(_dateExpireAt)
+> > - .compatch(): String
 > - .parserBuilder(): JwtParser
 > > - .setSingingKey(key)/.build()
 - JwtParser
