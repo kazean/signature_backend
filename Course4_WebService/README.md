@@ -13,3 +13,5 @@
 ## Git
 - [Origin Git](https://github.com/steve-developer/fastcampus-2023-part01/tree/main/PART2)
 ## 실행환경
+### Mysql
+docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/mysql/docker-compose.yaml up -d
