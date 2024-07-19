@@ -251,7 +251,7 @@ jar {
 ### Mysql
 - Create Table account
 ```txt
-id  BIGINT  PK/NM/AI
+id  BIGINT(32)  PK/NM/AI
 ```
 
 ### db
@@ -270,7 +270,6 @@ package org.delivery.db;
 @SuperBuilder
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -283,7 +282,7 @@ public class BaseEntity {
 ```java
 package org.delivery.db.account;
 
-@Builder
+@SuperBuilder
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
@@ -303,7 +302,9 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
 ### api
 - api/build.gradle
-> implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+```gradle
+implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+```
 - Code
 ```java
 // AccountController
@@ -317,8 +318,8 @@ public class AccountApiController {
 
     @GetMappin("")
     public void save(){
-        var account = AccountEntity.builder().build()
-        accountRepository.save()
+        var account = AccountEntity.builder().build();
+        accountRepository.save(account);
     }
 }
 // JpaConfig
@@ -368,19 +369,19 @@ public class AccountApiController {
     private final AccoutRepository accountRepository;
 
     @GetMappin("/me")
-    public void me(){
+    public AccountMeResponse me(){
         return AccountMeResponse.builder()
             .name("홍길동")
             .email("A@gmail.com")
             .registeredAt(LocalDateTime.now())
-            .build()0
+            .build();
     }
 }
 ```
 > - localhost:8080/api/account/me
 > > JSON CamelCase
 > - AccounMeResponse
-> > 추가 `@JsonNaming(vaalue = PropertNamingStratiges.SnakecaseStrategy.class)`
+> > 추가 `@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)`
 > > > `But 공통화 처리를 위해 ObjectMapper를 직접 Config`
 - `ObjectMapperConfig`
 ```java
