@@ -16,7 +16,7 @@ Build Tool: Gradle-Groovy
 Language: Java 11  
 Database Library: JPA  
 Database Serverl: Mysql 8.X
-## 실습(mysql, delivery)
+## 실습 (mysql, delivery)
 ### Mysql
 > delivery Schema
 - 실행
@@ -38,7 +38,7 @@ docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/mysql/doc
 - Module 추가 - api, db
 - 부모, 자식 설정
 - 자식간 project implementation
-## 실습(service)
+## 실습 (service)
 ### api
 - New Module - api
 > - Java, Gradle, org.delivery.api
@@ -93,9 +93,11 @@ public static void main(String[] args) {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-03. 배달 플랫폼 프로젝트 멀티모듈 설정하기 - 2
-- build.gradle
-```
-- service gradle
+- Java Project > SpringProject 로 변경하기
+
+## 실습 (service)
+- service/build.gradle
+```gradle
 plugins {
     id 'java'
     id 'org.springframework.boot' version '2.7.13'
@@ -115,8 +117,15 @@ bootJar {
 jar {
     enabled = false
 }
+```
+> - SpringProject 변경
+> > plugins {  id 'org.springframework.boot'  id 'io.spring.dependecy-management'  }
+> - bootJar{ enabled = false }  jar { enabled = fales }  
+> > 프로젝트 코드 src가 없기 때문에 bootJar, Jar 패키징 X
 
-- api gradle
+### api
+- build.gradle
+```gradle
 plugins {
     id 'java'
     id 'org.springframework.boot'
@@ -154,18 +163,73 @@ test {
     useJUnitPlatform()
 }
 ```
-> service bootJar{ enabled = false } jar { enabled = fales }  
-id 'org.springframework.boot', 'io.spring.dependecy-management'  
-impl starter-web, test / compileOnly, annotationProcessor: org.projectlombok:lombok
+> - Spring Project: 버전 명시 X > 부모에서 지정하기 였기 때문에
+> - configuration: Lombok 사용하기 위해서 annotationProcessor extendsFrom
+> - dependencies
+> > - impl/testImpl: spring-boot-starter-web
+> > - compileOnly/annotationProcessor: org.projectlombok:lombok\
+- ApiApplication
+```java
+@SpringBootApplication
+public class ApiApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ApiApplication.class, args);
+    }
+}
+```
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-04. 배달 플랫폼 프로젝트 DB 모듈 설정하기 - 1
-## DB
-account table
-## api/application.yml gradle
+- JPA 설정
+- BootJar, Jar 설정
+## 실습 (service)
+### db
+- build.gradle
+```gradle
+dependencies {
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+}
+
+bootJar {
+    enabled = false
+}
+
+jar {
+    enabled = true
+}
 ```
-- api/build.gradle
+> - lombok
+> - mysql
+> - spring-boot-starter-data-jpa
+> - BootJar
+> > SpringBoot
+> - Jar
+> > Plan-jar: SpringBoot가 아닌 소스들
+
+### api
+- application.yaml
+```yaml
+spring:
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: validate
+  datasource:
+    url: jdbc:mysql://localhost:3306/delivery?userSSL=false&useUnicode=true&PublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: root1234!!
+```
+- build.gradle
+```gradle
 bootJar {
     enabled = true
 }
@@ -173,61 +237,147 @@ bootJar {
 jar {
     enabled = false
 }
-
-- db/build.gradle
-bootJar {
-    enabled = false
-}
-
-jar {
-    enabled = true
-}
 ```
+- gradle
+> - ./gradlew build
+> - ./gradlew clean
+
+### Mysql
+- Create Table account
+```txt
+id  BIGINT  PK/NM/AI
+```
+
+### db
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-05. 배달 플랫폼 프로젝트 DB 모듈 설정하기 - 2
-- api/build.gradle
-> implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-- db/BaseEntity, account/AccountEntity, AccountRepository
-```
+- Account Table use db, api for JPA
+## 실습 (service: db, api)
+### db
+- BaseEntity
+package org.delivery.db;
+
 @MappedSuperclass
-@Data
 @SuperBuilder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 }
+> - `@MappedSuperClass`
+> - `@SuperBuilder`: 부모에 상속받은 컬럼도 Build
+- AccountEntity
+```java
+package org.delivery.db.account;
 
-@SuperBuilder
+@Builder
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "account")
-public class AccountEntity extends BaseEntity {
+public class AccountEntity extends BaseEntity{
 }
+```
+> - @SuperBuilder: 부모에 상속받은 컬럼도 Build
+- AccountRepository
+```java
+package org.delivery.db.account;
 
-public interface AccountRepository extends JpaRepository<AccountEntity, Long> {
+public interface AccountRepository extends JpaRepository<Account, Long> {
+
 }
 ```
-> @MappedSuperClass, @SuperBuilder, @EqualsAndHashCode(callSuper = true)
-- api - account/AccountController, config.jpa/JpaConfig
+
+### api
+- api/build.gradle
+> implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+- Code
+```java
+// AccountController
+package org.delivery.api.account;
+
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/account")
+public class AccountApiController {
+    private final AccoutRepository accountRepository;
+
+    @GetMappin("")
+    public void save(){
+        var account = AccountEntity.builder().build()
+        accountRepository.save()
+    }
+}
+// JpaConfig
 ```
+- JpaConfig
+```java
+package org.delivery.api.config.jpa;
+
 @Configuration
 @EntityScan(basePackages = "org.delivery.db")
 @EnableJpaRepositories(basePackages = "org.delivery.db")
 public class JpaConfig {
 }
 ```
-> @EntityScan, @EnableJpaRepositories
+> - `@EntityScan,` `@EnableJpaRepositories`
+> - db에 있는 package를 Scan하기 위해
+
+### 실행
+- ApiApplication Run
+- localhost:8080/account/api
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-06. 배달 플랫폼 프로젝트 API 기본 설정 추가 - 1
-## ObjectMapper
-- config/objectMapper/ObjectMapperConfig
+- `ObjectMapper`: JSON - Object
+> - SankeCase: '_' 사용
+## 실습
+### api
+- Account
+```java
+package org.delivery.api.account.model;
+
+@Data
+@Builder
+public class AccounMeResponse {
+    private String email;
+    private String name;
+    private LocalDateTime RegisteredAt;
+}
+
+package org.delivery.api.account;
+
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/account")
+public class AccountApiController {
+    private final AccoutRepository accountRepository;
+
+    @GetMappin("/me")
+    public void me(){
+        return AccountMeResponse.builder()
+            .name("홍길동")
+            .email("A@gmail.com")
+            .registeredAt(LocalDateTime.now())
+            .build()0
+    }
+}
 ```
+> - localhost:8080/api/account/me
+> > JSON CamelCase
+> - AccounMeResponse
+> > 추가 `@JsonNaming(vaalue = PropertNamingStratiges.SnakecaseStrategy.class)`
+> > > `But 공통화 처리를 위해 ObjectMapper를 직접 Config`
+- `ObjectMapperConfig`
+```java
+package org.delivery.api.config.objectmapper;
+
 @Configuration
 public class ObjectMapperConfig {
     @Bean
@@ -246,24 +396,31 @@ public class ObjectMapperConfig {
         return objectMapper;
     }
 }
+
 ```
-> @JsonNaming() 대신 Custom ObjectMapper Bean 등록 > 자동으로 ObjectMapper가 변환해준다
+> - @JsonNaming 삭제
+> > @JsonNaming() 대신 Custom ObjectMapper Bean 등록 > 자동으로 ObjectMapper가 변환해준다
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-07. 배달 플랫폼 프로젝트 Swagger UI 설정
-스웨거는 API 문서화, 디자인, 빌드, 테스트 및 사용을 위한 오픈 소스 소프트웨어 프레임 워크  
-스웨거는 RESTful API 서비스를 개발하고 문서화하는데 도움
+## Swagger
+- 스웨거는 API 문서화, 디자인, 빌드, 테스트 및 사용을 위한 오픈 소스 소프트웨어 프레임 워크  
+- 스웨거는 RESTful API 서비스를 개발하고 문서화하는데 도움
 1. API 문서화
 2. 인터랙티브한 API UI: 스웨거 UI
 3. 코드 생성
 4. API 테스트
-- api/build.gradle
-```
+## 실습 (service: api)
+- Maven: SpringDocOpenAPI UI
+- build.gradle
+```gradle
 implementation 'org.springdoc:springdoc-openapi-ui:1.7.0'
 ```
-- config/swagger/SwaggerConfig
-```
+- SwaggerConfig
+```java
+package org.delivery.api.config.swagger;
+
 @Configuration
 public class SwaggerConfig {
 
@@ -273,6 +430,11 @@ public class SwaggerConfig {
     }
 }
 ```
+> - @Bean :`ModelResolver`
+> - Swagger에서도 SnakeCase를 쓰기 위한 ObjectMapper 매핑
+
+## 실행
+- localhost:8080/swagger-ui/index.html
 
 
 --------------------------------------------------------------------------------------------------------------------------------
