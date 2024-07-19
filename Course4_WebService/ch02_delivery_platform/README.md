@@ -82,7 +82,7 @@ dependencies {
 }
 ```
 >`implementation projects(':db')`
-- Main.javav
+- Main.java
 ```java
 public static void main(String[] args) {
     UserDto userDto = new UserDto();
@@ -187,6 +187,12 @@ public class ApiApplication {
 ### db
 - build.gradle
 ```gradle
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+}
+
 dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -257,6 +263,7 @@ id  BIGINT  PK/NM/AI
 ## 실습 (service: db, api)
 ### db
 - BaseEntity
+```java
 package org.delivery.db;
 
 @MappedSuperclass
@@ -269,6 +276,7 @@ public class BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 }
+```
 > - `@MappedSuperClass`
 > - `@SuperBuilder`: 부모에 상속받은 컬럼도 Build
 - AccountEntity
