@@ -167,7 +167,7 @@ test {
 > - configuration: Lombok 사용하기 위해서 annotationProcessor extendsFrom
 > - dependencies
 > > - impl/testImpl: spring-boot-starter-web
-> > - compileOnly/annotationProcessor: org.projectlombok:lombok\
+> > - compileOnly/annotationProcessor: org.projectlombok:lombok
 - ApiApplication
 ```java
 @SpringBootApplication
