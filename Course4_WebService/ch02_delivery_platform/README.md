@@ -16,7 +16,7 @@ Build Tool: Gradle-Groovy
 Language: Java 11  
 Database Library: JPA  
 Database Serverl: Mysql 8.X
-## 실습 (mysql, delivery)
+## 실습 (mysql, service)
 ### Mysql
 > delivery Schema
 - 실행
@@ -28,7 +28,7 @@ docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/mysql/doc
 > > - Charset/Collation: utf8mb4/utf8mb4_bin
 ### service
 - intellij - New Project      
-> - Gradle - Groovy, Java11, SpringBoot 2.7.12, org.delivery service
+> - Gradle - Groovy, Java11, SpringBoot 2.7.12, org.delivery.service
 > - org.delivery.service - Intellij
 
 
@@ -41,7 +41,7 @@ docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/mysql/doc
 ## 실습 (service)
 ### api
 - New Module - api
-> - Java, Gradle, org.delivery.api
+> - Java, Gradle-Groovy, org.delivery.api
 > - Parent: service
 
 ### service
@@ -237,7 +237,7 @@ spring:
 - build.gradle
 ```gradle
 bootJar {
-    enabled = true
+    enabled = false
 }
 
 jar {
@@ -253,8 +253,6 @@ jar {
 ```txt
 id  BIGINT(32)  PK/NM/AI
 ```
-
-### db
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -346,7 +344,7 @@ public class JpaConfig {
 # Ch02-06. 배달 플랫폼 프로젝트 API 기본 설정 추가 - 1
 - `ObjectMapper`: JSON - Object
 > - SankeCase: '_' 사용
-## 실습
+## 실습 (service: api)
 ### api
 - Account
 ```java
