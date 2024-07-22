@@ -7,6 +7,8 @@
 > - 1. Web 인증(Http Session/Cookie, JWT)
 > - 2. service Project
 > > - Multi Module, JPA, Swagger, ObjectMapper
+> - 3. 프로젝ㅌ 베이스 개발
+> > - Filter, API Specification, ExceptionHandler, Interceptor
 - [Course5. 백엔드 개발 실전/최신](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd)
 > - 1. Kotlin
 > - 2. Spring 과 Kotlin
