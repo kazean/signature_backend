@@ -540,6 +540,8 @@ public class AccounApiController {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-05. Interceptor를 통한 인증기반 적용하기
+## Handler Interceptor
+- 어떤 Controller로 가는지는 Filter에서 알 수 없다.
 - Hadler Interceptor 인증을 위한 초석 마련
 ## 실습 (service: api)
 - AuthorizationInterceptor
@@ -610,6 +612,10 @@ public class WebConfig implements WebMvcConfigurer {
 ```
 - impl `WebMvcConfigurer` void addInterceptors(InterceptorRegistry registry)
 > - registry.`addInterceptor(handlerInterceptor)`/`excludePathPatterns(list or String...)`
+
+## 실행
+- localhost:8080/swagger-ui/index.html
+> "api/account/me" me()
 
 
 --------------------------------------------------------------------------------------------------------------------------------
