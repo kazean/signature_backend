@@ -9,7 +9,7 @@
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-01. Filter를 통한 Request, Response Log 설정하기
-- Filter를 ㅌ오한 로그설정
+- Filter를 통한 로그설정
 - Filter 적용하여 Request, Response 정보 확인하기(Header, URI, Method, Content)
 
 ## 실습 (service: api)
@@ -127,33 +127,9 @@ public class Result {
 
     public static Result OK() {
         return Result.builder()
-                .resultCode(ErrorCode.OK.getErrorCode())
-                .resultMessage(ErrorCode.OK.getDescription())
+                .resultCode(200)
+                .resultMessage("OK")
                 .resultDescription("성공")
-                .build();
-    }
-
-    public static Result ERROR(ErrorCodeIfs errorCodeIfs) {
-        return Result.builder()
-                .resultCode(errorCodeIfs.getErrorCode())
-                .resultMessage(errorCodeIfs.getDescription())
-                .resultDescription("에러발생")
-                .build();
-    }
-    // 비추천
-    public static Result ERROR(ErrorCodeIfs errorCodeIfs, Throwable tx) {
-        return Result.builder()
-                .resultCode(errorCodeIfs.getErrorCode())
-                .resultMessage(errorCodeIfs.getDescription())
-                .resultDescription(tx.getLocalizedMessage())
-                .build();
-    }
-    // 일반적
-    public static Result ERROR(ErrorCodeIfs errorCodeIfs, String description) {
-        return Result.builder()
-                .resultCode(errorCodeIfs.getErrorCode())
-                .resultMessage(errorCodeIfs.getDescription())
-                .resultDescription(description)
                 .build();
     }
 }
@@ -180,7 +156,7 @@ public class AccounApiController {
     }
 }
 ```
-## 실해
+## 실행
 - localhost:8080/swagger-ui/index.html
 > "api/account/me" me()
 
@@ -274,7 +250,7 @@ public class Result {
         return Result.builder()
                 .resultCode(errorCodeIfs.getErrorCode())
                 .resultMessage(errorCodeIfs.getDescription())
-                .resultDescription("성공")
+                .resultDescription("실패")
                 .build();
     }
     // 비추천
@@ -374,7 +350,7 @@ package org.delivery.api.exceptionhandler;
 
 @Slf4j
 @RestControllerAdvice
-@Order(value = Integer.MAX_VALUE)   // c
+@Order(value = Integer.MAX_VALUE)   // 제일 후순위 에러
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = Exception.class)
@@ -412,7 +388,7 @@ public class AccounApiController {
                 .registeredAt(LocalDateTime.now())
                 .build();
         var str = "안녕하새요";
-        var age = Integer.parseInt(response);
+        var age = Integer.parseInt(str);
 
         return Api.OK(response);
     }
