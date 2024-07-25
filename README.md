@@ -7,8 +7,9 @@
 > - 1. Web 인증(Http Session/Cookie, JWT)
 > - 2. service Project
 > > - Multi Module, JPA, Swagger, ObjectMapper
-> - 3. 프로젝ㅌ 베이스 개발
+> - 3. 프로젝트 베이스 개발
 > > - Filter, API Specification, ExceptionHandler, Interceptor
+> - 4. 
 - [Course5. 백엔드 개발 실전/최신](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd)
 > - 1. Kotlin
 > - 2. Spring 과 Kotlin
@@ -20,14 +21,14 @@
 - [Course7. 대용량 트래픽 처리를 위한 백엔드 심화](https://github.com/kazean/signature_backend/tree/main/Course7_Redis_Webflux)
 > - 2. Redis
 > > - monitoring: redis-exporter, prometheus, grafana
-> 3. - Webflux
+> 3. Webflux
 > > - Reactor, Webflux, R2DBC, Reactive Redis, Blockhound
-> 4. - 접속자대기시스템 (Side Project)
+> 4. 접속자대기시스템 (Side Project)
 - [Course8. 백엔드 개발자를 위한 Devops 맛보기](https://github.com/kazean/signature_backend/tree/main/Course8_devops)
-> - MSA-DDD-MultiModule
-> - AWS_Infra(IAM, EC2, RDS, Route53)
-> - Docker, AWS_Service(ECR, ECS, ECS_Fargate)
-> - Git + Jenkins, MVP Project(3Tier CICD)
+> 1. MSA-DDD-MultiModule
+> 2. ~3. AWS_Infra(IAM, EC2, RDS, Route53)
+> 4. ~5. Docker, AWS_Service(ECR, ECS, ECS_Fargate)
+> 6. Git + Jenkins, MVP Project(3Tier CICD)
 
 ## GitHub
 - Course_3~5 [GitHub](https://github.com/steve-developer/fastcampus-2023-part01/tree/main)

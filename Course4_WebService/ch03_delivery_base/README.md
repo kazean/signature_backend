@@ -343,6 +343,9 @@ public class AccounApiController {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-04. Exception Handler 적용하기 - 1
+## Excpetion Handler
+- @RestControllerAdvice, @Order(value = priorityNum)
+- @ExceptionHandler(value = ex) : T
 ## 실습 (service: api)
 - GlobalExceptionHandler
 ```java
