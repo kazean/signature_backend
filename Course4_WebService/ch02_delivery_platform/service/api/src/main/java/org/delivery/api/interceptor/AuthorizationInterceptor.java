@@ -22,6 +22,7 @@ import java.util.Objects;
 @Component
 public class AuthorizationInterceptor implements HandlerInterceptor {
     private final TokenBusiness tokenBusiness;
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         log.info("Authorization Interceptor url : {}", request.getRequestURI());

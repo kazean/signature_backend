@@ -1,16 +1,24 @@
 # Ch04. 실전 프로젝트 3:사용자 도메인 개발
-- [1. ](#ch04-0)
-- [2. ](#ch04-0)
-- [3. ](#ch04-0)
-- [4. ](#ch04-0)
-- [5. ](#ch04-0)
-- [6. ](#ch04-0)
+- [1. 사용자 데이터베이스 개발](#ch04-01-사용자-데이터-베이스-개발)
+- [2. UserEntity 개발](#ch04-02-userentity-개발)
+- [3. 사용자 서비스 로직 - 1](#ch04-03-사용자-서비스-로직---1)
+- [3. 사용자 서비스 로직 - 2](#ch04-03-사용자-서비스-로직---2)
+- [4. JWT 토큰 서비스 로직 적용하기](#ch04-04-jwt-토큰-서비스-로직-적용하기)
+- [5. 사용자 로그인 토큰발행 적용하기](#ch04-05-사용자-로그인-토큰-발행-적용하기)
+- [6. 사용자 인증 로직 적용하기](#ch04-06-사용자-인증-로직-적용하기)
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch04-01. 사용자 데이터 베이스 개발
-user 테이블 만들기
-```
+## user 테이블 만들기
+- User Table
+- ERD 
+> - '+' > Add Diagram > Table
+> - user table
+> > - Copy SQL to Clipboard
+> - delivery db > Create table
+## 실습 (Mysql)
+```sql
 CREATE TABLE IF NOT EXISTS `delivery`.`user` (
   `id` BIGINT(32) NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(50) NOT NULL,
@@ -25,9 +33,26 @@ CREATE TABLE IF NOT EXISTS `delivery`.`user` (
 ENGINE = InnoDB
 ```
 
+
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch04-02. UserEntity 개발
-## UserEntity, UserStatus, UserRepository
+- User JPA 설정
+## 실습 (service : db)
+- application.yml
+```yaml
+spring:
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: validate
 ```
+> hibernate.ddl-auto: validate
+- Code(User)
+```java
+package org.delivery.db.user;
+
 @Entity
 @Table(name = "user")
 @Data
@@ -52,6 +77,9 @@ public class UserEntity extends BaseEntity {
     private LocalDateTime lastLoginAt;
 }
 
+
+package org.delivery.db.user.enums;
+
 @AllArgsConstructor
 public enum UserStatus {
     REGISTERED("등록"),
@@ -60,6 +88,9 @@ public enum UserStatus {
     private final String description;
 }
 
+
+package org.delivery.db.user;
+
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findFirstByIdAndStatusOrderByIdDesc(Long userId, UserStatus status);
     Optional<UserEntity> findFirstByEmailAndPasswordAndStatusOrderByIdDesc(String userEmail, String password, UserStatus status);
@@ -67,12 +98,22 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 ```
 > UserEntity, Enum @Enumerated(EnumType.STRING)  
 UserRepository extends JpaRepository
+## 실행
+- ApiApplication Run
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch04-03. 사용자 서비스 로직 - 1
-UserController > UserBusiness > UserService
-## Annotation - common/annotation/Business, Converter
-```
+- User 비지니스 로직 처리
+> - @Business: DTO, VO 데이터 변환
+> - @Service: 비지니스 로직 처리
+> - @Converter: 변환
+> - UserController > UserBusiness > UserService
+## 실습 (service: api)
+- @CustomAnnotation Business, Conventer
+```java
+package org.delivery.api.common.annotation;
+
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Service
@@ -89,8 +130,9 @@ public @interface Converter {
     String value() default "";
 }
 ```
-## domain/user/controller/model/UserRegisterRequest, UserResponse, converter/UserConverter
-```
+- UserRegisterRequest/Response/Converter
+```java
+package org.delivery.api.domain.user.controller.model;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -105,6 +147,7 @@ public class UserRegisterRequest {
     @NotBlank
     private String password;
 }
+
 
 @Data
 @NoArgsConstructor
@@ -121,6 +164,8 @@ public class UserResponse {
     private LocalDateTime lastLoginAt;
 }
 
+
+package org.delivery.api.domain.user.converter;
 @RequiredArgsConstructor
 @Converter
 public class UserConverter {
@@ -156,11 +201,12 @@ public class UserConverter {
     }
 }
 ```
-> VO: UserEntity  
-DTO: UserRegisterRequest, UserResponse
+> - VO: UserEntity  
+> - DTO: UserRegisterRequest, UserResponse
 
-## controller/UserOpenApiController, UserApiController, business/UserBusiness, service/UserService,
-```
+- UserOpen/ApiController/Business/Service
+```java
+package org.delivery.api.domain.user.controller;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/open-api/user")
@@ -185,6 +231,7 @@ public class UserApiController {
     private final UserBusiness userBusiness;
 }
 
+package org.delivery.api.domain.user.business;
 @RequiredArgsConstructor
 @Business
 public class UserBusiness {
@@ -212,6 +259,7 @@ public class UserBusiness {
     }
 }
 
+package org.delivery.api.domain.user.service;
 @RequiredArgsConstructor
 @Service
 public class UserService {
@@ -227,14 +275,23 @@ public class UserService {
     }
 }
 ```
-> UserBusiness > Business  
-UserService : Req, RES > UserEntity, DBService 
+> - UserBusiness: Req/Res Dto 변환
+> - UserService : UserEntity 비지니스 로직 처리
+## 실행
+- ApiApplication Run
+> - user-open-api-controller "/open-api/user/register"
+> > stve@gmail.com/1234
+> > > DB Check
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch04-03. 사용자 서비스 로직 - 2
-Login 처리 > return Api<UserResponse>, 이후에는 Token 
-## domain/user/controller/model/UserLoginRequest
-```
+- Login 처리
+> `return Api<UserResponse>`, 이후에는 `Token`
+## 실습 (service: api)
+- code(user Login)
+```java
+package org.delivery.api.domain.user.controller.model;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -244,53 +301,81 @@ public class UserLoginRequest {
     @NotBlank
     private String password;
 }
-```
-## user/controller/UserOpenApiController, /business/UserBusiness, /service/UserService
-```
-- controller
-@PostMapping("/login")
-public Api<UserResponse> login(
-        @Valid @RequestBody
-        Api<UserLoginRequest> request
-) {
-    var response = userBusiness.login(request.getBody());
-    return Api.OK(response);
-}
-- business
-/**
-* 1. email, pw를 가지고 사용자 체크
-* 2. user entity 로그인 확인
-* 3. token 생성
-* 4. token response
-*/
-public UserResponse login(UserLoginRequest request) {
-    var userEntity = userService.login(request.getEmail(), request.getPassword());
-    // 사용자 없으면 throw
 
-    // TODO 토큰 생성 로직으로 변경하기
-    return userConverter.toResponse(userEntity);
+public class UserOpenApiController {
+    @PostMapping("/login")
+    public Api<UserResponse> login(
+            @Valid @RequestBody
+            Api<UserLoginRequest> request
+    ) {
+        var response = userBusiness.login(request.getBody());
+        return Api.OK(response);
+    }
 }
-- service
-public UserEntity getUserWithThrow(String email, String password) {
-    return userRepository.findFirstByEmailAndPasswordAndStatusOrderByIdDesc(email, password, UserStatus.REGISTERED)
-        .orElseThrow(() -> new ApiException(UserErrorCode.USER_NOT_FOUND));
+
+public class UserBusiness {
+    /**
+    * 1. email, pw를 가지고 사용자 체크
+    * 2. user entity 로그인 확인
+    * 3. token 생성
+    * 4. token response
+    */
+    public UserResponse login(UserLoginRequest request) {
+        var userEntity = userService.login(request.getEmail(), request.getPassword());
+        // 사용자 없으면 throw
+
+        // TODO 토큰 생성 로직으로 변경하기
+        return userConverter.toResponse(userEntity);
+    }
+}
+
+public class UserService {
+    public UserEntity login(String email, String password) {
+        var entity = getUserWithThrow(email, password);
+        return entity;
+    }
+
+    public UserEntity getUserWithThrow(String email, String password) {
+        return userRepository.findFirstByEmailAndPasswordAndStatusOrderByIdDesc(email, password, UserStatus.REGISTERED)
+            .orElseThrow(() -> new ApiException(UserErrorCode.USER_NOT_FOUND));
+    }
 }
 ```
 > email, password 로그인
+## 실행
+- ApiApplication 
+- Swagger "/open-api/user/login"
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch04-04. JWT 토큰 서비스 로직 적용하기
-JWT Token 기반 만들기
-## build.gradle
+- JWT Token 기반 만들기
+## 실습 (service: api)
+- build.gradle
+```gradle
+dependencies {
+    // jjwt
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+}
 ```
-// jjwt
-implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
-runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
-runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+> - jjwt-api, jjwt-impl, jjwt-jackson
+
+- application.yaml
+```yaml
+token:
+  secre`t:
+    key: SpringBootJWTHelperTokenSecretKeyValue123!@#
+  access-token:
+    plus-hour: 24
+  refresh-token:
+    plus-hour: 48
 ```
-> jjwt-api, jjwt-impl, jjwt-jackson
-## domain/token/model/TokenDto, domain/token/ifs/TokenHelperIfs
-```
+
+- Token Code
+```java
+package org.delivery.api.domain.token.model;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -300,17 +385,14 @@ public class TokenDto {
     private LocalDateTime expiredAt;
 }
 
+package org.delivery.api.domain.token.ifs;
 public interface TokenHelperIfs {
     TokenDto issueAccessToken(Map<String, Object> data);
     TokenDto issueRefreshToken(Map<String, Object> data);
     Map<String, Object> validationTokenWithThrow(String token);
 }
-```
-> TokenDto( token, expiredAt )  
-TokenHelpersIfs AccessToken, Refresh 발급, validation 검증
 
-## /helper/JwtTokenHelper
-```
+package org.delivery.api.domain.token.helper;
 @Component
 public class JwtTokenHelper implements TokenHelperIfs {
     @Value("${token.secret.key}")
@@ -375,14 +457,71 @@ public class JwtTokenHelper implements TokenHelperIfs {
         }
     }
 }
-```
-> Jwts.builder().~.compact() 토큰 생성  
-Jwts.parserBuilder().~.build() 토큰 검증 > jwtParser.parseClaimsJws(token), jwsResult.getBody() : Map<String, Object>
 
-# Ch04-05. 사용자 로그인 토큰 발행 적용하기
-Token 발행을 위한 model, converter, business, service
-## model/TokenResponse, converter/TokenConverter
+package org.delivery.api.common.error;
+
+/**
+ * Token 의 경우 2000번대 에러코드 사용
+ */
+@AllArgsConstructor
+@Getter
+public enum TokenErrorCode implements ErrorCodeIfs{
+    INVALID_TOKEN(400, 2000, "유효하지 않은 토큰"),
+    EXPIRED_TOKEN(400, 2001, "만료된 토"),
+    TOKEN_EXCEPTION(400, 2002, "토큰 알수 없는 에러"),
+    AUTHORIZATION_TOKEN_NOT_FOUND(400, 2003, "인증 헤더 도큰 없음")
+    ;
+
+    private final Integer httpStatusCode;
+    private final Integer errorCode;
+    private final String description;
+}
+
 ```
+> - Jwts 토큰 생성/Refresh
+```java
+SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes());
+String jwtToken = Jwts.builder()
+        .signWith(key, SignatureAlgorithm.HS256)
+        .setClaims(data)
+        .setExpiration(expiredAt)
+        .compact();
+return TokenDto.builder()
+        .token(jwtToken)
+        .expiredAt(expiredLocalDateTime)
+        .build();
+```
+> - Jwts 토큰 검증
+```java
+SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes());
+JwtParser parser = Jwts.parserBuilder()
+        .setSigningKey(key)
+        .build();
+try {
+    Jws<Claims> result = parser.parseClaimsJws(token);
+    return new HashMap<>(result.getBody());
+} catch (Exception e) {
+    if (e instanceof SignatureException) {
+        // 토크이 유효하지 않을때
+        throw new ApiException(TokenErrorCode.INVALID_TOKEN, e);
+    } else if (e instanceof ExpiredJwtException) {
+        // 만료된 토큰
+        throw new ApiException(TokenErrorCode.EXPIRED_TOKEN, e);
+    } else {
+        // 그 외 에러
+        throw new ApiException(TokenErrorCode.TOKEN_EXCEPTION, e);
+    }
+}
+```
+
+
+--------------------------------------------------------------------------------------------------------------------------------
+# Ch04-05. 사용자 로그인 토큰 발행 적용하기
+- Token 발행을 위한 비지니스 로직(model, converter, business, service)
+## 실습 (service : api)
+- code
+```java
+package org.delivery.api.domain.token.controller.model;
 @Data
 @Builder
 @NoArgsConstructor
@@ -394,6 +533,7 @@ public class TokenResponse {
     private LocalDateTime refreshTokenExpiredAt;
 }
 
+package org.delivery.api.domain.token.converter;
 @RequiredArgsConstructor
 @Converter
 public class TokenConverter {
@@ -412,10 +552,8 @@ public class TokenConverter {
                 .build();
     }
 }
-```
-> accessToken, refreshToken > TokenResponse 
-## business/TokenBusiness, service/TokenService
-```
+
+package org.delivery.api.domain.token.business;
 @RequiredArgsConstructor
 @Business
 public class TokenBusiness {
@@ -441,6 +579,7 @@ public class TokenBusiness {
     }
 }
 
+package org.delivery.api.domain.token.service;
 @RequiredArgsConstructor
 @Service
 public class TokenService {
@@ -469,35 +608,52 @@ public class TokenService {
     }
 }
 ```
-> UserEntity > id (data) > accessToken, refershToken > TokenResponse
-## UserOpenApiController, UserBusiness
-```
-- controller
-@PostMapping("/login")
-public Api<TokenResponse> login(
-        @Valid @RequestBody
-        Api<UserLoginRequest> request
-) {
-    var response = userBusiness.login(request.getBody());
-    return Api.OK(response);
+
+- UserOpenApiController, UserBusiness
+```java
+@RequestMapping("/open-api/user")
+public class UserOpenApiController {
+    // ~
+    @PostMapping("/login")
+    public Api<TokenResponse> login(
+            @Valid @RequestBody
+            Api<UserLoginRequest> request
+    ) {
+        var response = userBusiness.login(request.getBody());
+        return Api.OK(response);
+    }
 }
 
-- business
-public TokenResponse login(UserLoginRequest request) {
-    var userEntity = userService.login(request.getEmail(), request.getPassword());
-    // 사용자 없으면 throw
+public class UserBusiness {
+    // ~
+    private final TokenBusiness tokenBusiness;
 
-    // TODO 토큰 생성 로직으로 변경하기
-    TokenResponse tokenResponse = tokenBusiness.issueToken(userEntity);
-//        return userConverter.toResponse(userEntity);
-    return tokenResponse;
+    public TokenResponse login(UserLoginRequest request) {
+        var userEntity = userService.login(request.getEmail(), request.getPassword());
+        // 사용자 없으면 throw
+
+        // TODO 토큰 생성 로직으로 변경하기
+        TokenResponse tokenResponse = tokenBusiness.issueToken(userEntity);
+    //        return userConverter.toResponse(userEntity);
+        return tokenResponse;
+    }
 }
 ```
+## 실행
+- Swagger "/open-api/user/login"
 
+
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch04-06. 사용자 인증 로직 적용하기
-HandlerInterceptor, HandlerMethodArgumentResolver를 이용해서 인증 확인
-## UserApiController
-```
+- Token validation
+> - HandlerInterceptor, HandlerMethodArgumentResolver를 이용해서 인증 확인
+- ModHeader: Token
+> - authorization-token: accessToken
+
+
+## 실습 (service: api)
+- User
+```java
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/user")
@@ -513,52 +669,101 @@ public class UserApiController {
     }
 }
 
-- UserBusiness
-public UserResponse me(User user) {
-    var userEntity = userService.getUserWithThrow(user.getId());
-    var response = userConverter.toResponse(userEntity);
-    return response;
-}
-```
-## TokenBusiness, AuthorizationTokenInterceptor
-```
-- TokenBusiness
-public Long validationAccessToken(String accessToken) {
-    var userId = tokenService.validationToken(accessToken);
-    return userId;
+public class UserBusiness {
+    public UserResponse me(User user) {
+        var userEntity = userService.getUserWithThrow(user.getId());
+        var response = userConverter.toResponse(userEntity);
+        return response;
+    }
 }
 
-- AuthorizationTokenInterceptor
-@Override
-public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-    ~
-    // TODO header 검증
-    var accessToken = request.getHeader("authorization-token");
-    if (accessToken == null) {
-        throw new ApiException(TokenErrorCode.AUTHORIZATION_TOKEN_NOT_FOUND);
+@Service
+public class UserService {
+    // ~
+
+    public UserEntity getUserWithThrow(Long userId) {
+        return userRepository.findFirstByIdAndStatusOrderByIdDesc(userId, UserStatus.REGISTERED)
+                .orElseThrow(() -> new ApiException(UserErrorCode.USER_NOT_FOUND));
     }
 
-    var userId = tokenBusiness.validationAccessToken(accessToken);
-    if (userId != null) {
-        RequestAttributes requestContext = Objects.requireNonNull(RequestContextHolder.getRequestAttributes());
-        requestContext.setAttribute("userId", userId, RequestAttributes.SCOPE_REQUEST);
-        return true;
-    }
-
-    throw new ApiException(ErrorCode.BAD_REQUEST, "인증실패");
 }
 ```
-> RequestContextHolder.getRequestAttribute() : RequestAttributes [ThreadLocal]  
-requestContext.setAttribute("userId", userId, RequestAttributes.SCOPE_REQUEST)  
-requestContext.getAttribute("userId", RequestAttributes.SCOPE_REQUEST)
+- Token
+```java
+public class TokenBusiness {
+    public Long validationAccessToken(String accessToken) {
+        var userId = tokenService.validationToken(accessToken);
+        return userId;
+    }
+}
 
-## /common/annotation/@UserSession, /domain/user/model/User, /common/resolver/UserSessionResolver
+public class AuthorizationInterceptor implements HandlerInterceptor {
+    private final TokenBusiness tokenBusiness;
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        // ~
+        // TODO header 검증
+        var accessToken = request.getHeader("authorization-token");
+        if (accessToken == null) {
+            throw new ApiException(TokenErrorCode.AUTHORIZATION_TOKEN_NOT_FOUND);
+        }
+
+        var userId = tokenBusiness.validationAccessToken(accessToken);
+        if (userId != null) {
+            RequestAttributes requestContext = Objects.requireNonNull(RequestContextHolder.getRequestAttributes());
+            requestContext.setAttribute("userId", userId, RequestAttributes.SCOPE_REQUEST);
+            return true;
+        }
+
+        throw new ApiException(ErrorCode.BAD_REQUEST, "인증실패");
+    }
+}
+
+public enum TokenErrorCode implements ErrorCodeIfs{
+    // ~ 
+    AUTHORIZATION_TOKEN_NOT_FOUND(400, 2003, "인증 헤더 도큰 없음")
+    ;
+
+    private final Integer httpStatusCode;
+    private final Integer errorCode;
+    private final String description;
+}
+
 ```
+> - RequestContextHolder.getRequestAttribute() : RequestAttributes
+> > `ThreadLocal에 저장`
+> - requestContext.setAttribute("userId", userId, RequestAttributes.SCOPE_REQUEST)
+> > - `SCOPE_REQUEST`: 이번 요청 동안만
+> - requestContext.getAttribute("userId", RequestAttributes.SCOPE_REQUEST)
+
+- UserSession
+```java
+package org.delivery.api.common.annotation;
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface UserSession {
 }
 
+package org.delivery.api.domain.user.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class User {
+    private Long id;
+    private String name;
+    private String email;
+    private String password;
+    private UserStatus status;
+    private String address;
+    private LocalDateTime registeredAt;
+    private LocalDateTime unregisteredAt;
+    private LocalDateTime lastLoginAt;
+}
+
+
+package org.delivery.api.common.resolver;
 @RequiredArgsConstructor
 @Component
 public class UserSessionResolver implements HandlerMethodArgumentResolver {
@@ -597,14 +802,21 @@ public class UserSessionResolver implements HandlerMethodArgumentResolver {
     }
 }
 ```
-> impl HandlerMethodArgumentResolver  
-parameter.hasParameterAnnotation(UserSession.class)  
-parameter.getParameterType().equals(User.class)
-## /config/web/WebConfig
-```
-@Override
-public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-    resolvers.add(userSessionResolver);
+> - impl HandlerMethodArgumentResolver
+> > parameter.hasParameterAnnotation(UserSession.class)
+> > parameter.getParameterType().equals(User.class)
+- WebConfig
+```java
+public class WebConfig implements WebMvcConfigurer {
+    private final UserSessionResolver userSessionResolver;
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(userSessionResolver);
+    }
 }
 ```
-> void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers)
+> `void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers)`
+
+
+--------------------------------------------------------------------------------------------------------------------------------
