@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS `delivery`.`user` (
   `address` VARCHAR(150) NOT NULL,
   `registered_at` DATETIME NULL,
   `unregistered_at` DATETIME NULL,
-  `last_origin_at` DATETIME NULL,
+  `last_login_at` DATETIME NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB
 ```
@@ -38,7 +38,7 @@ ENGINE = InnoDB
 # Ch04-02. UserEntity 개발
 - User JPA 설정
 ## 실습 (service : db)
-- application.yml
+- api: application.yml
 ```yaml
 spring:
   jpa:
@@ -49,7 +49,7 @@ spring:
       ddl-auto: validate
 ```
 > hibernate.ddl-auto: validate
-- Code(User)
+- db: Code(User)
 ```java
 package org.delivery.db.user;
 
@@ -280,7 +280,7 @@ public class UserService {
 ## 실행
 - ApiApplication Run
 > - user-open-api-controller "/open-api/user/register"
-> > stve@gmail.com/1234
+> > steve@gmail.com/1234
 > > > DB Check
 
 
@@ -303,6 +303,8 @@ public class UserLoginRequest {
 }
 
 public class UserOpenApiController {
+    // ~
+
     @PostMapping("/login")
     public Api<UserResponse> login(
             @Valid @RequestBody
@@ -467,9 +469,9 @@ package org.delivery.api.common.error;
 @Getter
 public enum TokenErrorCode implements ErrorCodeIfs{
     INVALID_TOKEN(400, 2000, "유효하지 않은 토큰"),
-    EXPIRED_TOKEN(400, 2001, "만료된 토"),
-    TOKEN_EXCEPTION(400, 2002, "토큰 알수 없는 에러"),
-    AUTHORIZATION_TOKEN_NOT_FOUND(400, 2003, "인증 헤더 도큰 없음")
+    EXPIRED_TOKEN(400, 2001, "만료된 토큰"),
+    TOKEN_EXCEPTION(400, 2002, "알 수 없는 토큰 에러"),
+    AUTHORIZATION_TOKEN_NOT_FOUND(400, 2003, "인증 헤더 토큰 없음")
     ;
 
     private final Integer httpStatusCode;
