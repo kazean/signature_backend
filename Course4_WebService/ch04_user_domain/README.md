@@ -365,7 +365,7 @@ dependencies {
 - application.yaml
 ```yaml
 token:
-  secre`t:
+  secret:
     key: SpringBootJWTHelperTokenSecretKeyValue123!@#
   access-token:
     plus-hour: 24
@@ -445,7 +445,7 @@ public class JwtTokenHelper implements TokenHelperIfs {
             return new HashMap<>(result.getBody());
         } catch (Exception e) {
             if (e instanceof SignatureException) {
-                // 토크이 유효하지 않을때
+                // 토큰이 유효하지 않을때
                 throw new ApiException(TokenErrorCode.INVALID_TOKEN, e);
             } else if (e instanceof ExpiredJwtException) {
                 // 만료된 토큰
@@ -478,6 +478,7 @@ public enum TokenErrorCode implements ErrorCodeIfs{
 }
 
 ```
+### 정리
 > - Jwts 토큰 생성/Refresh
 ```java
 SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes());
@@ -740,12 +741,15 @@ public enum TokenErrorCode implements ErrorCodeIfs{
 - UserSession
 ```java
 package org.delivery.api.common.annotation;
+
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface UserSession {
 }
 
+
 package org.delivery.api.domain.user.model;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -764,6 +768,7 @@ public class User {
 
 
 package org.delivery.api.common.resolver;
+
 @RequiredArgsConstructor
 @Component
 public class UserSessionResolver implements HandlerMethodArgumentResolver {
