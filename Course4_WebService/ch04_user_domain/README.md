@@ -51,6 +51,18 @@ spring:
 > hibernate.ddl-auto: validate
 - db: Code(User)
 ```java
+package org.delivery.db;
+
+@MappedSuperclass
+@SuperBuilder
+@NoArgsConstructor
+@Data
+public class BaseEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+}
+
 package org.delivery.db.user;
 
 @Entity
