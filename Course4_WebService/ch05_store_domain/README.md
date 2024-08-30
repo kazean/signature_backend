@@ -95,7 +95,7 @@ public class StoreEntity extends BaseEntity {
 
 package org.delivery.db.store;
 public interface StoreRepository extends JpaRepository<StoreEntity, Long> {
-    // 특정 유요한 스토어
+    // 특정 유효한 스토어
     // select * from store where id = ? and status = 'REGISTERED' order by id desc limit 1
     Optional<StoreEntity> findFirstByIdAndStatusOrderByIdDesc(Long id, StoreStatus status);
     // 유효한 스토어 리스트
@@ -104,11 +104,9 @@ public interface StoreRepository extends JpaRepository<StoreEntity, Long> {
 
     // 유효한 특정 카테고리의 스토어 리스트
     List<StoreEntity> findAllByStatusAndCategoryOrderByStarDesc(StoreStatus status, StoreCategory storeCategory);
-
-    // select * from store where name = ? and status ? order by id desc limit 1
-    Optional<StoreEntity> findFirstByNameAndStatusOrderByIdDesc(String name, StoreStatus status);
 }
 ```
+- cf, account 삭제
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -156,6 +154,83 @@ public class StoreService {
     }
 }
 
+package org.delivery.api.domain.store.controller.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class StoreRegisterRequest {
+    @NotBlank
+    private String name;
+    @NotBlank
+    private String address;
+    @NotNull
+    private StoreCategory storeCategory;
+    @NotBlank
+    private String thumbnailUrl;
+    @NotNull
+    private BigDecimal minimumAmount;
+    @NotNull
+    private BigDecimal minimumDeliveryAmount;
+    @NotBlank
+    private String phoneNumber;
+}
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class StoreResponse {
+    private Long id;
+    private String name;
+    private String address;
+    private StoreStatus status;
+    private StoreCategory category;
+    private double star;
+    private String thumbnailUrl;
+    private BigDecimal minimumAmount;
+    private BigDecimal minimumDeliveryAmount;
+    private String phoneNumber;
+}
+
+package org.delivery.api.domain.store.converter;
+@Converter
+public class StoreConverter {
+    public StoreEntity toEntity(StoreRegisterRequest request) {
+        return Optional.ofNullable(request)
+                .map(it -> {
+                    return StoreEntity.builder()
+                            .name(it.getName())
+                            .address(it.getAddress())
+                            .category(it.getStoreCategory())
+                            .minimumAmount(it.getMinimumAmount())
+                            .minimumDeliveryAmount(it.getMinimumDeliveryAmount())
+                            .thumbnailUrl(it.getThumbnailUrl())
+                            .phoneNumber(it.getPhoneNumber())
+                            .build();
+                })
+                .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
+    }
+
+    public StoreResponse toResponse(StoreEntity entity) {
+        return Optional.ofNullable(entity)
+                .map(it -> {
+                    return StoreResponse.builder()
+                            .id(it.getId())
+                            .name(it.getName())
+                            .status(it.getStatus())
+                            .category(it.getCategory())
+                            .address(it.getAddress())
+                            .minimumAmount(it.getMinimumAmount())
+                            .minimumDeliveryAmount(it.getMinimumDeliveryAmount())
+                            .thumbnailUrl(it.getThumbnailUrl())
+                            .phoneNumber(it.getPhoneNumber())
+                            .star(it.getStar())
+                            .build();
+                })
+                .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
+    }
+}
+
 package org.delivery.api.domain.store.business;
 @Business
 public class StoreBusiness {
@@ -187,7 +262,7 @@ public class StoreApiController {
 
     @GetMapping("/search")
     public Api<List<StoreResponse>> search(
-            @RequestParam(required = false)
+        @RequestParam(required = false)
             StoreCategory storeCategory
     ) {
         var response = storeBusiness.searchCategory(storeCategory);
@@ -212,6 +287,13 @@ public class StoreOpenApiController {
     }
 }
 ```
+## 싧습
+- Swagger UI
+> - /open-api/store/register
+> > - 스타개미 강남점/COFFEE_TEA/url/3000/0211112222
+> > - ED 커피 강남점/~
+> - /api/store/search
+> - DB 확인
 
 
 --------------------------------------------------------------------------------------------------------------------------------
