@@ -4,14 +4,14 @@
 - [Course2. JAVA Advance]()
 - [Course3. 웹 입문과 데이터베이스]()
 - [Course4. 프로젝트로 시작하는 웹 서비스 개발](https://github.com/kazean/signature_backend/tree/main/Course4_WebService)
-> - 1. Web 인증(Http Session/Cookie, JWT)
-> - 2. service Project
+> - 1. Project: Web 인증(Http Session/Cookie, JWT)
+> - 2. Project: service Project
 > > - Multi Module, JPA, Swagger, ObjectMapper
-> - 3. 프로젝트 베이스 개발
+> - 3. Project: 프로젝트 베이스 개발
 > > - Filter, API Specification, ExceptionHandler, Interceptor
-> - 4. 사용자 도메인 개발
+> - 4. Project: 사용자 도메인 개발
 > > - Jwt, WebMvcConfigurer, HandlerInterceptor, HandlerMethodArgsResolver
-
+> - 5. Project: 스토어 도메인 개발
 - [Course5. 백엔드 개발 실전/최신](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd)
 > - 1. Kotlin
 > - 2. Spring 과 Kotlin

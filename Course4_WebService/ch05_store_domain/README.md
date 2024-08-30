@@ -302,7 +302,7 @@ public class StoreOpenApiController {
 - 가맹점이 가지고 있는 메뉴, 주문
 
 ## 실습 (service: db)
-- store_menu Schema
+- Store Menu Schema >- Store
 ```sql
 CREATE TABLE IF NOT EXISTS `delivery`.`store_menu` (
   `id` BIGINT(32) NOT NULL AUTO_INCREMENT,
@@ -317,8 +317,12 @@ CREATE TABLE IF NOT EXISTS `delivery`.`store_menu` (
 )
 ENGINE = InnoDB;
 ```
+> - 외례키 설정안함
+> - 인덱스 설정안함
 
 - code
+> - 유효한 메뉴 체크
+> - 특정 가게의 메뉴리스트 가져오기
 ```java
 package org.delivery.db.storemenu;
 @Data
@@ -362,11 +366,13 @@ public interface StoreMenuRepository extends JpaRepository<StoreMenuEntity, Long
     List<StoreMenuEntity> findAllByStoreIdAndStatusOrderBySequenceDesc(Long storeId, StoreMenuStatus status);
 }
 ```
+## 실행
+- ApiApplication Run
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch05-04. Store Menu 서비스 로직 개발
-- 유효 메뉴/리스트 검색
+- 유효 메뉴/리스트 서비스 로직 개발
 ## 실습 (service: api)
 - controller 
 > - api "/search" open "/register"
@@ -376,16 +382,6 @@ package org.delivery.api.domain.storemenu.service;
 @Service
 public class StoreMenuService {
     private final StoreMenuRepository storeMenuRepository;
-
-    public StoreMenuEntity getStoreMenuWithThrow(Long id) {
-        var entity = storeMenuRepository.findFirstByIdAndStatusOrderByIdDesc(id, StoreMenuStatus.REGISTERED);
-        return entity.orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
-    }
-
-    public List<StoreMenuEntity> getStoreMenuByStoreId(Long storeId) {
-        var list = storeMenuRepository.findAllByStoreIdAndStatusOrderBySequenceDesc(storeId, StoreMenuStatus.REGISTERED);
-        return list;
-    }
 
     public StoreMenuEntity register(
             StoreMenuEntity storeMenuEntity
@@ -398,62 +394,16 @@ public class StoreMenuService {
                 .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
     }
 
-}
-
-package org.delivery.api.domain.storemenu.business;
-@RequiredArgsConstructor
-@Business
-public class StoreMenuBusiness {
-    private final StoreMenuService storeMenuService;
-    private final StoreMenuConverter storeMenuConverter;
-
-    public StoreMenuResponse register(StoreMenuRegisterRequest request) {
-        var entity = storeMenuConverter.toEntity(request);
-        var newEntity = storeMenuService.register(entity);
-        var response = storeMenuConverter.toResponse(newEntity);
-        return response;
+    public StoreMenuEntity getStoreMenuWithThrow(Long id) {
+        var entity = storeMenuRepository.findFirstByIdAndStatusOrderByIdDesc(id, StoreMenuStatus.REGISTERED);
+        return entity.orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
     }
 
-    public List<StoreMenuResponse> search(Long storeId) {
-        var list = storeMenuService.getStoreMenuByStoreId(storeId);
-        return list.stream()
-                .map(storeMenuConverter::toResponse)
-                .collect(toList());
+    public List<StoreMenuEntity> getStoreMenuByStoreId(Long storeId) {
+        var list = storeMenuRepository.findAllByStoreIdAndStatusOrderBySequenceDesc(storeId, StoreMenuStatus.REGISTERED);
+        return list;
     }
 }
-
-
-package org.delivery.api.domain.storemenu.controller;
-@RequiredArgsConstructor
-@RestController
-@RequestMapping("/api/store-menu")
-public class StoreMenuApiController {
-    private final StoreMenuBusiness storeMenuBusiness;
-
-    @GetMapping("/search")
-    public Api<List<StoreMenuResponse>> search(
-            @RequestParam Long storeId
-    ) {
-        var response = storeMenuBusiness.search(storeId);
-        return Api.OK(response);
-    }
-}
-
-@RequiredArgsConstructor
-@RestController
-@RequestMapping("/api/store-menu")
-public class StoreMenuApiController {
-    private final StoreMenuBusiness storeMenuBusiness;
-
-    @GetMapping("/search")
-    public Api<List<StoreMenuResponse>> search(
-            @RequestParam Long storeId
-    ) {
-        var response = storeMenuBusiness.search(storeId);
-        return Api.OK(response);
-    }
-}
-
 
 package org.delivery.api.domain.storemenu.controller.model;
 @Data
@@ -485,4 +435,111 @@ public class StoreMenuResponse {
     private int sequence;
 }
 
+package org.delivery.api.domain.storemenu.converter;
+@Converter
+public class StoreMenuConverter {
+    public StoreMenuEntity toEntity(StoreMenuRegisterRequest request) {
+        return Optional.ofNullable(request)
+                .map(it -> {
+                    return StoreMenuEntity.builder()
+                            .storeId(it.getStoreId())
+                            .name(it.getName())
+                            .amount(it.getAmount())
+                            .thumbnailUrl(it.getThumbnailUrl())
+                            .status(StoreMenuStatus.REGISTERED)
+                            .build();
+                })
+                .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
+    }
+
+    public StoreMenuResponse toResponse(StoreMenuEntity entity) {
+        return Optional.ofNullable(entity)
+                .map(it -> {
+                    return StoreMenuResponse.builder()
+                            .id(it.getId())
+                            .storeId(it.getStoreId())
+                            .name(it.getName())
+                            .amount(it.getAmount())
+                            .status(it.getStatus())
+                            .thumbnailUrl(it.getThumbnailUrl())
+                            .likeCount(it.getLikeCount())
+                            .sequence(it.getSequence())
+                            .build();
+                })
+                .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
+    }
+
+    public List<StoreMenuResponse> toResponse(
+            List<StoreMenuEntity> list
+    ) {
+        return list.stream()
+                .map(it -> {
+                    return toResponse(it);
+                }).collect(toList());
+    }
+}
+
+package org.delivery.api.domain.storemenu.business;
+@RequiredArgsConstructor
+@Business
+public class StoreMenuBusiness {
+    private final StoreMenuService storeMenuService;
+    private final StoreMenuConverter storeMenuConverter;
+
+    public StoreMenuResponse register(StoreMenuRegisterRequest request) {
+        // req > entity > save > response
+        var entity = storeMenuConverter.toEntity(request);
+        var newEntity = storeMenuService.register(entity);
+        var response = storeMenuConverter.toResponse(newEntity);
+        return response;
+    }
+
+    public List<StoreMenuResponse> search(Long storeId) {
+        var list = storeMenuService.getStoreMenuByStoreId(storeId);
+        return list.stream()
+                .map(storeMenuConverter::toResponse)
+                .collect(toList());
+    }
+}
+
+package org.delivery.api.domain.storemenu.controller;
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/store-menu")
+public class StoreMenuApiController {
+    private final StoreMenuBusiness storeMenuBusiness;
+
+    @GetMapping("/search")
+    public Api<List<StoreMenuResponse>> search(
+            @RequestParam Long storeId
+    ) {
+        var response = storeMenuBusiness.search(storeId);
+        return Api.OK(response);
+    }
+}
+
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/open-api/store-menu")
+public class StoreMenuOpenApiController {
+    private final StoreMenuBusiness storeMenuBusiness;
+
+    @PostMapping("/register")
+    public Api<StoreMenuResponse> register(
+            @Valid
+            @RequestBody
+            Api<StoreMenuRegisterRequest> request
+    ) {
+        var req = request.getBody();
+        var response = storeMenuBusiness.register(req);
+        return Api.OK(response);
+    }
+}
 ```
+## 실행
+- Swagger
+> - /open-api/store-menu/register
+> > - store_id:1/아이스 아메리카노/url/~
+> > - store_id:1/아이스 카페라떼/url/~
+> > - store_id:1/카페라떼/url/UNREGISTER
+> - /api/store-menu/search
