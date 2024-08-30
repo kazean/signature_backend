@@ -1,7 +1,18 @@
 # Ch05. 실전 프로젝트 4: 스토어 도메인 개발
+- [1. Store 데이터베이스 개발](#ch05-01-store-데이터-베이스-개발)
+- [2. Store 서비스 로직 개발](#ch05-02-store-서비스-로직-개발)
+- [3. Store Menu 데이터베이스 설계](#ch05-03-store-menu-데이터-베이스-설계)
+- [4. Store Menu 서비스 로직 개발](#ch05-04-store-menu-서비스-로직-개발)
+
+
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch05-01. Store 데이터 베이스 개발
-Store Schema
-```
+- Store 데이터베이스 개발
+- Store JPA 설정
+
+## 실습 (service:db) 
+- Store Schema
+```sql
 CREATE TABLE IF NOT EXISTS `delivery`.`store` (
   `id` BIGINT(32) NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
@@ -16,9 +27,10 @@ CREATE TABLE IF NOT EXISTS `delivery`.`store` (
   PRIMARY KEY (`id`))
 ENGINE = InnoDB;
 ```
-# db/store/StoreEntity, StoreRepository, enum/StoreStatus, StoreCategory
-```
-- StoreStatus
+
+- code
+```java
+package org.delivery.db.store.enums;
 @AllArgsConstructor
 public enum StoreStatus {
     REGISTER("등록"),
@@ -26,7 +38,7 @@ public enum StoreStatus {
     ;
     private String description;
 }
-- StoreCategory
+
 @AllArgsConstructor
 public enum StoreCategory {
     // 중식
@@ -49,14 +61,66 @@ public enum StoreCategory {
     private String display;
     private String description;
 }
+
+
+package org.delivery.db.store;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+@Entity
+@Table(name = "store")
+public class StoreEntity extends BaseEntity {
+    @Column(length = 100, nullable = false)
+    private String name;
+    @Column(length = 150, nullable = false)
+    private String address;
+    @Column(length = 50, nullable = false)
+    @Enumerated(EnumType.STRING)
+    private StoreStatus status;
+    @Column(length = 50, nullable = false)
+    @Enumerated(EnumType.STRING)
+    private StoreCategory category;
+    private double star;
+    @Column(length = 200, nullable = false)
+    private String thumbnailUrl;
+    @Column(precision = 11, scale = 4, nullable = false)
+    private BigDecimal minimumAmount;
+    @Column(precision = 11, scale = 4, nullable = false)
+    private BigDecimal minimumDeliveryAmount;
+    @Column(length = 20)
+    private String phoneNumber;
+}
+
+package org.delivery.db.store;
+public interface StoreRepository extends JpaRepository<StoreEntity, Long> {
+    // 특정 유요한 스토어
+    // select * from store where id = ? and status = 'REGISTERED' order by id desc limit 1
+    Optional<StoreEntity> findFirstByIdAndStatusOrderByIdDesc(Long id, StoreStatus status);
+    // 유효한 스토어 리스트
+    // select * from store where status - ? order by id desc
+    List<StoreEntity> findAllByStatusOrderByIdDesc(StoreStatus status);
+
+    // 유효한 특정 카테고리의 스토어 리스트
+    List<StoreEntity> findAllByStatusAndCategoryOrderByStarDesc(StoreStatus status, StoreCategory storeCategory);
+
+    // select * from store where name = ? and status ? order by id desc limit 1
+    Optional<StoreEntity> findFirstByNameAndStatusOrderByIdDesc(String name, StoreStatus status);
+}
 ```
-> @Entity, extends JpaRepository<Storeentity, Long>
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch05-02. Store 서비스 로직 개발
-## Store/controller/model, business, service, converter
-```
-- StoreService
+- 상점 검색, 등록
+
+## 실습 (service: api)
+- StoreConroller
+> - "/open-api/store/" "/register"
+> - "/api/store/search"
+```java
+package org.delivery.api.domain.store.service;
 @RequiredArgsConstructor
 @Service
 public class StoreService {
@@ -91,7 +155,8 @@ public class StoreService {
         return list;
     }
 }
-- StoreBusiness
+
+package org.delivery.api.domain.store.business;
 @Business
 public class StoreBusiness {
     private final StoreService storeService;
@@ -112,7 +177,11 @@ public class StoreBusiness {
                 .collect(toList());
     }
 }
-- StoreApiController
+
+package org.delivery.api.domain.store.controller;
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/store")
 public class StoreApiController {
     private final StoreBusiness storeBusiness;
 
@@ -125,7 +194,10 @@ public class StoreApiController {
         return Api.OK(response);
     }
 }
-- StoreOpenApiController
+
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/open-api/store")
 public class StoreOpenApiController {
     private final StoreBusiness storeBusiness;
 
@@ -140,22 +212,16 @@ public class StoreOpenApiController {
     }
 }
 ```
-- StoreConroller
-> "/open-api/store/" "/register"  
-"/api/search"  
-- StoreService  
-> StoreEntity getStoreWithThrow(Long id), StoreEntity register(StoreEntity storeEntity)  
-List<StoreEntity> searchByCategory(StoreCategory storeCategory)  
-List<StoreEntity> registerStore()  
-- StoreBusiness
-> StoreResponse register(StoreRegisterRequest request)  
-List<StoreResponse> searchCategory(StoreCategory storeCategory)
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch05-03. Store Menu 데이터 베이스 설계
-가맹점이 가지고 있는 메뉴, 주문
+- Store Menu Table
+- 가맹점이 가지고 있는 메뉴, 주문
+
+## 실습 (service: db)
 - store_menu Schema
-```
+```sql
 CREATE TABLE IF NOT EXISTS `delivery`.`store_menu` (
   `id` BIGINT(32) NOT NULL AUTO_INCREMENT,
   `store_id` BIGINT(32) NOT NULL,
@@ -169,76 +235,172 @@ CREATE TABLE IF NOT EXISTS `delivery`.`store_menu` (
 )
 ENGINE = InnoDB;
 ```
-## db/storemenu/StoreMenuEntity, StoreMenuRepository, ./enums/StoreMenuStatus
+
+- code
+```java
+package org.delivery.db.storemenu;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+@Entity
+@Table(name = "store_menu")
+public class StoreMenuEntity extends BaseEntity {
+    @Column(nullable = false)
+    private Long storeId;
+    @Column(length = 100, nullable = false)
+    private String name;
+    @Column(precision = 11, scale = 4, nullable = false)
+    private BigDecimal amount;
+    @Column(length = 50, nullable = false)
+    @Enumerated(EnumType.STRING)
+    private StoreMenuStatus status;
+    @Column(length = 200, nullable = false)
+    private String thumbnailUrl;
+    private int likeCount;
+    private int sequence;
+}
+
+package org.delivery.db.storemenu.enums;
+@AllArgsConstructor
+public enum StoreMenuStatus {
+    REGISTERED("등록"),
+    UNREGISTERED("해지")
+    ;
+    private String description;
+}
+
+package org.delivery.db.storemenu;
+public interface StoreMenuRepository extends JpaRepository<StoreMenuEntity, Long> {
+    // 유효한 메뉴 체크
+    Optional<StoreMenuEntity> findFirstByIdAndStatusOrderByIdDesc(Long id, StoreMenuStatus status);
+
+    // 특정 가게의 메뉴 가져오기
+    List<StoreMenuEntity> findAllByStoreIdAndStatusOrderBySequenceDesc(Long storeId, StoreMenuStatus status);
+}
+```
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch05-04. Store Menu 서비스 로직 개발
-## /api/storemenu/controller/model, /business, /service, /converter
-```
-- service
-private final StoreMenuRepository storeMenuRepository;
-
-public StoreMenuEntity getStoreMenuWithThrow(Long id) {
-    var entity = storeMenuRepository.findFirstByIdAndStatusOrderByIdDesc(id, StoreMenuStatus.REGISTERED);
-    return entity.orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
-}
-
-public List<StoreMenuEntity> getStoreMenuByStoreId(Long storeId) {
-    var list = storeMenuRepository.findAllByStoreIdAndStatusOrderBySequenceDesc(storeId, StoreMenuStatus.REGISTERED);
-    return list;
-}
-
-public StoreMenuEntity register(
-        StoreMenuEntity storeMenuEntity
-) {
-    return Optional.ofNullable(storeMenuEntity)
-            .map(it -> {
-                it.setStatus(StoreMenuStatus.REGISTERED);
-                return storeMenuRepository.save(it);
-            })
-            .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
-}
-- business
-private final StoreMenuService storeMenuService;
-private final StoreMenuConverter storeMenuConverter;
-
-public StoreMenuResponse register(StoreMenuRegisterRequest request) {
-    var entity = storeMenuConverter.toEntity(request);
-    var newEntity = storeMenuService.register(entity);
-    var response = storeMenuConverter.toResponse(newEntity);
-    return response;
-}
-
-public List<StoreMenuResponse> search(Long storeId) {
-    var list = storeMenuService.getStoreMenuByStoreId(storeId);
-    return list.stream()
-            .map(storeMenuConverter::toResponse)
-            .collect(toList());
-}
-
-- controller
-@GetMapping("/search")
-public Api<List<StoreMenuResponse>> search(
-        @RequestParam Long storeId
-) {
-    var response = storeMenuBusiness.search(storeId);
-    return Api.OK(response);
-}
-- open controller
-@PostMapping("/register")
-public Api<StoreMenuResponse> register(
-        @Valid
-        @RequestBody
-        Api<StoreMenuRegisterRequest> request
-) {
-    var req = request.getBody();
-    var response = storeMenuBusiness.register(req);
-    return Api.OK(response);
-}
-```
+- 유효 메뉴/리스트 검색
+## 실습 (service: api)
 - controller 
-> api "/search" open "/register"
-- business
-> register(req), search(storeId)
-- service
-> getStoreMenuWithThrow(id), getStoreMenuByStoreId(storeId), register(entity)
+> - api "/search" open "/register"
+```java
+package org.delivery.api.domain.storemenu.service;
+@RequiredArgsConstructor
+@Service
+public class StoreMenuService {
+    private final StoreMenuRepository storeMenuRepository;
+
+    public StoreMenuEntity getStoreMenuWithThrow(Long id) {
+        var entity = storeMenuRepository.findFirstByIdAndStatusOrderByIdDesc(id, StoreMenuStatus.REGISTERED);
+        return entity.orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
+    }
+
+    public List<StoreMenuEntity> getStoreMenuByStoreId(Long storeId) {
+        var list = storeMenuRepository.findAllByStoreIdAndStatusOrderBySequenceDesc(storeId, StoreMenuStatus.REGISTERED);
+        return list;
+    }
+
+    public StoreMenuEntity register(
+            StoreMenuEntity storeMenuEntity
+    ) {
+        return Optional.ofNullable(storeMenuEntity)
+                .map(it -> {
+                    it.setStatus(StoreMenuStatus.REGISTERED);
+                    return storeMenuRepository.save(it);
+                })
+                .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
+    }
+
+}
+
+package org.delivery.api.domain.storemenu.business;
+@RequiredArgsConstructor
+@Business
+public class StoreMenuBusiness {
+    private final StoreMenuService storeMenuService;
+    private final StoreMenuConverter storeMenuConverter;
+
+    public StoreMenuResponse register(StoreMenuRegisterRequest request) {
+        var entity = storeMenuConverter.toEntity(request);
+        var newEntity = storeMenuService.register(entity);
+        var response = storeMenuConverter.toResponse(newEntity);
+        return response;
+    }
+
+    public List<StoreMenuResponse> search(Long storeId) {
+        var list = storeMenuService.getStoreMenuByStoreId(storeId);
+        return list.stream()
+                .map(storeMenuConverter::toResponse)
+                .collect(toList());
+    }
+}
+
+
+package org.delivery.api.domain.storemenu.controller;
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/store-menu")
+public class StoreMenuApiController {
+    private final StoreMenuBusiness storeMenuBusiness;
+
+    @GetMapping("/search")
+    public Api<List<StoreMenuResponse>> search(
+            @RequestParam Long storeId
+    ) {
+        var response = storeMenuBusiness.search(storeId);
+        return Api.OK(response);
+    }
+}
+
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/store-menu")
+public class StoreMenuApiController {
+    private final StoreMenuBusiness storeMenuBusiness;
+
+    @GetMapping("/search")
+    public Api<List<StoreMenuResponse>> search(
+            @RequestParam Long storeId
+    ) {
+        var response = storeMenuBusiness.search(storeId);
+        return Api.OK(response);
+    }
+}
+
+
+package org.delivery.api.domain.storemenu.controller.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class StoreMenuRegisterRequest {
+    @NotNull
+    private Long storeId;
+    @NotBlank
+    private String name;
+    @NotNull
+    private BigDecimal amount;
+    @NotBlank
+    private String thumbnailUrl;
+}
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class StoreMenuResponse {
+    private Long id;
+    private Long storeId;
+    private String name;
+    private BigDecimal amount;
+    private StoreMenuStatus status;
+    private String thumbnailUrl;
+    private int likeCount;
+    private int sequence;
+}
+
+```
