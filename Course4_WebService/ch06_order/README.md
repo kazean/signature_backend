@@ -308,6 +308,9 @@ public class UserOrderService {
     }
 }
 ```
+## 실행
+- Mysql: 주문 데이터 생성
+> - user_order, user_order_menu
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -480,7 +483,9 @@ public class UserOrderMenuConverter {
 }
 
 ```
-
+## 실행
+- Swagger 
+> - "/api/user-order"
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch06-05. User Order 서비스 로직 개발 - 4
@@ -635,3 +640,8 @@ public class UserOrderService {
 	}
 }
 ```
+## 실행
+- Swagger 
+> - "/api/user-order"
+> > - "/current"
+> > - "/id/{orderId}"
