@@ -366,6 +366,10 @@ public interface StoreMenuRepository extends JpaRepository<StoreMenuEntity, Long
     List<StoreMenuEntity> findAllByStoreIdAndStatusOrderBySequenceDesc(Long storeId, StoreMenuStatus status);
 }
 ```
+> - @Columm
+> > - precision = 소수점 포함한 전체 자리수
+> > - scale = 소수의 자리수
+
 ## 실행
 - ApiApplication Run
 

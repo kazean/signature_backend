@@ -1,27 +1,30 @@
-package org.delivery.api.domain.service.controller.model;
+package org.delivery.api.domain.store.controller.model;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.delivery.db.store.enums.StoreCategory;
-import org.delivery.db.store.enums.StoreStatus;
 
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class StoreResponse {
-    private Long id;
+public class StoreRegisterRequest {
+    @NotBlank
     private String name;
+    @NotBlank
     private String address;
-    private StoreStatus status;
-    private StoreCategory category;
-    private double star;
+    @NotNull
+    private StoreCategory storeCategory;
+    @NotBlank
     private String thumbnailUrl;
+    @NotNull
     private BigDecimal minimumAmount;
+    @NotNull
     private BigDecimal minimumDeliveryAmount;
+    @NotBlank
     private String phoneNumber;
 }

@@ -1,11 +1,11 @@
-package org.delivery.api.domain.service.business;
+package org.delivery.api.domain.store.business;
 
 import lombok.RequiredArgsConstructor;
 import org.delivery.api.common.annotation.Business;
-import org.delivery.api.domain.service.controller.model.StoreRegisterRequest;
-import org.delivery.api.domain.service.controller.model.StoreResponse;
-import org.delivery.api.domain.service.converter.StoreConverter;
-import org.delivery.api.domain.service.service.StoreService;
+import org.delivery.api.domain.store.controller.model.StoreRegisterRequest;
+import org.delivery.api.domain.store.controller.model.StoreResponse;
+import org.delivery.api.domain.store.converter.StoreConverter;
+import org.delivery.api.domain.store.service.StoreService;
 import org.delivery.db.store.StoreEntity;
 import org.delivery.db.store.enums.StoreCategory;
 
