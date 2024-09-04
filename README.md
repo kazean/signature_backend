@@ -12,6 +12,9 @@
 > - 4. Project: 사용자 도메인 개발
 > > - Jwt, WebMvcConfigurer, HandlerInterceptor, HandlerMethodArgsResolver
 > - 5. Project: 스토어 도메인 개발
+> > - Store, StoreMenu
+> - 6. Project: 사용자 주문 개발
+> > - 
 - [Course5. 백엔드 개발 실전/최신](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd)
 > - 1. Kotlin
 > - 2. Spring 과 Kotlin
