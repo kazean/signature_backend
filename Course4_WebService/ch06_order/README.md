@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `delivery`.`user_order` (
   `delivery_started_at` DATETIME NULL,
   `received_at` DATETIME NULL,
   PRIMARY KEY (`id`),
-  INDEX `idx_user_id` (`user_id` ASC) VISIBLEs
+  INDEX `idx_user_id` (`user_id` ASC) VISIBLE
 )
 ENGINE = InnoDB;
 
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS `delivery`.`user_order_menu` (
   PRIMARY KEY (`id`),
   INDEX `idx_user_id` (`user_order_id` ASC) VISIBLE,
   INDEX `idx_menu_id` (`store_menu_id` ASC) VISIBLE
-)x`
+)
 ENGINE = InnoDB;
 ```
 > user_order, user_order_menu Table
@@ -122,10 +122,8 @@ package org.delivery.db.userordermenu;
 public interface UserOrderMenuRepository extends JpaRepository<UserOrderMenuEntity, Long> {
 }
 ```
-> - UserOrder
-> > - 
-> - UserOrderMenu
-> > -
+> - UserOrder, UserOrderMenu JPA
+
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch06-03. User Order 서비스 로직 개발 - 2
@@ -189,12 +187,12 @@ package org.delivery.db.userorder;
 
 public interface UserOrderRepository extends JpaRepository<UserOrderEntity, Long> {
     // 특정 유저의 모든 주문
-		// select * from user_order where user_id = ? and status = ? order by id desc
+    // select * from user_order where user_id = ? and status = ? order by id desc
     List<UserOrderEntity> findAllByUserIdAndStatusOrderByIdDesc(Long userId, UserOrderStatus status);
 
-		// 특정 유저의 주문 중 특정 상태값들
-		// select * from user_order where user_id = ? and status in (?, ...) order by id desc 
-		List<UserOrderEntity> findAllByUserIdAndStatusInOrderByIdDesc(Long userId, List<UserOrderStatus> status);
+    // 특정 유저의 주문 중 특정 상태값들
+    // select * from user_order where user_id = ? and status in (?, ...) order by id desc 
+    List<UserOrderEntity> findAllByUserIdAndStatusInOrderByIdDesc(Long userId, List<UserOrderStatus> status);
 
     // 특정 주문
     Optional<UserOrderEntity> findAllByIdAndStatusAndUserId(Long id, UserOrderStatus status, Long userId);
@@ -238,24 +236,24 @@ public class UserOrderService {
     }
 
 		// 특정 유저의 주문중 특정 상태값들
-		public List<UserOrderEntity> getUserOrderList(Long userId, List<UserOrderStatus> statusList) {
+    public List<UserOrderEntity> getUserOrderList(Long userId, List<UserOrderStatus> statusList) {
         var list = userOrderRepository.findAllByUserIdAndStatusInOrderByIdDesc(userId, statusList);
         return list;
     }
 
     // 주문
-		public UserOrderEntity order(UserOrderEntity userOrderEntity) {
+    public UserOrderEntity order(UserOrderEntity userOrderEntity) {
         return Optional.ofNullable(userOrderEntity)
-                .map(it -> {
-                    it.setStatus(UserOrderStatus.ORDER);
-                    it.setOrderedAt(LocalDateTime.now());
-                    return userOrderRepository.save(it);
-                })
-                .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
+            .map(it -> {
+                it.setStatus(UserOrderStatus.ORDER);
+                it.setOrderedAt(LocalDateTime.now());
+                return userOrderRepository.save(it);
+            })
+            .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
     }
 
     // 상태 변경
-		public UserOrderEntity setStatus(UserOrderEntity userOrderEntity, UserOrderStatus status) {
+    public UserOrderEntity setStatus(UserOrderEntity userOrderEntity, UserOrderStatus status) {
         userOrderEntity.setStatus(status);
         return userOrderRepository.save(userOrderEntity);
     }
@@ -284,7 +282,7 @@ public class UserOrderService {
         return setStatus(userOrderEntity, UserOrderStatus.RECEIVE);
     }
 
-		// 현재 진행중인 내역
+    // 현재 진행중인 내역
     public List<UserOrderEntity> current(Long userId) {
         return getUserOrderList(
                 userId,
@@ -316,6 +314,12 @@ public class UserOrderService {
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch06-04. User Order 서비스 로직 개발 - 3
 - 사용자 주문 로직 개발
+> - StoreMenuIdList 
+> > - user_order 기록
+> > > UserOrderConverter(user, storeMenuEntityList): UserId와 TotalAmount 계산 후 주문
+> > - user_order_menu 기록
+> > > UserOrderMenuConverter(newUserOrderEntity, storeMenuEntityListIt): UserOrderEntityId, storeMenuEntityId후 기록
+> > - response: UserOrderConverter.order(newUserOrderEntity)
 ## 실습 (service:api)
 - user_order, user_order_menu 주문내역 로직 구성하기
 ```java
@@ -394,7 +398,7 @@ public class UserOrderBusiness {
                 .map(it -> storeMenuService.getStoreMenuWithThrow(it))
                 .collect(toList());
 
-				// converter 구성
+        // converter 구성
         UserOrderEntity userOrderEntity = userOrderConverter.toEntity(user, storeMenuEntityList);
         // 주문
         UserOrderEntity newUserOrderEntity = userOrderService.order(userOrderEntity);
