@@ -100,4 +100,11 @@ public class UserOrderService {
         );
     }
 
+
+    // 상태값 없이 조회
+    public UserOrderEntity getUserOrderWithOutStatusWithThrow(Long id, Long userId) {
+        return userOrderRepository.findAllByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
+    }
+
 }

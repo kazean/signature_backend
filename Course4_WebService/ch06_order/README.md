@@ -504,32 +504,32 @@ public class UserOrderApiController {
 	// 현재 진행중인 주문건
 	@GetMapping("/current")
 	public Api<List<UserOrderDetailResponse>> current(
-					@Parameter(hidden = true)
-					@UserSession User user
+                @Parameter(hidden = true)
+                @UserSession User user
 	) {
-			var response = userOrderBusiness.current(user);
-			return Api.OK(response);
+        var response = userOrderBusiness.current(user);
+        return Api.OK(response);
 	}
 
 	// 과거 주문 내역
 	@GetMapping("/history")
 	public Api<List<UserOrderDetailResponse>> history(
-					@Parameter(hidden = true)
-					@UserSession User user
+                @Parameter(hidden = true)
+                @UserSession User user
 	) {
-			var response = userOrderBusiness.history(user);
-			return Api.OK(response);
+        var response = userOrderBusiness.history(user);
+        return Api.OK(response);
 	}
 
 	// 주문 1 건에 대한 내역
 	@GetMapping("/id/{orderId}")
 	public Api<UserOrderDetailResponse> read(
-					@Parameter(hidden = true)
-					@UserSession User user,
-					@PathVariable Long orderId
+                @Parameter(hidden = true)
+                @UserSession User user,
+                @PathVariable Long orderId
 	) {
-			var response = userOrderBusiness.read(user, orderId);
-			return Api.OK(response);
+        var response = userOrderBusiness.read(user, orderId);
+        return Api.OK(response);
 	}
 }
 
@@ -629,19 +629,26 @@ public class StoreMenuConverter {
 	public List<StoreMenuResponse> toResponse(
 					List<StoreMenuEntity> list
 	) {
-			return list.stream()
-							.map(it -> {
-									return toResponse(it);
-							}).collect(toList());
+        return list.stream()
+                    .map(it -> {
+                            return toResponse(it);
+                    }).collect(toList());
 	}
 }
 
 public class UserOrderService {
 	// 상태값 없이 조회
 	public UserOrderEntity getUserOrderWithOutStatusWithThrow(Long id, Long userId) {
-			return userOrderRepository.findAllByIdAndUserId(id, userId)
-							.orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
+        return userOrderRepository.findAllByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NULL_POINT));
 	}
+}
+
+public interface UserOrderRepository extends JpaRepository<UserOrderEntity, Long> {
+    // ~
+    
+    // 상태값 없이 조회
+    Optional<UserOrderEntity> findAllByIdAndUserId(Long id, Long userId);
 }
 ```
 ## 실행
