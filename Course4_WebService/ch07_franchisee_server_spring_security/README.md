@@ -21,7 +21,7 @@
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch07-02. Spring Security를 통한 가맹점 서버개발 - 1
-- [!그림](./imagees/가맹점서버.PNG)
+- ![가맹점서버](./imagees/가맹점서버.PNG)
 - 가맹점 관리자 서버
 > - 일반 사용자 > API Gateway
 > - API Server
@@ -33,7 +33,7 @@
 > https://spring.io/projects/spring-security#overview
 
 ## 실습 (Mysql, service:store-admin)
-### Mysql docker-compose
+### docker-compose: Mysql
 ```sh
 $ cd /Users/admin/study/signature/ws/Course3_WEB_DB_JPA/ch05_Mysql/docker-compose/mysql
 $ docker-compose -f docker-compose.yaml up
