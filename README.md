@@ -14,6 +14,10 @@
 > - 5. Project: 스토어 도메인 개발
 > > - Store, StoreMenu
 > - 6. Project: 사용자 주문 개발
+> > - UserOrder < UserOrderMenu > StoreMenu 주문로직 개발
+> - 7. Project: 가맹점 서버 개발 with SpringSecurity
+> > - 
+> - 8. Project: 비동기 주문 개발
 > > - 
 - [Course5. 백엔드 개발 실전/최신](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd)
 > - 1. Kotlin
