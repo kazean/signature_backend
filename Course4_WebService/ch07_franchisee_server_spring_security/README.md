@@ -10,10 +10,10 @@
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch07-01. Spring Security 소개
 ## Spring Security
-> 스프링 기반의 어플리케이션에서의 인증과 권한부여를 구현해둔 보안 프레임워크
+> 스프링 기반의 어플리케이션에서의 `인증`과 `권한부여`를 구현해둔 보안 프레임워크
 - 주요 기능
-1. 인증
-2. 권한부여
+1. 인증: 사용자가 자신의 신원을 증명하고 로그인
+2. 권한부여: 인증된 사용자에게 특정 작업 또는 리소스 접근 권한 부여
 3. 세션관리
 4. 보안설정: 보안 관련 구성을 통하여, URL 또는 리소스에 대한 보안 설정
 5. 보안이벤트처리: 인증 및 권한 에러에 대한 이벤트 핸들링
@@ -21,19 +21,18 @@
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch07-02. Spring Security를 통한 가맹점 서버개발 - 1
-## 가맹점 관리자 서버
-- 일반 사용자 > API Gateway
-- API Server
-> MySql Server / Redis(Todo)
-- Message Qeuue(Todo)
-- 가맹점 Server > 가맹점 파트너
+- [!그림](./imagees/가맹점서버.PNG)
+- 가맹점 관리자 서버
+> - 일반 사용자 > API Gateway
+> - API Server
+> > MySql Server / Redis(Todo)
+> - Message Qeuue(Todo)
+> - 가맹점 Server > 가맹점 파트너
+- store-admin Module 추가
+- Spring Security Doc
+> https://spring.io/projects/spring-security#overview
 
-## store-admin Module 추가
-
-## Spring Security Doc
-https://spring.io/projects/spring-security#overview
-
-## 실습 (Mysql)
+## 실습 (Mysql, service:store-admin)
 ### Mysql docker-compose
 ```sh
 $ cd /Users/admin/study/signature/ws/Course3_WEB_DB_JPA/ch05_Mysql/docker-compose/mysql
@@ -42,12 +41,10 @@ $ docker-compose -f docker-compose.yaml up
 
 ### store-admin Module 추가
 - store-admin Module Info
-```txt
-store-admin
-Java - Gradle - Groovy
-Parent: service
-GroupId: org.delivery
-```
+> - Java11 - Gradle - Groovy
+> - Parent: service
+> - GroupId: org.delivery
+> - ArifactId: store-admin
 
 - settings.gradle
 ```gradle
@@ -58,18 +55,21 @@ include 'store-admin'
 > include 'store-admin'
 
 - api build.gradle > store-admin build.gradle
-> jjwt 만 제외
+> jjwt 만 제외 (lombok, web, swager, data-jpa, project(':db'))
 
 - StoreAdminApplicaiton.class
 ```java
+package org.delivery.storeadmin;
+
 @SpringBootApplication
 public class StoreAdminApplication {
     public static void main(String[] args) {
         SpringApplication.run(StoreAdminApplication.class, args);
     }
 }
+
 ```
-> @SpringBootApplicaiton, SpringApplication.run()
+> `@SpringBootApplicaiton`, `SpringApplication`.run()
 
 - api application.yml > store-admin application.yml
 ```yaml
@@ -78,6 +78,28 @@ server:
 spring:
   application:
     name: store-admin
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123!@#
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: validate
+  datasource:
+    url: jdbc:mysql://localhost:3306/delivery?userSSL=false&useUnicode=true&PublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: root1234!!
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+#    org.hibernate.type.descriptor.sql: TRACE
+#    org.hibernate.type.BasicTypeRegistry: WARN
 ```
 > server.port, spring.application.name
 
@@ -86,25 +108,38 @@ spring:
 
 - Swagger 접속
 > http://localhost:8081/swagger-ui/index.html  
-id/pw 인증 페이지, (Todo)설정을 통해 인증/비인증 페이지 등 설정
+> - id/pw 인증 페이지, (Todo)설정을 통해 인증/비인증 페이지 등 설정
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch07-03. Spring Security를 통한 가맹점 서버 개발 - 2
-- spring jpa/security config
-- storeuser table, entity 적용
+- JPA, Spring Security 적용
+- StoreUser table, entity 적용
 
-## 실습 (service:db)
+## 실습 (service:store-admin, db)
 ```java
-// config/JpaConfig,SecurityConfig
-// JpaConfig
+// jpa
+package org.delivery.storeadmin.config.jpa;
+
 @Configuration
-@EntityScan(basePackages="org.delivery.db")
-@EnableJpaRepository(basePackages="org.devliery.db")
+@EntityScan(basePackages = "org.delivery.db")
+@EnableJpaRepositories(basePackages = "org.delivery.db")
+public class JpaConfig {
+}
+
 // SecurityConfig
+package org.delivery.storeadmin.config.security;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+  private List<String> SWAGGER = List.of(
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs/**"
+    );
+
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity security) throws Exception {
     httpsecurity
@@ -149,9 +184,13 @@ public class SecurityConfig {
 > - .mvcMatchers(String... patterns).permitAll
 > - .anyRequest().authenticated()  
 
+### 실행
+- localhost:8081/swagger-ui/index.html
+- localhost:8081/
 
 ### StoreUser Table, Entity 적용
 - store_user table
+- store >- store_user
 ```sql
 CREATE TABLE IF NOT EXISTS `delivery`.`store_user` (
   `id` BIGINT(32) NOT NULL AUTO_INCREMENT,
@@ -171,6 +210,7 @@ ENGINE = InnoDB;
 
 - code
 ```java
+package org.delivery.db.storeuser;
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -197,6 +237,7 @@ public class StoreUserEntity extends BaseEntity {
 }
 
 // StoreUserStatus, StoreUserRole
+package org.delivery.db.storeuser.enums;
 @AllArgsConstructor
 public enum StoreUserStatus {
     REGISTERED("등록"),
@@ -205,16 +246,29 @@ public enum StoreUserStatus {
     private String description;
 }
 
+@AllArgsConstructor
+public enum StoreUserRole {
+    MASTER("마스터"),
+    ADMIN("관리자"),
+    USER("일반유저")
+    ;
+    private String description;
+}
+
+package org.delivery.db.storeuser;
 public interface StoreUserRepository extends JpaRepository<StoreUserEntity, Long> {
     // select * from store_user where email = ? and status = ? order by id desc limit 1
     Optional<StoreUserEntity> findFirstByEmailAndStatusOrderByIdDesc(String email, StoreUserStatus status);
 }
 ```
 
+### 실행
+- StoreAdminApplication
+
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch07-04. 가맹점 유저 가입 개발
-- StoreUser 가입 Register 개발
+- StoreUser 가입(Register) 개발
 - Business Flow
 - StoreUserRegisterRequest 
 > - OpenApiController 
@@ -224,14 +278,9 @@ public interface StoreUserRepository extends JpaRepository<StoreUserEntity, Long
 ## 실습 (service:store-admin)
 - Code
 ```java
-public class SecurityConfig {
-  @Bean
-  public PasswordEncoder passwordEncoder() {
-      // hash 로 암호화, 단방향
-      return new BCryptPasswordEncoder();
-  }
-}
-
+package org.delivery.storeadmin.domain.storeuser.service;
+@RequiredArgsConstructor
+@Service
 public class StoreUserService {
     private final StoreUserRepository storeUserRepository;
     private final PasswordEncoder passwordEncoder;
@@ -245,9 +294,25 @@ public class StoreUserService {
         return storeUserRepository.save(storeUserEntity);
     }
 
-    public Optional<StoreUserEntity> getRegisterUser(String email) { ~ } 
+    public Optional<StoreUserEntity> getRegisterUser(String email) {
+        return storeUserRepository.findFirstByEmailAndStatusOrderByIdDesc(email, StoreUserStatus.REGISTERED);
+    }
 }
 
+package org.delivery.storeadmin.config.security;
+public class SecurityConfig {
+  // ~
+
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+      // hash 로 암호화, 단방향
+      return new BCryptPasswordEncoder();
+  }
+}
+
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/open-api/store-user")
 public class StoreUserOpenApiController {
     @PostMapping("")
     public StoreUserResponse register(
@@ -259,7 +324,57 @@ public class StoreUserOpenApiController {
     }
 }
 
+package org.delivery.storeadmin.domain.storeuser.controller.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class StoreUserResponse {
+    private UserResponse user;
+    private StoreResponse store;
 
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class UserResponse {
+        private Long id;
+        private String email;
+        private StoreUserStatus status;
+        private StoreUserRole role;
+        private LocalDateTime registeredAt;
+        private LocalDateTime unregisteredAt;
+        private LocalDateTime lastLoginAt;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class StoreResponse {
+        private Long id;
+        private String name;
+    }
+
+}
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class StoreUserRegisterRequest {
+    @NotBlank
+    private String storeName;
+    @NotBlank
+    private String email;
+    @NotBlank
+    private String password;
+    @NotBlank
+    private StoreUserRole role;
+}
+
+package org.delivery.storeadmin.domain.storeuser.buiness;
+@RequiredArgsConstructor
+@Service
 public class StoreUserBusiness {
 
   private final StoreUserConverter storeUserConverter;
@@ -269,51 +384,106 @@ public class StoreUserBusiness {
   public StoreUserResponse register(
           StoreUserRegisterRequest request
   ) {
-      Optional<StoreEntity> storeEntity = storeRepository.findFirstByNameAndStatusOrderByIdDesc(request.getStoreName(), StoreStatus.REGISTERED);
-      StoreUserEntity entity = storeUserConverter.toEntity(request, storeEntity.get());
-      StoreUserEntity newEntity = storeUserService.register(entity);
-      StoreUserResponse response = storeUserConverter.toResponse(newEntity, storeEntity.get());
+      var storeEntity = storeRepository.findFirstByNameAndStatusOrderByIdDesc(request.getStoreName(), StoreStatus.REGISTERED);
+      var entity = storeUserConverter.toEntity(request, storeEntity.get());
+      var newEntity = storeUserService.register(entity);
+      var response = storeUserConverter.toResponse(newEntity, storeEntity.get());
       return response;
   }
 }
-- public class StoreUserConverter {
-  public StoreUserEntity toEntity(
-          StoreUserRegisterRequest request,
-          StoreEntity storeEntity
-  )
 
-  public StoreUserResponse toResponse(
-          StoreUserEntity storeUserEntity,
-          StoreEntity storeEntity
-  )
+package org.delivery.storeadmin.domain.storeuser.converter;
+@RequiredArgsConstructor
+@Service
+public class StoreUserConverter {
+
+    public StoreUserEntity toEntity(
+        StoreUserRegisterRequest request,
+        StoreEntity storeEntity
+    ) {
+        var storeName = request.getStoreName();
+        var storeEntity = storeRepository.findFirstByNameAndStatusOrderByIdDesc(storeName, StoreStatus.REGISTERED);
+
+        return StoreUserEntity.builder()
+                .email(request.getEmail())
+                .password(request.getPassword())
+                .role(request.getRole())
+                .storeId(storeEntity.getId()) // TODO NULL 일때 에러 체크 확인 필요
+                .build();
+    }
+
+    public StoreUserResponse toResponse(
+            StoreUserEntity storeUserEntity,
+            StoreEntity storeEntity
+    ) {
+        return StoreUserResponse.builder()
+                .user(
+                        StoreUserResponse.UserResponse.builder()
+                                .id(storeUserEntity.getId())
+                                .email(storeUserEntity.getEmail())
+                                .status(storeUserEntity.getStatus())
+                                .role(storeUserEntity.getRole())
+                                .registeredAt(storeUserEntity.getRegisteredAt())
+                                .unregisteredAt(storeUserEntity.getUnregisteredAt())
+                                .lastLoginAt(storeUserEntity.getLastLoginAt())
+                                .build()
+                )
+                .store(
+                        StoreUserResponse.StoreResponse.builder()
+                                .id(storeEntity.getId())
+                                .name(storeEntity.getName())
+                                .build()
+                )
+                .build();
+    }
+
+    public StoreUserResponse toResponse(UserSession userSession) {
+        return StoreUserResponse.builder()
+                .user(
+                        StoreUserResponse.UserResponse.builder()
+                                .id(userSession.getUserId())
+                                .email(userSession.getEmail())
+                                .status(userSession.getStatus())
+                                .role(userSession.getRole())
+                                .registeredAt(userSession.getRegisteredAt())
+                                .unregisteredAt(userSession.getUnregisteredAt())
+                                .lastLoginAt(userSession.getLastLoginAt())
+                                .build()
+                )
+                .store(
+                        StoreUserResponse.StoreResponse.builder()
+                                .id(userSession.getStoreId())
+                                .name(userSession.getStoreName())
+                                .build()
+                )
+                .build();
+    }
 }
 
+package org.delivery.db.storeuser;
 public interface StoreRepository extends JpaRepository<StoreEntity, Long> {
+    // ~
+    
     // select * from store where name = ? and status ? order by id desc limit 1
     Optional<StoreEntity> findFirstByNameAndStatusOrderByIdDesc(String name, StoreStatus status);
 }
 ```
+> - Spring Security `BCryptPasswordEncorder`: hash 암호화
 > - Request시 StoreName 입력
 > > - Business request에서 StoreUserEntity, StoreEntity > response:convert
 > > - Service에서 pw입력시 PasswordEncode: @Bean PasswordEncoder > new BCryptPasswordEncoder();
 > > - Response UserResponse, StoreResponse
 
-- Request, Response
-```java
-public class StoreUserResponse {
-  public static class UserResponse {
-  public static class StoreResponse {
-}
-
-public class StoreUserRegisterRequest {
-  @NotBlank
-  private String storeName;
-  @NotBlank
-  private String email;
-  @NotBlank
-  private String password;
-  @NotBlank
-  private StoreUserRole role;
+### 실행
+- localhost:8081/swagger-ui/index.html
+> - store-user-open-api-controller
+> > /open-api/store-user
+```json
+{
+  "storeName": "스타개미 강남점",
+  "email": "master@gmail.com",
+  "pasword": "1234",
+  "role": "MASTER"
 }
 ```
 
@@ -322,8 +492,16 @@ public class StoreUserRegisterRequest {
 # Ch07-05. Spring Security에서의 가맹점 유저 로그인 처리
 - Spring Security formLogin: `UserDetails`
 ## 실습 (service:store-amdin)
+###  Security Login
+- Mysql
+> SELECT * FROM delivery.store_user;
+> - master@gmail.com
+
 - AuthorizationService
 ```java
+package org.delivery.storeadmin.domain.authorization;
+@RequiredArgsConstructor
+@Service
 public class AuthorizationService implements UserDetailsService {
   private final StoreUserService storeUserService;
 
@@ -342,9 +520,15 @@ public class AuthorizationService implements UserDetailsService {
   }
 }
 ```
-> - impl `UserDetailsService`: `loadByUserByUsername`, `UserDetails`: User.builder().build()
+> - impl `UserDetailsService`: `loadByUserByUsername`, `UserDetails`: `User`.builder().build()
 > > username, password, roles는 필수
 
+### 실행
+- localhost:8081/
+> Login: master@gmail.com/1234 
+> - JESSIONID
+
+### 가맹점 Page
 - build.gralde
 ```gradle
   implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -352,10 +536,27 @@ public class AuthorizationService implements UserDetailsService {
   // https://mvnrepository.com/artifact/org.thymeleaf.extras/thymeleaf-extras-springsecurity5
   implementation group: 'org.thymeleaf.extras', name: 'thymeleaf-extras-springsecurity5', version: '3.0.4.RELEASE'
 ```
-> spring-boot-starter-security, thmeleaf, thymeleaf-extras-springsecurity5
+> spring-boot-starter-security, thmeleaf, `thymeleaf-extras-springsecurity5(UserDetails 등 security Model 접근)`
+- /resource/template/main.html
+```html
+<!DOCTYPE html>
+<html lang="kor" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h1>MAIN PAGE</h1>
+
+    <h1 th:text="${#authentication.name}"></h1></br>
+</body>
+</html>
+```
+> xmlns:th="http://www.thymeleaf.org", th:text="`${#authentication}`"
 
 - Security Page Code
 ```java
+package org.delivery.storeadmin.presentation;
 @Controller
 @RequestMapping("")
 - public class PageController {
@@ -371,23 +572,12 @@ public class AuthorizationService implements UserDetailsService {
     }
 }
 ```
-- main.html
-```html
-<!DOCTYPE html>
-<html lang="kor" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-    <h1>MAIN PAGE</h1>
+- /resource/template/order/order.html
 
-    <h1 th:text="${#authentication.name}"></h1></br>
-</body>
-</html>
-```
-> xmlns:th="http://www.thymeleaf.org", th:text="${#authentication}"
-
+### 실행
+- localhost:8081/
+> Login: master@gmail.com/1234 
+> > main.html
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch07-06. Spring Security에서의 사용자 정보 확인하기
@@ -397,6 +587,11 @@ public class AuthorizationService implements UserDetailsService {
 - UserSession, AuthorizationService 
 ```java
 // UserSession, AuthorizationService 
+package org.delivery.storeadmin.domain.authorization.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserSession implements UserDetails {
 
     // user
@@ -449,7 +644,11 @@ public class UserSession implements UserDetails {
     }
 }
 
+package org.delivery.storeadmin.domain.authorization;
 public class AuthorizationService implements UserDetailsService {
+  private final StoreUserService storeUserService;
+  private final StoreRepository storeRepository;
+
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
       Optional<StoreUserEntity> storeUserEntity = storeUserService.getRegisterUser(username);
@@ -473,14 +672,80 @@ public class AuthorizationService implements UserDetailsService {
       .orElseThrow(() -> new UsernameNotFoundException(username));
   }
 ```
-> - implements UsertDetails  
-> > - return List.of(new SimpleGrantedAuthority(this.role.toString()));
+> - `implements UsertDetails  `
+> > - return List.of(new `SimpleGrantedAuthority`(this.role.toString()));
 
 - main.html
 ```html
-<h1 th:text="${#authentication.name}"></h1></br>
-<h1 th:text="${#authentication.principal.storeName}"></h1></br>
-<h1 th:text="${#authentication.principal.role}"></h1></br>
-<h1 th:text="${#authentication}"></h1></br>
+<!DOCTYPE html>
+<html lang="kor" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h1>MAIN PAGE</h1>
+
+    <h1 th:text="${#authentication.name}"></h1></br>
+    <h1 th:text="${#authentication.principal.storeName}"></h1></br>
+    <h1 th:text="${#authentication.principal.role}"></h1></br>
+    <h1 th:text="${#authentication}"></h1></br>
+</body>
+</html>
 ```
-> - #authentication.principal
+> - `#authentication.principal`
+
+- RestAPI StoreUser Code
+```java
+package org.delivery.storeadmin.domain.storeuser.controller;
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/store-user")
+public class StoreUserApiController {
+
+    private final StoreUserConverter storeUserConverter;
+
+    @GetMapping("/me")
+    public StoreUserResponse me(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal UserSession userSession
+    ) {
+        return storeUserConverter.toResponse(userSession);
+    }
+}
+
+
+package org.delivery.storeadmin.domain.storeuser.converter;
+@RequiredArgsConstructor
+@Service
+public class StoreUserConverter {
+
+    // ~
+    public StoreUserResponse toResponse(UserSession userSession) {
+        return StoreUserResponse.builder()
+                .user(
+                        StoreUserResponse.UserResponse.builder()
+                                .id(userSession.getUserId())
+                                .email(userSession.getEmail())
+                                .status(userSession.getStatus())
+                                .role(userSession.getRole())
+                                .registeredAt(userSession.getRegisteredAt())
+                                .unregisteredAt(userSession.getUnregisteredAt())
+                                .lastLoginAt(userSession.getLastLoginAt())
+                                .build()
+                )
+                .store(
+                        StoreUserResponse.StoreResponse.builder()
+                                .id(userSession.getStoreId())
+                                .name(userSession.getStoreName())
+                                .build()
+                )
+                .build();
+    }
+}
+```
+> - `@AuthenticationPrincipal` UserSession userSession
+> > UserDetails를 상속받은 User를 RET
+
+### 실행
+- Swagger /api/store-user/me
