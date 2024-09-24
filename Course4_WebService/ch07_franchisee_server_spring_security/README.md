@@ -179,7 +179,7 @@ public class SecurityConfig {
 > > > - csrf().disable()  
 > > > - formLogin(Customizer.withDefaults())  
 > > > - httpsecurity.build()
-- authorizeHttpReqeusts(Customizer'AuthorizationManagerRequestMatcherRegistry')  
+- `authorizeHttpReqeusts(Customizer<AuthorizationManagerRequestMatcherRegistry>)`
 > - .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()  
 > - .mvcMatchers(String... patterns).permitAll
 > - .anyRequest().authenticated()  
@@ -401,8 +401,8 @@ public class StoreUserConverter {
         StoreUserRegisterRequest request,
         StoreEntity storeEntity
     ) {
-        var storeName = request.getStoreName();
-        var storeEntity = storeRepository.findFirstByNameAndStatusOrderByIdDesc(storeName, StoreStatus.REGISTERED);
+        // var storeName = request.getStoreName();
+        // var storeEntity = storeRepository.findFirstByNameAndStatusOrderByIdDesc(storeName, StoreStatus.REGISTERED);
 
         return StoreUserEntity.builder()
                 .email(request.getEmail())
@@ -436,28 +436,6 @@ public class StoreUserConverter {
                 )
                 .build();
     }
-
-    public StoreUserResponse toResponse(UserSession userSession) {
-        return StoreUserResponse.builder()
-                .user(
-                        StoreUserResponse.UserResponse.builder()
-                                .id(userSession.getUserId())
-                                .email(userSession.getEmail())
-                                .status(userSession.getStatus())
-                                .role(userSession.getRole())
-                                .registeredAt(userSession.getRegisteredAt())
-                                .unregisteredAt(userSession.getUnregisteredAt())
-                                .lastLoginAt(userSession.getLastLoginAt())
-                                .build()
-                )
-                .store(
-                        StoreUserResponse.StoreResponse.builder()
-                                .id(userSession.getStoreId())
-                                .name(userSession.getStoreName())
-                                .build()
-                )
-                .build();
-    }
 }
 
 package org.delivery.db.storeuser;
@@ -468,11 +446,7 @@ public interface StoreRepository extends JpaRepository<StoreEntity, Long> {
     Optional<StoreEntity> findFirstByNameAndStatusOrderByIdDesc(String name, StoreStatus status);
 }
 ```
-> - Spring Security `BCryptPasswordEncorder`: hash 암호화
-> - Request시 StoreName 입력
-> > - Business request에서 StoreUserEntity, StoreEntity > response:convert
-> > - Service에서 pw입력시 PasswordEncode: @Bean PasswordEncoder > new BCryptPasswordEncoder();
-> > - Response UserResponse, StoreResponse
+> - SpringSecurity `@Bean public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }`: hash 암호화
 
 ### 실행
 - localhost:8081/swagger-ui/index.html
@@ -559,7 +533,7 @@ public class AuthorizationService implements UserDetailsService {
 package org.delivery.storeadmin.presentation;
 @Controller
 @RequestMapping("")
-- public class PageController {
+public class PageController {
 
     @RequestMapping(path = {"", "/main"})
     public ModelAndView main() {
@@ -744,8 +718,10 @@ public class StoreUserConverter {
     }
 }
 ```
-> - `@AuthenticationPrincipal` UserSession userSession
-> > UserDetails를 상속받은 User를 RET
+> - `public class UserSession implements UserDetails`
+> - `@AuthenticationPrincipal UserSession userSession`
+> - `public class AuthorizationService implements UserDetailsService`
+> > - `public UserDetails loadUserByUsername(String username)` RET usersession
 
 ### 실행
 - Swagger /api/store-user/me

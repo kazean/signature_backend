@@ -9,6 +9,7 @@ import java.util.Optional;
 
 public interface StoreRepository extends JpaRepository<StoreEntity, Long> {
     Optional<StoreEntity> findFirstByIdAndStatusOrderByIdDesc(Long id, StoreStatus status);
+    Optional<StoreEntity> findFirstByNameAndStatusOrderByIdDesc(String name, StoreStatus status);
     List<StoreEntity> findAllByStatusOrderByIdDesc(StoreStatus status);
     List<StoreEntity> findAllByStatusAndCategoryOrderByStarDesc(StoreStatus status, StoreCategory category);
 }

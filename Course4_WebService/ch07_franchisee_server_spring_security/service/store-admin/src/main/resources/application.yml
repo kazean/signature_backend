@@ -1,4 +1,8 @@
+server:
+  port: 8081
 spring:
+  application:
+    name: store-admin
   jpa:
     properties:
       hibernate:
@@ -10,14 +14,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: root1234!!
-token:
-  secret:
-    key: SpringBootJWTHelperTokenSecretKeyValue123!@#
-  access-token:
-    plus-hour: 24
-  refresh-token:
-    plus-hour: 48
 logging:
   level:
     org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind:
+    org.hibernate.orm.jdbc.bind: TRACE
