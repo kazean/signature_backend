@@ -16,7 +16,8 @@
 > - 6. Project: 사용자 주문 개발
 > > - UserOrder < UserOrderMenu > StoreMenu 주문로직 개발
 > - 7. Project: 가맹점 서버 개발 with SpringSecurity
-> > - 
+> > - store_user Table/Entity 개발 
+> > - Spring Security를 이용한 인증, 권한 (UserDetails, SecurityConfig)
 > - 8. Project: 비동기 주문 개발
 > > - 
 - [Course5. 백엔드 개발 실전/최신](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd)
