@@ -1,16 +1,31 @@
 # Ch08. 비동기 주문 개발
-# Ch08-01. 비동기를 위한 Message Queue
+- [1. 비동기 처리란?](#ch08-01-비동기-처리란)
+- [2. 비동기를 위한 Message Queue](#ch08-02-비동기를-위한-message-queue)
+- [3. Docker에 RabbitMQ 설정하기](#ch08-03-docker에-rabbit-mq-설정하기)
+- [4. Producer 개발하기 - 1](#ch08-04-producer-개발하기---1)
+- [5. Producer 개발하기 - 2](#ch08-05-producer-개발하기---2)
+- [6. Consumer 개발하기](#ch08-06-consumer-개발하기)
+- [7. SSE Server Send Events란?](#ch08-07-sseserver-send-events-란)
+- [8. SSE를 통한 사용자 주문 Push 알림 개발하기 - 1](#ch08-08-sse를-통한-사용자-주문-push-알림-개발하기---1)
+- [9. SSE를 통한 사용자 주문 Push 알림 개발하기 - 2](#ch08-09-sse를-통한-사용자-주문push-알림-개발하기---2)
+- [10. SSE를 통한 사용자 주문 Push 알림 개발하기 - 3](#ch08-10-sse를-통한-사용자-주문push-알림-개발하기---3)
+- [11. SSE를 통한 사용자 주문 Push 알림 개발하기 - 4](#ch08-11-sse를-통한-사용자-주문push-알림-개발하기---4)
+
+
+--------------------------------------------------------------------------------------------------------------------------------
+# Ch08-01. 비동기 처리란?
 ## 비동기 처리란?
 - Message Queue
 > Push, Polling 방식
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-02. 비동기를 위한 Message Queue
-## RabbitMQ
+## `RabbitMQ`
 - 오픈 소스 메세지 브로커 소프트웨어
-1. 메세지 브로커는 송신자와 수신자 간의 효율적인 메세지 전달을 중개하는 역할
-2. AMQP(Advanced Message Queueing Protocl)를 기반 작동, 대규모 분산 시스템
-3. 프로듀서, 컨슈머간의 비동기적인 통신을 이용
+1. `메세지 브로커`는 `송신자와 수신자` 간의 효율적인 메세지 전달을 중개하는 역할
+2. `AMQP(Advanced Message Queueing Protocl)를 기반` 작동, 대규모 분산 시스템
+3. `프로듀서`, `컨슈머`간의 비동기적인 통신을 이용
 4. 프로듀서는 메세지를 RabbitMQ에 보내고, RabbitMQ는 이를 큐에 저장, 컨슈머는 메세지를 가져와 처리
 > 비동기 처리를 지원하여 시스템의 확장성, 유언성을 높임  
 다양한 기능을 제공 메세지 라우팅, 메세지 필터링, 우선순위 지정
@@ -18,10 +33,11 @@
 > Apache ActiveMQ, ApacheQpid, AWS SQS
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-03. Docker에 Rabbit MQ 설정하기
-## Docker에서 RabbitMQ 설정
+## 실습 (Docker - RabbitMQ SET)
 - rabbitmq/docker-compose.yaml
-```
+```yaml
 version: '3.7'
 services:
   rabbitmq:
@@ -33,25 +49,39 @@ services:
       - RABBITMQ_DEFAULT_USER=admin       # 기본사용자 이름
       - RABBITMQ_DEFAULT_PASS=admin123!@# # 기본사용자 비밀번호
 ```
-> docker-compose -f docker-compose.yaml up
+> `$ docker-compose -f docker-compose.yaml up`
 - rabbitMQ Container console
-> rabbitmq-plugins enable rabbitmq_management
+> `$ rabbitmq-plugins enable rabbitmq_management`
 - rabbitMQ 관리자 페이지
 > localhost:15672
 
 ## RabbitMQ
-- [그림]
-- Publisher, Exchange, Queue, Cusumer
+![그림]()
+- `Publisher`, `Exchange`, `Queue`, `Cusumer`
 > Exchange: 라우팅 역할  
 Consumer: queue와 양방향 가능
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-04. Producer 개발하기 - 1
-RabbitConfig, application.yml, Producer
+- RabbitConfig, application.yml, Producer
+## 실습(service: store-admin)
 - dependencies 추가
->  implementation 'org.springframework.boot:spring-boot-starter-amqp'
-- RabbitMqConfig
+>  `implementation 'org.springframework.boot:spring-boot-starter-amqp'`
+- application.yaml
+```yaml
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123!@#
 ```
+> - `spring.rabbitmq`
+> > host, port, username, password
+
+- RabbitMqConfig
+```java
 @Configuration
 public class RabbitMqConfig {
 
@@ -87,23 +117,15 @@ public class RabbitMqConfig {
 	}
 }
 ```
-> DirectExchange, Queue, Binding  
-RabbitTeamplte(ConnectionFactory, MessageConverter): 발행 및 convert  
-MessageConverter(ObjectMapper)
-
-- application.yaml
-```
-spring:
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: admin
-    password: admin123!@#
-```
-> spring.rabbitmq
+> - `DirectExchange`, `Queue`: new <~>
+> - `Binding`
+> > `BindingBuilder.bind(<queue<).to(<directExchange>).with("<key>")`
+> - `RabbitTeamplte`: `new RabbitTemplate(ConnectionFactory), .setMessageConverter(<messageConverter>)`
+> > 발행 및 convert  
+> - `MessageConverter`: `new Jackson2JsonMessageConverter(<objectMapper>)` 
 
 - Producer
-```
+```java
 @RequiredArgsConstructor
 @Component
 public class Producer {
@@ -114,26 +136,29 @@ public class Producer {
       rabbitTemplate.convertAndSend(exchange, routeKey, object);
   }
 }
-```
-> Producer, rabbiyTemplate에 convertAndSend: 발행, Object - Json
 
-- Test: HealthOpenApiController
-```
-  private final Producer producer;
+public class HealthOpenApiController {
+	private final Producer producer;
 
   @GetMapping("/heath")
   public void health() {
       log.info("health call");
       producer.producer("delivery.exchange", "delivery.key", "hello");
   }
+}
 ```
+> - Producer
+> > - `rabbiyTemplate.convertAndSend("<exchange>", "<routeKey>", "<object>")`: 발행, Object - Json
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-05. Producer 개발하기 - 2
-Common 모듈 추가, UserOrderMessage(Model)
-## Common
+- Common 모듈 추가, UserOrderMessage(Model)
+## 실습(service:common, api)
+### common
+- common Module
 - build.gradle
-```
+```gradle
 plugins {
 	id 'java'
 }
@@ -171,17 +196,20 @@ jar {
 	enabled = true
 }
 ```
-> group, version, java, configuration: annotationProcessor, dependencies: lombok, Jar
+> - group, version, java, configuration: annotationProcessor
+> - dependencies: lombok, Jar
 - org.devliery.common.messages.model.UserOrderMessage - model
+```java
+```
 > private Long userOrderId;
 
-## api
-UserOrderProducer(Service), UserOrderBusiness 주문시 mq 추가
+### api
+- UserOrderProducer(Service), UserOrderBusiness 주문시 mq 추가
 - build.gradle - common 추가
-> implementation project(:common)
+> `implementation project(:common)`
 - Code
-```
-- domain.userorder.producer.UserOrderProducer
+```java
+// domain.userorder.producer.UserOrderProducer
 @RequiredArgsConstructor
 @Service
 public class UserOrderProducer {
@@ -201,7 +229,7 @@ public class UserOrderProducer {
 	}
 }
 
-- UserOrderBusiness
+// UserOrderBusiness
 	private final UserOrderProducer; 
 
   public UserOrderResponse userOrder(User user, UserOrderRequest body) {
@@ -213,15 +241,16 @@ public class UserOrderProducer {
 UserOrder 주문시 mq에 전송
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-06. Consumer 개발하기
-## store-admin
+## 실습(service: store-admin)
 - build.gralde
-```
+```gradle
 implementation project(':common')
 implementation 'org.springframework.boot:spring-boot-starter-amqp'
 ```
 - config.ObjectMapperconfig, RabbitMqConfig
-```
+```java
 @Configuration
 public class RabbitMqConfig {
 
@@ -233,7 +262,7 @@ public class RabbitMqConfig {
 ```
 > MessageConverter
 - application.yml
-```
+```yaml
 spring:
   rabbitmq:
     host: localhost
@@ -244,7 +273,7 @@ spring:
 > spring.rabbitmq.host, port, username, password (`ConnectionFactory 생성`)
 
 - domain.userorder.consumer.UserOrderConsumer
-```
+```java
 @Component
 public class UserOrderConsumer {
   @RabbitListener(queues = "delivery.queue")
@@ -259,7 +288,7 @@ public class UserOrderConsumer {
 
 ### cf, common 오류 수정
 - build.gradle
-```
+```gradle
 compileOnly 'org.projectlombok:lombok:1.18.22'
 annotationProcessor 'org.projectlombok:lombok:1.18.22'
 ```
@@ -269,18 +298,21 @@ annotationProcessor 'org.projectlombok:lombok:1.18.22'
 - store-admin: log 확인
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-07. SSE(Server-Send Events) 란?
-## SSE
-- "Server-Send Evenets"의 약어로, 단방향 통신을 통해 서버에서 클라이언트로 실시간 이벤트를 전송하는 웹 기술
-1. 일반적인 웹 소켓과 비교, SSE는 단방향 통신, 추가적인 설정 없이 웹 브라우저에 내장된 기술
-2. 서버에서 클라이언트로만 단방향
-3. 텍스트 기반 형식으로 데이터 전송, 이벤트는 data, event, id, retry 같은 필드로 구성된 텍스트 형태로 클라이언트에 전송
+## `SSE`
+- `Server-Send Events`의 약어로, `단방향 통신`을 통해 `서버에서 클라이언트`로 `실시간 이벤트를 전송하는 웹 기술`
+1. 일반적인 웹 소켓과 비교, SSE는 단방향 통신, `추가적인 설정 없이 웹 브라우저에 내장된 기술`
+2. 서버에서 클라이언트로만 `단방향`
+3. `텍스트 기반 형식`으로 데이터 전송, `이벤트`는 `data, event, id, retry` 같은 필드로 구성된 텍스트 형태로 클라이언트에 전송
 4. HTTP 연결을 재사용
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-08. SSE를 통한 사용자 주문 Push 알림 개발하기 - 1
-- domain.sse.controller.SseApiController
-```
+## 실습(service: )
+```java
+// domain.sse.controller.SseApiController
 @RequestMapping("/api/sse")
 public class SseApiController {
 
@@ -336,12 +368,12 @@ public class SseApiController {
 	}
 }
 ```
-> SseEmitter
-```
+> - `SseEmitter`
+```java
 userConnection = new ConcurrentHashMap() //String, SseEmitter  
 
-- emitter.onTimeout(Runnable)
-- emitter.onCompletion(Runnable)
+- emitter.onTimeout(<Runnable>)
+- emitter.onCompletion(<Runnable>)
 - emitter.send(SseEventBuilder ev)
 - emitter.complete() > onCompletion()
 - emitter.completeWithError(e)
@@ -369,7 +401,7 @@ userConnection = new ConcurrentHashMap() //String, SseEmitter
 ```
 
 - main.html
-```
+```html
 <script>
 	const url = "http://localhost:8081/api/sse/connect";    // 접속주소
 	const eventSource = new EventSource(url);               // sse 연결
@@ -387,9 +419,11 @@ userConnection = new ConcurrentHashMap() //String, SseEmitter
 > new EventSource(url), eventSource.onopen((event) => ~), eventSource.onmessage((event => ~))
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-09. SSE를 통한 사용자 주문	Push 알림 개발하기 - 2
-SseEmitter 객체로 만들기  
-UserSseConnection(Model), SeeConnectionPool(ConnectionPoolIfs) > SseApiController
+- SseEmitter 객체로 만들기  
+> UserSseConnection(Model), SeeConnectionPool(ConnectionPoolIfs) > SseApiController
+## 실습(service: )
 - UserSseConnection
 ```java
 @Getter
@@ -453,8 +487,9 @@ public class UserSseConnection {
     }
 }
 ```
-> String uniqueKey, SseEmitter emitter, ConnectionPoolIfs connectionPool, ObjectMapper objectMapper  
-onTimeout시 connectionPool callBack
+> - String uniqueKey, SseEmitter emitter, ConnectionPoolIfs connectionPool, ObjectMapper objectMapper  
+> - onTimeout시 connectionPool callBack
+
 - ConnectionPoolIfs, SseConnectionPool
 ```java
 public interface ConnectionPoolIfs<T, R> {
@@ -487,6 +522,7 @@ public class SseConnectionPool implements ConnectionPoolIfs<String, UserSseConne
     }
 }
 ```
+
 - SseApiController
 ```java
 @GetMapping(path="/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -520,11 +556,13 @@ public void pushEvent(
 ```
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-10. SSE를 통한 사용자 주문	Push 알림 개발하기 - 3
-사용자 주문 알림 왔을 때 주문수락을 위한 알림을 위한 개발  
+- 사용자 주문 알림 왔을 때 주문수락을 위한 알림을 위한 개발  
 - Business Logic
-> UserOrderMessage: userOrderId  
-> UserOrderEntity > UserOrderMenu > StoreMenu
+> - UserOrderMessage: userOrderId  
+> - UserOrderEntity > UserOrderMenu > StoreMenu
+## 실습(service: )
 - Code
 ```java
 // # API - userorder
@@ -592,7 +630,9 @@ public class StoreMenuResponse { ~ }
 ```
 
 
+--------------------------------------------------------------------------------------------------------------------------------
 # Ch08-11. SSE를 통한 사용자 주문	Push 알림 개발하기 - 4
+## 실습(service: )
 ```java
 @RequiredArgsConstructor
 @Service
@@ -664,6 +704,6 @@ public class UserOrderDetailResponse {
     private List<StoreMenuResponse> storeMenuResponses;
 }
 ```
-> API에서 비동기로 보낸 UserOrderMessage 가지고 관리자 사용자에게 Push알림  
-> UserOrderEntity > UserOrderMenu > StoreMenu > UserOrderDetailResponse > push
->> userorder 주문하여 테스트
+> - API에서 비동기로 보낸 UserOrderMessage 가지고 관리자 사용자에게 Push알림
+> - UserOrderEntity > UserOrderMenu > StoreMenu > UserOrderDetailResponse > push
+> > userorder 주문하여 테스트
