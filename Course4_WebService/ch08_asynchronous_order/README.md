@@ -16,8 +16,7 @@
 # Ch08-01. 비동기 처리란?
 ## 비동기 처리란?
 ![Architecture](./images/가맹점서버.PNG)
-- API <-MQ-> 가맹점 Server
-> > 사용자 접수완료, 가맹점 수락 구간을 비동기 처리 
+> 사용자 접수완료, 가맹점 수락 구간을 비동기 처리 
 - `Message Queue`
 > - `Push, Polling 방식`
 
@@ -30,10 +29,10 @@
 2. `AMQP(Advanced Message Queueing Protocl)를 기반` 작동, 대규모 분산 시스템
 3. `프로듀서`, `컨슈머`간의 비동기적인 통신을 이용
 4. 프로듀서는 메세지를 RabbitMQ에 보내고, RabbitMQ는 이를 큐에 저장, 컨슈머는 메세지를 가져와 처리
-> 비동기 처리를 지원하여 시스템의 확장성, 유언성을 높임  
-다양한 기능을 제공 메세지 라우팅, 메세지 필터링, 우선순위 지정
-- 그외 AMQP기반 QUEUE
-> Apache ActiveMQ, ApacheQpid, AWS SQS
+> - 비동기 처리를 지원하여 `시스템의 확장성, 유언성`을 높임
+> - 다양한 기능을 제공 메세지 라우팅, 메세지 필터링, 우선순위 지정
+> - 그외 AMQP기반 QUEUE
+> > Apache ActiveMQ, ApacheQpid, AWS SQS
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -52,37 +51,26 @@ services:
       - RABBITMQ_DEFAULT_USER=admin       # 기본사용자 이름
       - RABBITMQ_DEFAULT_PASS=admin123!@# # 기본사용자 비밀번호
 ```
-> `$ docker-compose -f docker-compose.yaml up`
-- rabbitMQ Container console
+> `$ docker-compose -f /Users/admin/study/signature/ws/docker-compose/rabbitmq/docker-compose.yaml up`
+- rabbitMQ Container console: 관리자 페이지 설정
 > `$ rabbitmq-plugins enable rabbitmq_management`
-- rabbitMQ 관리자 페이지
-> localhost:15672
+- rabbitMQ 관리자 페이지 접속
+> `localhost:15672`
 
 ## RabbitMQ
-![그림]()
+![RabbitMQ Architecture](./images/RabbitMQ_Arch.png)
 - `Publisher`, `Exchange`, `Queue`, `Cusumer`
-> Exchange: 라우팅 역할  
-Consumer: queue와 양방향 가능
+> - Exchange: 라우팅 역할
+> - Consumer: queue와 양방향 가능
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch08-04. Producer 개발하기 - 1
-- RabbitConfig, application.yml, Producer
-## 실습(service: store-admin)
+- Project RabbitMQ 설정
+> > RabbitConfig, application.yml, Producer
+## 실습(service: api)
 - dependencies 추가
 >  `implementation 'org.springframework.boot:spring-boot-starter-amqp'`
-- application.yaml
-```yaml
-spring:
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: admin
-    password: admin123!@#
-```
-> - `spring.rabbitmq`
-> > host, port, username, password
-
 - RabbitMqConfig
 ```java
 @Configuration
@@ -126,6 +114,17 @@ public class RabbitMqConfig {
 > - `RabbitTeamplte`: `new RabbitTemplate(ConnectionFactory), .setMessageConverter(<messageConverter>)`
 > > 발행 및 convert  
 > - `MessageConverter`: `new Jackson2JsonMessageConverter(<objectMapper>)` 
+- application.yaml
+```yaml
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123!@#
+```
+> - `spring.rabbitmq`
+> > host, port, username, password
 
 - Producer
 ```java

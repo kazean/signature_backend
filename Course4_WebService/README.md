@@ -20,3 +20,7 @@ docker-compose -f /Users/admin/study/signature/ws/docker-compose/mysql/mysql/doc
 # win
 docker-compose -f C:\study\signature\signature_backend\docker-compose\mysql_win\mysql\docker-compose.yaml up -d
 ```
+### RabbitMQ
+```sh
+docker-compose -f /Users/admin/study/signature/ws/docker-compose/rabbitmq/docker-compose.yaml up
+```
