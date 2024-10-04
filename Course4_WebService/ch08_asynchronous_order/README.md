@@ -69,10 +69,12 @@ services:
 - Project RabbitMQ 설정
 > > RabbitConfig, application.yml, Producer
 ## 실습(service: api)
-- dependencies 추가g
+- dependencies 추가
 >  `implementation 'org.springframework.boot:spring-boot-starter-amqp'`
 - RabbitMqConfig
 ```java
+package org.delivery.api.config.rabbitmq;
+
 @Configuration
 public class RabbitMqConfig {
 
@@ -128,6 +130,8 @@ spring:
 
 - Producer
 ```java
+package org.delivery.api.common.rabbitmq;
+
 @RequiredArgsConstructor
 @Component
 public class Producer {
@@ -139,6 +143,13 @@ public class Producer {
   }
 }
 
+
+package org.delivery.api.config.health;
+
+@Slf4j
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("/open-api")
 public class HealthOpenApiController {
 	private final Producer producer;
 
@@ -152,17 +163,36 @@ public class HealthOpenApiController {
 > - Producer
 > > - `rabbiyTemplate.convertAndSend("<exchange>", "<routeKey>", "<object>")`: 발행, Object - Json
 
+## 실행
+- Swagger /open-api/health 
+- RabbitMQ Manager
+> - localhost:15672 
+> - Connections, Queues(Get Messages)
+
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch08-05. Producer 개발하기 - 2
-- Common 모듈 추가, UserOrderMessage(Model)
+- Common 모듈 추가
+- MQ 공통 Object: UserOrderMessage(Model)
+> - UserOrder시 비동기로 가맹점에게 주문내역 전송
+
 ## 실습(service:common, api)
-### common
-- common Module
-- build.gradle
+- Producer 지우기
+```java
+public class HealthOpenApiController {
+
+  @GetMapping("/heath")
+  public void health() {
+      log.info("health call");
+  }
+}
+```
+### common Module 만들기
+- JDK11, Gradle(Groovy), Parent:service, GroupId: org.delivery, ArtifactId: common
+- build.gradle (db > common)
 ```gradle
 plugins {
-	id 'java'
+	id 'java's
 }
 
 group 'org.delivery'
@@ -198,10 +228,23 @@ jar {
 	enabled = true
 }
 ```
-> - group, version, java, configuration: annotationProcessor
-> - dependencies: lombok, Jar
-- org.devliery.common.messages.model.UserOrderMessage - model
+> - bootJar 삭제
+> - dependencies: lombok(configuration: annotationProcessor), Jar
+
+- UserOrderMessage - model
 ```java
+// package-info.java
+package org.devliery.common;
+
+package org.devliery.common.message.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UserOrderMessage {
+    private Long userOrderId;
+}
+
 ```
 > private Long userOrderId;
 
@@ -211,7 +254,7 @@ jar {
 > `implementation project(:common)`
 - Code
 ```java
-// domain.userorder.producer.UserOrderProducer
+package org.delivery.api.domain.userorder.producer;
 @RequiredArgsConstructor
 @Service
 public class UserOrderProducer {
@@ -238,13 +281,33 @@ public class UserOrderProducer {
     // 비동기로 가맹점에 주문 알리기
     userOrderProducer.sendOrder(newUserOrderEntity);
   }
+
+public class UserOrderBusiness {
+	private final UserOrderProducer userOrderProducer;
+
+	// 1. 사용자, 메뉴 id
+	// 2. userOrder 생성
+	// 3. userOrderMenu 생성
+	// 4. 응답 생성
+	public UserOrderResponse userOrder(User user, UserOrderRequest body) {
+		// ~
+
+		// 비동기로 가맹점에 주문 알리기
+		userOrderProducer.sendOrder(newUserOrderEntity);
+
+		// response
+		return userOrderConverter.toResponse(newUserOrderEntity);
+	}
+}
 ```
-> Producer 메세지 전송구현: UserOrderEntity  
-UserOrder 주문시 mq에 전송
+> - Producer 메세지 전송구현: UserOrderEntity  
+> - UserOrder 주문시 mq에 전송
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch08-06. Consumer 개발하기
+- 가맹점 Server에서 비동기 주문 수신
+
 ## 실습(service: store-admin)
 - build.gralde
 ```gradle
@@ -253,6 +316,27 @@ implementation 'org.springframework.boot:spring-boot-starter-amqp'
 ```
 - config.ObjectMapperconfig, RabbitMqConfig
 ```java
+package org.delivery.storeadmin.config.objectmapper;
+@Configuration
+public class ObjectMapperConfig {
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new Jdk8Module()); // JDK 8 버전 이후 클래스
+        objectMapper.registerModule(new JavaTimeModule()); // LDT
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false); // 모르는 json field에 대해서는 무시한다.
+        objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+
+        // 날짜 관련 직렬화
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        // 스네이크 케이스
+        objectMapper.setPropertyNamingStrategy(new PropertyNamingStrategies.SnakeCaseStrategy());
+
+        return objectMapper;
+    }
+}
+
+package org.delivery.storeadmin.config.rabbitmq;
 @Configuration
 public class RabbitMqConfig {
 
@@ -276,6 +360,7 @@ spring:
 
 - domain.userorder.consumer.UserOrderConsumer
 ```java
+package org.delivery.storeadmin.domain.userorder.consumer;
 @Component
 public class UserOrderConsumer {
   @RabbitListener(queues = "delivery.queue")
@@ -295,9 +380,20 @@ compileOnly 'org.projectlombok:lombok:1.18.22'
 annotationProcessor 'org.projectlombok:lombok:1.18.22'
 ```
 > lombok 버전 지정
-### Test
-- api: swagger-ui 로그인 후, /api/user-order(주문)
-- store-admin: log 확인
+
+## 실행
+- store-admin, api 실행
+- api(:8080): swagger-ui 로그인 후, /api/user-order(주문)
+> `"store_menu_id_list" : [1]`
+- store-admin: console log 확인
+
+## 정리
+- RabbitMQ 수신
+> - 공통 수신객체 Model import
+> - ObjectMapper 설정 및 RabbitMQ ObjectMapper 설정(MessageConverter)
+> - RabbitMQ ConnectionFactory생성(app.yml)
+> - Consumer 객체 Component등록(`@RabbitListner(queue="<queue_name>")`)
+> - 주의 common 과 수신 Module에 Lombok 버전 동일하게 맞춰야됨
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -306,15 +402,22 @@ annotationProcessor 'org.projectlombok:lombok:1.18.22'
 - `Server-Send Events`의 약어로, `단방향 통신`을 통해 `서버에서 클라이언트`로 `실시간 이벤트를 전송하는 웹 기술`
 1. 일반적인 웹 소켓과 비교, SSE는 단방향 통신, `추가적인 설정 없이 웹 브라우저에 내장된 기술`
 2. 서버에서 클라이언트로만 `단방향`
-3. `텍스트 기반 형식`으로 데이터 전송, `이벤트`는 `data, event, id, retry` 같은 필드로 구성된 텍스트 형태로 클라이언트에 전송
+3. `텍스트 기반 형식(JSON, XML)`으로 데이터 전송, `이벤트`는 `data, event, id, retry` 같은 필드로 구성된 텍스트 형태로 클라이언트에 전송
 4. HTTP 연결을 재사용
+![HTttp_SSE_Websocket](./images/sse_http_websocket.PNG)
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch08-08. SSE를 통한 사용자 주문 Push 알림 개발하기 - 1
-## 실습(service: )
+- `SSE` 연결하여 서버에서 클라이언트로 연결받기
+- Browse `EventSource`
+## 실습(service: store-admin)
 ```java
-// domain.sse.controller.SseApiController
+package org.delivery.storeadmin.domain.sse.controller;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+@Slf4j
+@RequiredArgsConstructor
+@RestController
 @RequestMapping("/api/sse")
 public class SseApiController {
 
@@ -372,7 +475,7 @@ public class SseApiController {
 ```
 > - `SseEmitter`
 ```java
-userConnection = new ConcurrentHashMap() //String, SseEmitter  
+Map<String, SseEmitter> userConnection = new ConcurrentHashMap() //String, SseEmitter  
 
 - emitter.onTimeout(<Runnable>)
 - emitter.onCompletion(<Runnable>)
@@ -409,6 +512,7 @@ userConnection = new ConcurrentHashMap() //String, SseEmitter
 	const eventSource = new EventSource(url);               // sse 연결
 
 	eventSource.onopen = event => {
+			// 최초 응답
 			console.log("sse connection");
 			console.log(event)
 	}
@@ -418,16 +522,35 @@ userConnection = new ConcurrentHashMap() //String, SseEmitter
 	}
 </script>
 ```
-> new EventSource(url), eventSource.onopen((event) => ~), eventSource.onmessage((event => ~))
+> - `new EventSource(url)`
+> > `eventSource.onopen((event) => ~)`, `eventSource.onmessage((event => ~))`
+
+## 실행
+- store-admin :8081 (Login)
+> > sse connection
+- Swagger /api/ssee/push-event
+
+## 정리
+- SSE
+> - Server
+> > - `new SseEmitter(<timeout>)`
+> > > - sseEmitter.onTimeout/onCompletion/send/completeWithError()
+> > > - `SseEmitter.event().data("<data>")`
+- JS `EventSource("<url>")`
+> - `eventSource.onopen/onmessage`
+> > event/.data()
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch08-09. SSE를 통한 사용자 주문	Push 알림 개발하기 - 2
-- SseEmitter 객체로 만들기  
-> UserSseConnection(Model), SeeConnectionPool(ConnectionPoolIfs) > SseApiController
+- SseEmitter를 통한 Push 알림
+> - UserSseConnection(Model)
+> > SeeConnectionPool(ConnectionPoolIfs)
+> - SseApiController
 ## 실습(service: )
 - UserSseConnection
 ```java
+package org.delivery.storeadmin.domain.sse.connection.model;
 @Getter
 @ToString
 @EqualsAndHashCode
@@ -486,6 +609,14 @@ public class UserSseConnection {
     }
 
     public void sendMessage(Object data) {
+			try {
+            String json = this.objectMapper.writeValueAsString(data);
+            SseEmitter.SseEventBuilder event = SseEmitter.event()
+                    .data(json);
+            this.sseEmitter.send(event);
+        } catch (IOException e) {
+            this.sseEmitter.completeWithError(e);
+        }
     }
 }
 ```
@@ -494,6 +625,7 @@ public class UserSseConnection {
 
 - ConnectionPoolIfs, SseConnectionPool
 ```java
+package org.delivery.storeadmin.domain.sse.connection.ifs;
 public interface ConnectionPoolIfs<T, R> {
     void addSession(T key, R session);
 
@@ -502,6 +634,7 @@ public interface ConnectionPoolIfs<T, R> {
     void onCompletionCallback(R session);
 }
 
+package org.delivery.storeadmin.domain.sse.connection;
 @Slf4j
 @Component
 public class SseConnectionPool implements ConnectionPoolIfs<String, UserSseConnection> {
@@ -527,35 +660,53 @@ public class SseConnectionPool implements ConnectionPoolIfs<String, UserSseConne
 
 - SseApiController
 ```java
-@GetMapping(path="/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-public ResponseBodyEmitter connect(
-				@Parameter(hidden = true)
-				@AuthenticationPrincipal UserSession userSession
-) {
-		log.info("login user {}", userSession);
-		UserSseConnection userSessionConnection = UserSseConnection.connect(
-						userSession.getStoreId().toString(),
-						sseConnectionPool,
-						objectMapper
-		);
+public class SseApiController {
+	private final SseConnectionPool sseConnectionPool;
+  private final ObjectMapper objectMapper;
 
-		sseConnectionPool.addSession(userSessionConnection.getUniqueKey(), userSessionConnection);
-		return userSessionConnection.getSseEmitter();
+	@GetMapping(path="/connect", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseBodyEmitter connect(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal UserSession userSession
+    ) {
+        log.info("login user {}", userSession);
+        var userSessionConnection = UserSseConnection.connect(
+                userSession.getStoreId().toString(),
+                sseConnectionPool,
+                objectMapper
+        );
 
-}
+        sseConnectionPool.addSession(userSessionConnection.getUniqueKey(), userSessionConnection);
+        return userSessionConnection.getSseEmitter();
 
-@GetMapping("/push-event")
-public void pushEvent(
-				@Parameter(hidden = true)
-				@AuthenticationPrincipal UserSession userSession
-) {
-		UserSseConnection userSessionConnection = sseConnectionPool.getSession(userSession.getStoreId().toString());
-		Optional.ofNullable(userSessionConnection)
-						.ifPresent(it -> {
-								it.sendMessage("hello world");
-						});
+    }
+
+    @GetMapping("/push-event")
+    public void pushEvent(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal UserSession userSession
+    ) {
+        var userSessionConnection = sseConnectionPool.getSession(userSession.getStoreId().toString());
+        Optional.ofNullable(userSessionConnection)
+                .ifPresent(it -> {
+                    it.sendMessage("hello world");
+                });
+    }
 }
 ```
+## 실행
+- store-admin Login 후 /api/sse/push-event
+
+## 정리
+- 기존의 Controller에서 SseEmitter 설정을 UserSessionConnection 객체를 통한 설정으로 변경
+> - UserSessionConnection(uniqueKey, objectMapper, connectionPoolIFs)
+> > - 생성자시 최기화 + f: sseEmitter: SseEmiter 생성
+> > > - connectionPoolIfs는 Component객체이므로 Api에서 주입받음
+> > > - sse.onTimeout()시 connectionPoolIfs.onCompletionCallback(this)
+> - SseConnectionPool(connectionPool): `Map<String, UserSseConnection> connectionPool`
+- SseApiController
+> - UserSeseConnection 객체생성
+> - SseConnectionPool.addSession(uniqueKey, usersessionConnection)
 
 
 --------------------------------------------------------------------------------------------------------------------------------
