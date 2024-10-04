@@ -58,7 +58,7 @@ services:
 > `localhost:15672`
 
 ## RabbitMQ
-![RabbitMQ Architecture](./images/RabbitMQ_Arch.png)
+![RabbitMQ Architecture](./images/rabbitMq_Arch.PNG)
 - `Publisher`, `Exchange`, `Queue`, `Cusumer`
 > - Exchange: 라우팅 역할
 > - Consumer: queue와 양방향 가능
@@ -69,7 +69,7 @@ services:
 - Project RabbitMQ 설정
 > > RabbitConfig, application.yml, Producer
 ## 실습(service: api)
-- dependencies 추가
+- dependencies 추가g
 >  `implementation 'org.springframework.boot:spring-boot-starter-amqp'`
 - RabbitMqConfig
 ```java
