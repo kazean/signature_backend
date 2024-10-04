@@ -275,13 +275,6 @@ public class UserOrderProducer {
 }
 
 // UserOrderBusiness
-	private final UserOrderProducer; 
-
-  public UserOrderResponse userOrder(User user, UserOrderRequest body) {
-    // 비동기로 가맹점에 주문 알리기
-    userOrderProducer.sendOrder(newUserOrderEntity);
-  }
-
 public class UserOrderBusiness {
 	private final UserOrderProducer userOrderProducer;
 
