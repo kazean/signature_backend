@@ -719,23 +719,76 @@ public class SseApiController {
 - 사용자 주문 알림 왔을 때 주문수락을 위한 알림을 위한 개발  
 - Business Logic
 > - UserOrderMessage: userOrderId  
-> - UserOrderEntity > UserOrderMenu > StoreMenu
-## 실습(service: )
+> - UserOrderEntity > UserOrderMenu > StoreMenu (store_id 구해야하는 문제점)
+## 실습(Mysql, service: api, db, store-admin)
+### Mysql
+- user_order에 store테이블 관계 설정(store -< user_order 1:N)
+> - user_order: store_id ( BIGINT(32) Not Null): 개발단계 truncate > 테이블 수정
+
+### api, db
 - Code
 ```java
+package org.delivery.api.domain.userorder.~;
 // # API - userorder
 // UserOrderEntity - storeId 추가 ( 1:N Relation 설정, store_id 컬럼추가)
+public class UserOrderEntity extends BaseEntity {
+	// ~
+	@Column(nullable = false)
+	private Long storeId;
+}
 // UserOrderRequest - storeId 추가, storeMenuList (주문 Req)
+package org.delivery.api.domain.userorder.controller.model;
+public class UserOrderRequest {
+    @NotNull
+    private Long storeId;
+    // ~
+
+}
 // UserOrderConverter - storeId 추가
+@Converter
+public class UserOrderConverter {
+    public UserOrderEntity toEntity(
+            // ~
+            Long storeId
+    ) {
+        // ~
+				return UserOrderEntity.builder()
+                // ~
+                .storeId(storeId)
+                .build();
+    }
+}
 // UserOrderBusiness - toEntity(Long storeId ~)
-UserOrderEntity userOrderEntity = userOrderConverter.toEntity(user, body.getStoreId(), storeMenuEntityList);
+package org.delivery.api.domain.userorder.business;
+public class UserOrderBusiness {
+	public UserOrderResponse userOrder(User user, UserOrderRequest body) {
+		// ~ 
+		// 여기서 반영
+		UserOrderEntity userOrderEntity = userOrderConverter.toEntity(user, body.getStoreId(), storeMenuEntityList);
+	}
+}
+```
+### 실행
+- ApiApp: 주문
+> `store_id: 1, store_menu_id: [2]`
+> > user_order 테이블 store_id
 
+### store-admin
+```java
+package org.delivery.storeadmin.domain.userorder.service;
+@RequiredArgsConstructor
+@Service
+public class UserOrderService {
+    private final UserOrderRepository userOrderRepository;
 
-// # store-admin - userorder
-// UserOrderService
-public Optional<UserOrderEntity> getUserOrder(Long id) { ~ }
+    public Optional<UserOrderEntity> getUserOrder(Long id) {
+        return userOrderRepository.findById(id);
+    }
+}
 
-// UserOrderBusiness
+package org.delivery.storeadmin.domain.userorder.business;
+@RequiredArgsConstructor
+@Service
 public class UserOrderBusiness {
     private final UserOrderService userOrderService;
     private final SseConnectionPool sseConnectionPool;
@@ -764,33 +817,114 @@ public class UserOrderBusiness {
         // userConnection.sendMessage();
     }
 }
+
 // UserOrderResponse, UserOrderConverter
-
-// ## userordermenu
-public class UserOrderMenuService {
-	public List<UserOrderMenuEntity> getUserOrderMenuList(Long userOrderId) {}
+package org.delivery.storeadmin.domain.userorder.controller.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UserOrderResponse {
+    private Long id;
+    private Long storeId;
+    private Long userId;
+    private UserOrderStatus status;
+    private BigDecimal amount;
+    private LocalDateTime orderedAt;
+    private LocalDateTime acceptedAt;
+    private LocalDateTime cookingStartedAt;
+    private LocalDateTime deliveryStartedAt;
+    private LocalDateTime receivedAt;
 }
+
+package org.delivery.storeadmin.domain.userorder.converter;
+@Service
+public class UserOrderConverter {
+
+    public UserOrderResponse toResponse(UserOrderEntity userOrderEntity) {
+        return UserOrderResponse.builder()
+                .id(userOrderEntity.getUserId())
+                .userId(userOrderEntity.getUserId())
+                .storeId(userOrderEntity.getStoreId())
+                .status(userOrderEntity.getStatus())
+                .amount(userOrderEntity.getAmount())
+                .orderedAt(userOrderEntity.getOrderedAt())
+                .acceptedAt(userOrderEntity.getAcceptedAt())
+                .cookingStartedAt(userOrderEntity.getCookingStartedAt())
+                .deliveryStartedAt(userOrderEntity.getDeliveryStartedAt())
+                .receivedAt(userOrderEntity.getReceivedAt())
+                .build();
+    }
+}
+
 // ## storemenu
+package org.delivery.storeadmin.domain.storemenu.service;
+@RequiredArgsConstructor
+@Service
 public class StoreMenuService {
-    public StoreMenuEntity getStoreMenuWithThrow(Long id) {}
+    private final StoreMenuRepository storeMenuRepository;
+
+    public StoreMenuEntity getStoreMenuWithThrow(Long id) {
+        return storeMenuRepository.findFirstByIdAndStatusOrderByIdDesc(id, StoreMenuStatus.REGISTERED)
+                .orElseThrow(() -> new RuntimeException("store menu not found"));
+    }
 }
 
+
+package org.delivery.storeadmin.domain.storemenu.controller.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class StoreMenuResponse {
+    private Long id;
+    private String name;
+    private BigDecimal amount;
+    private StoreMenuStatus status;
+    private String thumbnailUrl;
+    private int likeCount;
+    private int sequence;
+}
+
+package org.delivery.storeadmin.domain.storemenu.converter;
+@Service
 public class StoreMenuConverter {
     public StoreMenuResponse toResponse(StoreMenuEntity storeMenuEntity) {
+        return StoreMenuResponse.builder()
+                .id(storeMenuEntity.getId())
+                .name(storeMenuEntity.getName())
+                .status(storeMenuEntity.getStatus())
+                .amount(storeMenuEntity.getAmount())
+                .thumbnailUrl(storeMenuEntity.getThumbnailUrl())
+                .likeCount(storeMenuEntity.getLikeCount())
+                .sequence(storeMenuEntity.getSequence())
+                .build();
     }
+
     public List<StoreMenuResponse> toResponse(List<StoreMenuEntity> list) {
-			return list.stream()
+        return list.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 }
-public class StoreMenuResponse { ~ }
+
+// ## userordermenu
+package org.delivery.storeadmin.domain.userordermenu.service;
+@RequiredArgsConstructor
+@Service
+public class UserOrderMenuService {
+    private final UserOrderMenuRepository userOrderMenuRepository;
+
+    public List<UserOrderMenuEntity> getUserOrderMenuList(Long userOrderId) {
+        return userOrderMenuRepository.findAllByUserOrderIdAndStatus(userOrderId, UserOrderMenuStatus.REGISTERED);
+    }
+}
 ```
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-# Ch08-11. SSE를 통한 사용자 주문	Push 알림 개발하기 - 4
-## 실습(service: )
+# Ch08-11. SSE를 통한 사용자 주문 Push 알림 개발하기 - 4
+## 실습(service: store-admin)
 ```java
 @RequiredArgsConstructor
 @Service
@@ -845,6 +979,16 @@ public class UserOrderBusiness {
 
 }
 
+package org.delivery.storeadmin.domain.userorder.controller.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UserOrderDetailResponse {
+    private UserOrderResponse userOrderResponse;
+    private List<StoreMenuResponse> storeMenuResponseList;
+}
+
 public class UserOrderConsumer {
 	private final UserOrderBusiness userOrderBusiness;
 
@@ -856,12 +1000,113 @@ public class UserOrderConsumer {
 			userOrderBusiness.pushUserOrder(userOrderMessage);
 	}
 }
-
-public class UserOrderDetailResponse {
-    private UserOrderResponse userOrderResponse;
-    private List<StoreMenuResponse> storeMenuResponses;
-}
 ```
 > - API에서 비동기로 보낸 UserOrderMessage 가지고 관리자 사용자에게 Push알림
 > - UserOrderEntity > UserOrderMenu > StoreMenu > UserOrderDetailResponse > push
 > > userorder 주문하여 테스트
+- main.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주문 관리</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .button-container button {
+            margin-right: 8px;
+        }
+    </style>
+
+</head>
+<body>
+<div id="app">
+    <table>
+        <thead>
+        <tr>
+            <th>주문번호</th>
+            <th>주문내용</th>
+            <th>상태</th>
+            <th>액션</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="order in orders" :key="order.user_order_response.id">
+            <td>{{ order.user_order_response.id }}</td>
+            <td>
+                <ul>
+                    <li v-for="item in order.store_menu_response_list" :key="item.id">
+                        {{ item.name }} {{ item.amount }}
+                    </li>
+                </ul>
+            </td>
+            <td>{{ order.user_order_response.status }}</td>
+            <td class="button-container">
+                <button @click="acceptOrder(order)">주문수락</button>
+                <button @click="startCooking(order)">조리시작</button>
+                <button @click="startDelivery(order)">배달시작</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    new Vue({
+        el: "#app",
+        data: {
+            orders: [] // 서버로부터 받은 주문 데이터를 저장할 배열
+        },
+        methods: {
+            acceptOrder(order) {
+                console.log("주문수락:", order);
+            },
+            startCooking(order) {
+                console.log("조리시작:", order);
+            },
+            startDelivery(order) {
+                console.log("배달시작:", order);
+            },
+            pushData(order){
+                this.orders.unshift(order);
+            }
+        },
+        mounted() {
+            // SSE 연결
+            const url = "http://localhost:8081/api/sse/connect";    // 접속주소
+            const eventSource = new EventSource(url);               // sse 연결
+
+            eventSource.onopen = event => {
+                console.log("sse connection")
+            }
+
+            eventSource.onmessage = event => {
+                console.log("receive : "+event.data);
+                const data = JSON.parse(event.data);
+                this.pushData(data);
+            }
+        }
+    });
+</script>
+</body>
+</html>
+```
+
+## 실행
+- store-admin, api App Run
+> - 관리자페이지(:8081), 사용자 주문(:8080)
+- 사용자 주문(store_id: 1, store_menu_id: 2)
