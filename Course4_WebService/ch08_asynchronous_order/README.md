@@ -110,7 +110,7 @@ public class RabbitMqConfig {
 	}
 }
 ```
-> - `DirectExchange`, `Queue`: new <~>
+> - `DirectExchange`, `Queue`: `new ~("<name>")`
 > - `Binding`
 > > `BindingBuilder.bind(<queue<).to(<directExchange>).with("<key>")`
 > - `RabbitTeamplte`: `new RabbitTemplate(ConnectionFactory), .setMessageConverter(<messageConverter>)`
@@ -171,7 +171,7 @@ public class HealthOpenApiController {
 
 ## 정리
 - RabbitMQ Config
-> - DirectExchange, Queue: new ~();
+> - DirectExchange, Queue: `new ~("<name>");`
 > - MessageConverter: new Jackson2JsonMessageConverter(objectMapper);
 > - RabbitTemplate: new ~(connectionFactory); rabbittemplate.setMessageConverter(mc);
 > - Binding: `BindingBuilder.bind(queue).to(directExchange).with("<key>")`
@@ -184,12 +184,13 @@ public class HealthOpenApiController {
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch08-05. Producer 개발하기 - 2
 - Common 모듈 추가
-- MQ 공통 Object: UserOrderMessage(Model)
+- MQ 공통 Object(Model) 추가: UserOrderMessage :userOrderId
 > - UserOrder시 비동기로 가맹점에게 주문내역 전송
 
 ## 실습(service:common, api)
 - Producer 지우기
 ```java
+package org.delivery.api.config.health;
 public class HealthOpenApiController {
 
   @GetMapping("/heath")
@@ -375,7 +376,7 @@ public class UserOrderConsumer {
   }
 }
 ```
-> `@RabiiyListener(queue = "delivery.queue")` 메소드(Object object)
+> `@RabbitListener(queue = "delivery.queue")` 메소드(Object object)
 
 ### cf, common 오류 수정
 - build.gradle
@@ -396,7 +397,7 @@ annotationProcessor 'org.projectlombok:lombok:1.18.22'
 > - 공통 수신객체 Model import
 > - ObjectMapper 설정 및 RabbitMQ ObjectMapper 설정(MessageConverter)
 > - RabbitMQ ConnectionFactory생성(app.yml)
-> - Consumer 객체 Component등록(`@RabbitListner(queue="<queue_name>")`)
+> - Consumer 객체 Component등록(`@RabbitListener(queue="<queue_name>")`)
 > - 주의 common 과 수신 Module에 Lombok 버전 동일하게 맞춰야됨
 
 
