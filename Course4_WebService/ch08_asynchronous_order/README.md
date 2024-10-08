@@ -66,7 +66,7 @@ services:
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch08-04. Producer 개발하기 - 1
-- Project RabbitMQ 설정
+- Project RabbitMQ 설정(Producer)
 > > RabbitConfig, application.yml, Producer
 ## 실습(service: api)
 - dependencies 추가
@@ -168,6 +168,17 @@ public class HealthOpenApiController {
 - RabbitMQ Manager
 > - localhost:15672 
 > - Connections, Queues(Get Messages)
+
+## 정리
+- RabbitMQ Config
+> - DirectExchange, Queue: new ~();
+> - MessageConverter: new Jackson2JsonMessageConverter(objectMapper);
+> - RabbitTemplate: new ~(connectionFactory); rabbittemplate.setMessageConverter(mc);
+> - Binding: `BindingBuilder.bind(queue).to(directExchange).with("<key>")`
+- ConnectionFactory
+> - app.yml: spring.rabbitmq.host/port/username/password
+- Producer
+> - `rabbitTemplate.convertAndSend("<exchange>", "<routeKEy>", "<object>")`
 
 
 --------------------------------------------------------------------------------------------------------------------------------
