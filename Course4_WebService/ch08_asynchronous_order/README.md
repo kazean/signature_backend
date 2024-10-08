@@ -201,10 +201,10 @@ public class HealthOpenApiController {
 ```
 ### common Module 만들기
 - JDK11, Gradle(Groovy), Parent:service, GroupId: org.delivery, ArtifactId: common
-- build.gradle (db > common)
+- build.gradle (db > common, Gradle 5.x 미만) 
 ```gradle
 plugins {
-	id 'java's
+	id 'java'
 }
 
 group 'org.delivery'
@@ -242,6 +242,39 @@ jar {
 ```
 > - bootJar 삭제
 > - dependencies: lombok(configuration: annotationProcessor), Jar
+- Gradle 5.x
+```gradle
+plugins {
+    id 'java'
+}
+
+group 'org.delivery'
+version '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = '11'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+
+//    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+//    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+test {
+    useJUnitPlatform()
+}
+jar {
+    enabled = true
+}
+```
+
 
 - UserOrderMessage - model
 ```java
@@ -263,7 +296,7 @@ public class UserOrderMessage {
 ### api
 - UserOrderProducer(Service), UserOrderBusiness 주문시 mq 추가
 - build.gradle - common 추가
-> `implementation project(:common)`
+> `implementation project(':common')`
 - Code
 ```java
 package org.delivery.api.domain.userorder.producer;
