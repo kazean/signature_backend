@@ -1143,3 +1143,14 @@ public class UserOrderConsumer {
 - store-admin, api App Run
 > - 관리자페이지(:8081), 사용자 주문(:8080)
 - 사용자 주문(store_id: 1, store_menu_id: 2)
+
+## 정리
+- store-admin:  [SSE] connect (main.html)
+- api: "/api/user-order" 주문
+> [UserOrderBusiness] Producer: `[RQ] producer.producer(EXCHANGE, ROUTE_KEY, message);`
+- store-admin
+> - [SseApiController] SSE Connect: `this.sseEmitter.send(event);`
+> - [UserOrderBusiness] Consumer: `@[RQ] RabbitListener(queues = "delivery.queue") method(UserOrderMessage userOrderMessage)` 
+> > - [RQ -> SSE] `userOrderBusiness.pushUserOrder(userOrderMessage);` `this.sseEmitter.send(event);`
+- common
+> - Model: UserOrderMessage(:userOrderId)

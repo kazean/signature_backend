@@ -48,7 +48,7 @@ public class UserOrderBusiness {
                 .collect(toList());
 
         // conveter 구성
-        UserOrderEntity userOrderEntity = userOrderConverter.toEntity(user, storeMenuEntityList);
+        UserOrderEntity userOrderEntity = userOrderConverter.toEntity(user, body.getStoreId(), storeMenuEntityList);
         // 주문
         UserOrderEntity newUserOderEntity = userOrderService.order(userOrderEntity);
         // 매핑
