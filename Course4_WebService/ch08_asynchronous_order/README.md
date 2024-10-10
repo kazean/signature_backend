@@ -51,7 +51,7 @@ services:
       - RABBITMQ_DEFAULT_USER=admin       # 기본사용자 이름
       - RABBITMQ_DEFAULT_PASS=admin123!@# # 기본사용자 비밀번호
 ```
-> `$ docker-compose -f /Users/admin/study/signature/ws/docker-compose/rabbitmq/docker-compose.yaml up`
+> `$ docker-compose -f /Users/admin/study/signature/ws/docker-compose/rabbitmq/docker-compose.yaml up -d`
 - rabbitMQ Container console: 관리자 페이지 설정
 > `$ rabbitmq-plugins enable rabbitmq_management`
 - rabbitMQ 관리자 페이지 접속
@@ -178,7 +178,7 @@ public class HealthOpenApiController {
 - ConnectionFactory
 > - app.yml: spring.rabbitmq.host/port/username/password
 - Producer
-> - `rabbitTemplate.convertAndSend("<exchange>", "<routeKEy>", "<object>")`
+> - `rabbitTemplate.convertAndSend("<exchange>", "<routeKEy>", <object>)`
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -585,7 +585,7 @@ Map<String, SseEmitter> userConnection = new ConcurrentHashMap() //String, SseEm
 > - UserSseConnection(Model)
 > > SeeConnectionPool(ConnectionPoolIfs)
 > - SseApiController
-## 실습(service: )
+## 실습(service: store-admin)
 - UserSseConnection
 ```java
 package org.delivery.storeadmin.domain.sse.connection.model;
