@@ -14,7 +14,7 @@
 ### Tools
 - Build: Gradle
 - IDE: Intellij
-### Java Backen
+### Java Backend
 > - Internet(WEB, HTTP) 
 > - RDB(Mysql)
 > - Spring EcoSystem
@@ -48,7 +48,7 @@
 - 프로젝트(hello-word)
 > - JDK11(Amazon corretto-11), Gradle DSL(Groovy)
 > cf, Path 한글인식: X
-- Spring Project
+- Spring Project(hello-springboot)
 > - Project: Gradle-Grooby, JDK11, SpringBoot 2.7.7, Jar
 > - Group/Artifact: com.example.hello-springboot
 > - Dependency: Spring Web
