@@ -19,7 +19,7 @@
 > > - store_user Table/Entity 개발 
 > > - Spring Security를 이용한 인증, 권한 (UserDetails, SecurityConfig)
 > - 8. Project: 비동기 주문 개발
-> > - 
+> > - 사용자 주문시 가맹점 파트너 Push 알림 개발 (RabbitMQ, SSE)
 - [Course5. 백엔드 개발 실전/최신](https://github.com/kazean/signature_backend/tree/main/Course5_BackEnd)
 > - 1. Kotlin
 > - 2. Spring 과 Kotlin
