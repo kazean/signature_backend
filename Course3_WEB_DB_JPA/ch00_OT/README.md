@@ -20,7 +20,7 @@
 > - Spring EcoSystem
 ### Learn Abount APIs
 - API End Point, Swagger UI, QueryDSL, Entity 관계 설정, 공통 Spec
-### Web Service Secuirt
+### Web Service Secuiry
 - Session, Web Cookie, JWT
 ### REST API
 ### Caching
