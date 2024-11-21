@@ -44,7 +44,7 @@
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch01-02. REST API 개론
 ## REST
-REST(Reprensentational State Transfer, `자원의 상태 전달`)
+REST(Representational State Transfer, `자원의 상태 전달`)
 1. Cleint, Server
 > 분리되어져 있어야 한다.
 2. Stateless
