@@ -68,7 +68,7 @@ REST(Reprensentational State Transfer, `자원의 상태 전달`)
 3. 자기 서술적 메세지
 > - 요청하는 데이터가 어떻게 처리 되어져야 하는지, HTTP Method
 4. 애플리케이션 상태에 대한 엔진으로서 하이퍼미디어
-> - 요청에 대한 데이터만 내리는 것이 아닌 관련된 리소스에 대한 Link 정보(RESTful하다) 다만 리소스를 한번에 내리는 것은 주로 사용하지 안흔ㄴ다
+> - 요청에 대한 데이터만 내리는 것이 아닌 관련된 리소스에 대한 Link 정보(RESTful하다), 다만 리소스를 한번에 내리는 것은 주로 사용하지 않는다
 
 ## URI 설계
 1. URI(Uniform Resource Identifer)
@@ -103,7 +103,7 @@ ex) https://www.foo.co.kr/sample1.pdf
 # Ch01-03. Spring Boot와 Spring Web 소개
 ## Spring Boot 소개
 - Spring 2.6.x
-- Spring Boot는 단순히 실행되며 프로덕션 제품 수준, 스프링ㄱ ㅣ반
+- Spring Boot는 단순히 실행되며 프로덕션 제품 수준, 스프링 기반
 - Spring 구성이 거의 필요하지 않다(XML, X)
 - java -jar 실행, Java 어플리케이션
 ### 주요 목표
