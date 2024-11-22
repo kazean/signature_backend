@@ -1,7 +1,7 @@
 # Course3. 웹 개발 입문과 데이터베이스
 - [Ch00. OT](https://github.com/kazean/signature_backend/tree/main/Course3_WEB_DB_JPA/ch00_OT)
 - [Ch01. Web과 HTTP 통신에 대해서 알아보기](https://github.com/kazean/signature_backend/tree/main/Course3_WEB_DB_JPA/ch01_Web_HTTP)
-- [Ch02. REST API](https://github.com/kazean/signature_backend/tree/main/Course3_WEB_DB_JPA/)
+- [Ch02. REST API](https://github.com/kazean/signature_backend/tree/main/Course3_WEB_DB_JPA/ch02_REST_API)
 - [Ch03. Spring Boot Web](https://github.com/kazean/signature_backend/tree/main/Course3_WEB_DB_JPA/ch03_Spring_Boot_Web)
 - [Ch04. Memory Database](https://github.com/kazean/signature_backend/tree/main/Course3_WEB_DB_JPA/ch04_MemoryDataBase_CRUD)
 - [Ch05. Mysql](https://github.com/kazean/signature_backend/tree/main/Course3_WEB_DB_JPA/ch05_Mysql)
