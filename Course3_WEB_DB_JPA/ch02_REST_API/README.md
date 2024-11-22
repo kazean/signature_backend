@@ -9,6 +9,8 @@
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch02-01. REST API - GET - 01
+## HTTP Method
+![HTTP_METHOD](./images/http_method.png)
 ## 프로젝트 만들기
 - Prject: Gradle-Groovy, JDK11, SpringBoot2.7.7, JAR
 - Meta data: com.example.rest-api
