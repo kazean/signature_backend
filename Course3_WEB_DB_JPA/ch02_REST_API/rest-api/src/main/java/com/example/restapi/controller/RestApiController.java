@@ -1,5 +1,6 @@
 package com.example.restapi.controller;
 
+import com.example.restapi.model.BookQueryParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,16 +33,37 @@ public class RestApiController {
     // http://localhost:8080/api/echo/steve/age/20/is-man/true
 
     // http://localhost:8080/api/book?category=IT&issuedYear=2023&issued-month=01&issued_day=31
-    @GetMapping("/query-param")
+    @GetMapping("/book")
     public void queryParam(
-        @RequestParam String category,
-        @RequestParam String issuedYear,
-        @RequestParam(name = "issued-month") String issuedMonth,
-        @RequestParam String issued_day
+            @RequestParam String category,
+            @RequestParam String issuedYear,
+            @RequestParam(name = "issued-month") String issuedMonth,
+            @RequestParam String issued_day
     ) {
         log.info("query param category: {}", category);
         log.info("query param issued year: {}", issuedYear);
         log.info("query param issued month: {}", issuedMonth);
         log.info("query param issued day: {}", issued_day);
+    }
+
+    // http://localhost:8080/api/book2?category=IT&issuedYear=2023&issuedMonth=01&issuedDay=31
+    @GetMapping("/book2")
+    public void queryParamDto(
+            BookQueryParam bookQueryParam
+    ) {
+        log.info("book param: {}", bookQueryParam);
+    }
+
+    // TODO Parameter 2가지 받기, int 형태로 받아서 두 수의 덧셈, 곱셈
+    // TODO String 타입 boolean 타입도 받아보기
+    @DeleteMapping(path = {
+            "/user/{userName}/delete"
+            , "/user/{userName}/del"
+        }
+    )
+    public void delete(
+            @PathVariable String userName
+    ) {
+        log.info("user-name : {}", userName);
     }
 }
