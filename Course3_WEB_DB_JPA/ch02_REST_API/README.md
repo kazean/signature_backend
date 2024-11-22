@@ -19,7 +19,6 @@
 ## 실습(rest-api)
 ```java
 package com.example.restapi.controller;
-
 @RestController
 @RequestMapping("/api")
 public class RestApiController {
@@ -36,8 +35,11 @@ public class RestApiController {
 > > 통신이란 결국에 문자를 전송하는 것이다. (이후 `미디어포멧` 등)
 
 ## 정리
-- `@RestController`
-- `@RequestMapping(path= "<~~>")`
+- `@RestController`, `@RequestMapping(path= "<~~>")`
+- `@GetMapping(path="<path>")`
+> path을 명시적으로 사용하면 여러가지 주소 배열로 사용가능
+- 통신이랑 결국 문자를 전송하는것
+- ContentType을 plan/text로 보냈지만 브라우저가 해석하기 나름
 
 
 --------------------------------------------------------------------------------------------------------------------------------
@@ -134,7 +136,7 @@ public class RestApiController {
 - `@RequestParam(name = "<name>")`
 > '_', '-'의 경우, 변수명에 '-'는 지정되지 않으므로 name을 활용할 수 있다
 > > 단, JAVA의 규칙인 카멜케이스를 따르도록 한다.
-- Dto로 받을때 그냥 `BookQueryParam bookQueryParam` 로 지정해서 받을 수 있다
+- `단순 Type의 경우` 그러나 생략시 required=false (Dto로 받을때 그냥 `BookQueryParam bookQueryParam` 로 지정해서 받을 수 있다)
 
 
 --------------------------------------------------------------------------------------------------------------------------------
