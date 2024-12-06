@@ -14,9 +14,10 @@ public class RestApiController {
 
     @GetMapping("")
     public void hello() {
-        List<String> list = List.of("hello");
+        throw new RuntimeException("run time exception call");
+        /*List<String> list = List.of("hello");
         String element = list.get(1);
 
-        log.info("element: {}", element);
+        log.info("element: {}", element);*/
     }
 }

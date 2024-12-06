@@ -14,71 +14,80 @@ https://github.com/steve-developer/fastcampus-2023-part01/tree/main/PART1
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-## Ch03-01. Spring Boot Web에서 응답 만드는 방법 - Response Entity
-### 응답
-```
-String          일반 Text Type 응답
-Object          Json, 200 OK
-ReponseEntity   Body의 내용을 Object로 설정, 상황에 따라서 HttpStatus Code 설정
-@ReponseBody    RestController가 아닌 곳(Controller)에서 Json 응답
-```
-## 실습
-## controller/ResponseApiController
+# Ch03-01. Spring Boot Web에서 응답 만드는 방법 - Response Entity
+## 응답
+- String
+> 일반 Text Type 응답
+- Object
+> Json, 200 OK
+- `ReponseEntity`
+> Body의 내용을 Object로 설정, 상황에 따라서 HttpStatus Code 설정
+- `@ReponseBody`
+> RestController가 아닌 곳(Controller)에서 Json 응답
+
+## 실습 (restapi)
 ```java
+package com.example.restapi.controller;
+// http://localhost:8080/api/v1
 @Slf4j
+//@Controller
 @RestController
 @RequestMapping("/api/v1")
 public class ResponseApiController {
 
     @GetMapping("")
-    public ResponseEntity<UserRequest> user() {
+//    @RequestMapping(path = "", method = RequestMethod.GET)
+//    @ResponseBody
+    public UserRequest user() {
+    // public ResponseEntity<UserRequest> user() {
         var user = new UserRequest();
         user.setUserName("홍길동");
         user.setUserAge(10);
         user.setEmail("hong@gmail.com");
 
         log.info("user: {}", user);
-
+        /*
         var response = ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .header("x-custom", "hi")
                 .body(user);
 
         return response;
+        */
+        return user;
     }
+}
 
-```
-> 보통 Object 방식, 예외와 같은 상황시 ResponseEntity<> 사용
-## model/UserRequest
-```java
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
+package com.example.restapi.model;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+//@JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class) //Deprecated
 public class UserRequest {
     private String userName;
-
     private Integer userAge;
-
     private String email;
-
-    private Boolean isKorean; // is_korean
-
+    private Boolean isKorean; // default: false
 }
+
 ```
-> JsonNaming(PropertyNamingStrategies.SnakeCaseStrategty.class)  
-JsonNaming 전략 지정
+## 정리
+- @RestController: JSON 방식 응답형태를 나타낼때
+- `ResponseEntitiy<T>`: 예외를 발생했을때 사용
+- 보통은 Object를 반환 `@ResponseBody`
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 ## Ch03-02. Spring Boot - 다양한 기능 살펴보기 Object Mapper
-### ObjectMapper(Jackson, Gson)
-JSON - DTO: 직렬화, 역직렬화
-### RestapiApplicationTests.java
+## `ObjectMapper`(Jackson, Gson)
+- JSON - DTO: 직렬화, 역직렬화
+- Jackson Library(springboot), Gson
+
+## 실습 (resapi)
+- test
 ```java
+package com.example.restapi;
 @SpringBootTest
 class RestapiApplicationTests {
 	@Autowired
@@ -86,6 +95,7 @@ class RestapiApplicationTests {
 
 	@Test
 	void contextLoads() throws JsonProcessingException {
+
 		UserRequest user = new UserRequest();
 		user.setUserName("홍길동");
 		user.setUserAge(10);
@@ -99,20 +109,28 @@ class RestapiApplicationTests {
 		System.out.println(dto);
 	}
 }
+
 ```
-> String objectMapper.writeValueAsString(Object value)  
-OBject objectMapper.readValue(String content, Class<T> valueType)  
-`dto > json 변환`은 `getMethodname 명칭`으로 변환된다  
-`@JsonIgnore` json으로 사용하지 않는 Getter 지정  
-`@JsonProperty("user_email")` Json property key 지정  
-`json > dto 변환`은 `setMethodName 명칭`으로 변환된다
+
+## 정리
+- Springboot는 기본적으로 `ObjectMapper`를 사용
+- `String: objectMapper.writeValueAsString(Object value)` 직렬화(dto -> json)
+- `OBject: objectMapper.readValue(String content, Class<T> valueType)` 역직렬화(json -> dto)
+> - `dto > json 변환`은 `get<Methodname> 명칭`으로 변환된다  
+> - `json > dto 변환`은 `set<MethodName> 명칭`으로 변환된다
+- `@JsonIgnore` json으로 사용하지 않는 Getter 지정  
+- `@JsonProperty("user_email")` Json property key 지정
+> getter를 대신할 수 도있음
+- ObjectMapper는 Reflection으로 동작
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-## Ch03-03. Spring Boot - 예외처리 소개 - 1
-### Exception
-Filter > DispatcherServlet > [ Handler Mapping > Handler Interceptor > Controller > Exception Handler ]
-### RestApiExceptionHandler.java
+# Ch03-03. Spring Boot - 예외처리 소개 - 1
+## Exception
+![Springboot Web 동작방식](./images/springboot_action.png)
+- `Filter` > `DispatcherServlet` > [ Handler Mapping > Handler Interceptor > Controller > Exception Handler ]
+
+## 실습 (exception)
 ```java
 @Slf4j
 @RestControllerAdvice
@@ -135,8 +153,8 @@ public class RestApiExceptionHandler {
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-## Ch03-03. Spring Boot - 예외처리 소개 - 2
-### RestApiBController - 지역예외 Handler
+# Ch03-03. Spring Boot - 예외처리 소개 - 2
+## RestApiBController - 지역예외 Handler
 ```java
 @Slf4j
 @RestController
@@ -171,7 +189,7 @@ Class<?>[] basePackageClasses() default {};
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-## Ch03-04. Spring Boot - 예외처리 실전 - 1
+# Ch03-04. Spring Boot - 예외처리 실전 - 1
 클라이언트 입장에서 정상 요청흐름과 에러 요청흐름 결과 형식 맞추기 > `ResponseEntity`
 ### Api<T>
 @Builder  
@@ -234,7 +252,7 @@ public ResponseEntity noSuchElement(NoSuchElementException e) {
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-## Ch03-05. Spring Boot - 예외처리 실전 - 2
+# Ch03-05. Spring Boot - 예외처리 실전 - 2
 ExceptionHandler 순서 지정 `@Order`
 ### GlobalExceptionHandler
 ```java
@@ -262,7 +280,7 @@ UserApiController: RuntimeEx
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-## Ch03-06. Spring Boot Validation 소개
+# Ch03-06. Spring Boot Validation 소개
 검증 코드와 서비스 코드
 ### spring-boot-starter-validation
 > gradle dependencies impl spring-boot-starter-validation
@@ -279,7 +297,7 @@ UserApiController: RuntimeEx
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-## Ch03-07. Spring Boot Validation 실전 적용 - 1
+# Ch03-07. Spring Boot Validation 실전 적용 - 1
 ### UserRegisterRequest(VO)
 ```java
 import javax.validation.constraints.*;
@@ -328,7 +346,7 @@ public class UserApiController {
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-## Ch03-08. Spring Boot Validation 실전 적용 - 2
+# Ch03-08. Spring Boot Validation 실전 적용 - 2
 - !클라이언트에서 200 OK 문제, 형식
 - MethodArgumentNotValidException > ExHandler
 - Controller: Return Api<UserRegisterRequest>
@@ -421,7 +439,7 @@ public Api<UserRegisterRequest> register(
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-## Ch03-09. Spring Boot Validation 실전 적용 - 3
+# Ch03-09. Spring Boot Validation 실전 적용 - 3
 - 두 개 이상 복합조건 검증만들기 `@AssertTrue`
 - Cusotom Annotation & Custom Validator 만들기
 ### UserRegisterRequest
