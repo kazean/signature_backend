@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Slf4j
 @RestControllerAdvice
+@Order(Integer.MAX_VALUE)
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = {Exception.class})

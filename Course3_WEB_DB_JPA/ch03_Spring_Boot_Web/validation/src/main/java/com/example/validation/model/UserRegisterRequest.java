@@ -25,19 +25,24 @@ public class UserRegisterRequest {
 //    @NotBlank     // name != null & name != "" & name != " "
     private String name;
     private String nickName;
+
     @NotBlank
     @Size(min = 1, max = 12)
     private String password;
+
     @NotNull
     @Min(1)
     @Max(100)
     private Integer age;
+
     @Email
     private String email;
+
 //    @Pattern(regexp = "^\\d{2,3}-\\d{3,4}-\\d{4}$", message = "휴대폰 번호 양식에 맞지 않습니다.")
     @PhoneNumber
     private String phoneNumber;
-//    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Seoul")
+
+    //    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Seoul")
     @FutureOrPresent
     private LocalDateTime registerAt;
 

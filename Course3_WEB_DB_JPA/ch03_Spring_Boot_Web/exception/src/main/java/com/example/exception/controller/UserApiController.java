@@ -29,9 +29,9 @@ public class UserApiController {
 
     @GetMapping("id/{userId}")
     public Api<UserResponse> getUser(@PathVariable String userId) {
-        if (true) {
-            throw new RuntimeException("message");
-        }
+//        if (true) {
+//            throw new RuntimeException("message");
+//        }
         UserResponse user = userList.stream()
                 .filter(it -> it.getId().equals(userId))
                 .findFirst().get();

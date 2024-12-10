@@ -16,7 +16,9 @@ import java.util.stream.Collectors;
 public class ValidationExceptionHandler {
 
     @ExceptionHandler(value = {MethodArgumentNotValidException.class})
-    public ResponseEntity<Api> validationException(MethodArgumentNotValidException exception) {
+    public ResponseEntity<Api<? extends Object>> validationException(
+            MethodArgumentNotValidException exception
+    ) {
         log.error("", exception);
 
         List<String> errorMessageList = exception.getFieldErrors().stream()

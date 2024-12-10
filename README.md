@@ -5,8 +5,8 @@
 - [Course3. 웹 입문과 데이터베이스](https://github.com/kazean/signature_backend/tree/main/Course3_WEB_DB_JPA)
 > - 1. HTTP, REST, SpringBoot Intro
 > - 2. REST API 
-> - 3. SpringBoot WEB
-> - 4. 
+> - 3. SpringBoot WEB (`Api<T>/ResponseEntity/ExceptionHandler/Validation`)
+> - 4. MemoryDB
 - [Course4. 프로젝트로 시작하는 웹 서비스 개발](https://github.com/kazean/signature_backend/tree/main/Course4_WebService)
 > - 1. Project: Web 인증(Http Session/Cookie, JWT)
 > - 2. Project: service Project

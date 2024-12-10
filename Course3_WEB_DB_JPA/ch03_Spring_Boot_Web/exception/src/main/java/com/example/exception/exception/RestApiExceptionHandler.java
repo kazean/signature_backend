@@ -15,15 +15,24 @@ import java.util.NoSuchElementException;
 @Order(1)
 public class RestApiExceptionHandler {
 
+    @ExceptionHandler(value = {Exception.class})
+    public ResponseEntity exception(
+            Exception e
+    ) {
+        log.error("exception", e);
+        return ResponseEntity.status(200).build();
+    }
+
     @ExceptionHandler(value = {IndexOutOfBoundsException.class})
     public ResponseEntity outOfBound(IndexOutOfBoundsException e) {
+
         log.error("IndexOutOfBoundsException", e);
         return ResponseEntity.status(200).build();
     }
 
     @ExceptionHandler(value = {NoSuchElementException.class})
-    public ResponseEntity noSuchElement(NoSuchElementException e) {
-        log.error("", e);
+    public ResponseEntity<Api> noSuchElement(NoSuchElementException e) {
+        log.error("NoSuchElementException", e);
         Api<Object> response = Api.builder()
                 .resultCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
                 .resultMessage(HttpStatus.NOT_FOUND.getReasonPhrase())

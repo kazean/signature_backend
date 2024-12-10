@@ -18,9 +18,9 @@ public class RestApiBController {
         throw new NumberFormatException("number format exception");
     }
 
-    /*@ExceptionHandler(value = {NumberFormatException.class})
+    @ExceptionHandler(value = {NumberFormatException.class})
     public ResponseEntity numberFormatException(NumberFormatException e) {
-        log.error("RestApiBController", e);
+        log.error("RestApiBController NumberFormatException", e);
         return ResponseEntity.status(HttpStatus.OK).build();
-    }*/
+    }
 }

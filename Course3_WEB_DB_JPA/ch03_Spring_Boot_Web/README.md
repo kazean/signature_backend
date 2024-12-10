@@ -129,33 +129,67 @@ class RestapiApplicationTests {
 ## Exception
 ![Springboot Web 동작방식](./images/springboot_action.png)
 - `Filter` > `DispatcherServlet` > [ Handler Mapping > Handler Interceptor > Controller > Exception Handler ]
+- Exception Handler 에서 예외처리를 하고 Service는 비지니스 로직만 집중
 
 ## 실습 (exception)
 ```java
+package com.example.exception.controller;
+@Slf4j
+@RestController
+@RequestMapping("/api")
+public class RestApiController {
+
+    @GetMapping("")
+    public void hello() {
+        throw new RuntimeException("run time exception call");
+        /*List<String> list = List.of("hello");
+        String element = list.get(1);
+
+        log.info("element: {}", element);*/
+    }
+}
+
+package com.example.exception.exception;
 @Slf4j
 @RestControllerAdvice
 public class RestApiExceptionHandler {
 
-    @ExceptionHandler(value = { Exception.class})
-    public ResponseEntity exception(Exception e) {
-        log.error("", e);
-        return ResponseEntity.status(200).build();
-    }
-
-    @ExceptionHandler(value = { IndexOutOfBoundsException.class})
+    @ExceptionHandler(value = { IndexOutOfBoundsException.class })
     public ResponseEntity outOfBound(IndexOutOfBoundsException e) {
         log.error("IndexOutOfBoundsException", e);
         return ResponseEntity.status(200).build();
     }
+
+    @ExceptionHandler(value = { NoSuchElementException.class })
+    public ResponseEntity noSuchElement(NoSuchElementException e) {
+        log.error("", e);
+        Api<Object> response = Api.builder()
+                .resultCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
+                .resultMessage(HttpStatus.NOT_FOUND.getReasonPhrase())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(response);
+    }
 }
 ```
-> `@RestControllerAdvice`, `@ExceptionHandler(Class<? extends Throwable>[] value())`
+
+## 정리
+- `@RestControllerAdvice`, `@ExceptionHandler(Class<? extends Throwable>[] value())`
+> - 응답 > `ReponseEntity<T>`
+> > `ReponseEntity.status(<HttpStatusCode>).build()`
+> - @ExceptionHandler는 구체화된 에러가 먼저 우선순위
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-03. Spring Boot - 예외처리 소개 - 2
 ## RestApiBController - 지역예외 Handler
+- `@~ControllerAdvice(basePackages, baseClasses = "<name>")`
+
+## 실습 (exception)
+- 부분 에러처리
 ```java
+package com.example.exception.controller;
 @Slf4j
 @RestController
 @RequestMapping("/api/b")
@@ -166,39 +200,61 @@ public class RestApiBController {
         throw new NumberFormatException("number format exception");
     }
 
-    @ExceptionHandler(value = {NumberFormatException.class})
+    @ExceptionHandler(value = { NumberFormatException.class })
     public ResponseEntity numberFormatException(NumberFormatException e) {
-        log.error("RestApiBController", e);
+        log.error("RestApiBController NumberFormatException", e);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 }
+
 ```
-> But, 예외가 많아지면 코드 지저분
->> Global basePackages 지정
+- @RestControllerAdvice basePackages 지정
 ```java
 @RestControllerAdvice(basePackages = "com.example.exception.controller")
 public class RestApiExceptionHandler {
 ```
-> or basePackageClasses
 ```java
 String[] basePackages() default {};
 Class<?>[] basePackageClasses() default {};
 ```
-> basePackages(), basePackageClasses()
->> Global, 여러 개일 경우, 예외 순서 지정
+
+## 정리
+- 해당 controller에서 @ExceptionHandler 지정가능, 부분 에러처리 (추천X)
+- @~ControllerAdvice(basePackages or basePackageClasses = "<>")
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-04. Spring Boot - 예외처리 실전 - 1
-클라이언트 입장에서 정상 요청흐름과 에러 요청흐름 결과 형식 맞추기 > `ResponseEntity`
-### Api<T>
-@Builder  
-data, resultcode, resultMessage
-### UserResponse
-@Builder  
-id, name, age
-### UserApiController
+- 클라이언트 입장에서 `정상 요청흐름`과 `에러 요청흐름` `결과 형식 맞추기`
+- `Api<T>` 응답
+
+## 실습 (exception)
 ```java
+package com.example.exception.model;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class Api<T> {
+    private T data;
+    private String resultCode;
+    private String resultMessage;
+}
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class UserResponse {
+    private String id;
+    private String name;
+    private Integer age;
+}
+
+
+package com.example.exception.controller;
 @RestController
 @RequestMapping("/api/user")
 public class UserApiController {
@@ -230,32 +286,44 @@ public class UserApiController {
         return response;
     }
 }
-```
-> class.builder  
-body > UserResponse
 
-### RestApiExceptionHandler
-```java
-@ExceptionHandler(value = {NoSuchElementException.class})
-public ResponseEntity noSuchElement(NoSuchElementException e) {
-    log.error("", e);
-    Api<Object> response = Api.builder()
-            .resultCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
-            .resultMessage(HttpStatus.NOT_FOUND.getReasonPhrase())
-            .build();
+package com.example.exception.exception;
+@Slf4j
+@RestControllerAdvice(basePackages = "com.example.exception.controller")
+@Order(1)
+public class RestApiExceptionHandler {
+    // ~
 
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(response);
+    @ExceptionHandler(value = { NoSuchElementException.class })
+    public ResponseEntity noSuchElement(NoSuchElementException e) {
+        log.error("", e);
+        Api<Object> response = Api.builder()
+                .resultCode(String.valueOf(HttpStatus.NOT_FOUND.value()))
+                .resultMessage(HttpStatus.NOT_FOUND.getReasonPhrase())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(response);
+    }
 }
 ```
-> ResponseEntity body > UserResponse
+- result
+```json
+{
+    "data": null,
+    "result_code": "404",
+    "result_message": "Not Found"
+}
+```
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-05. Spring Boot - 예외처리 실전 - 2
-ExceptionHandler 순서 지정 `@Order`
-### GlobalExceptionHandler
+- ExceptionHandler 순서 지정 `@Order`
+
+## 실습 (exception)
 ```java
+package com.example.exception.exception;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -273,87 +341,132 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 }
+
 ```
-> @Order int value() default Ordered.LOWEST_PRECEDENCE; //Integer.MAX_VALUE
->> RestApiExceptionHandler: @Order(1)  
-UserApiController: RuntimeEx
+
+## 정리
+- `@Order`
+> - @Order int value() default Ordered.LOWEST_PRECEDENCE; 
+> > default: Integer.MAX_VALUE
+> - 순서가 낮을수록 우선순위가 높다
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-06. Spring Boot Validation 소개
-검증 코드와 서비스 코드
-### spring-boot-starter-validation
-> gradle dependencies impl spring-boot-starter-validation
+## Validation
+1. spring-boot-starter-validation
+2. [bean validation spec](https://beanvalidation.org/2.0/spec/#builtinconstraints)
+3. 정규식
+> ex 휴대폰 번호 정규식: `"^\\d{2,3}-\\d{3,4}-\\d{4}$"`
+- 검증 코드와 서비스 코드
+
+1. 유호성 검증 코드 길이 길다
+2. service logic 방해
+3. 어디서 검증되었는지 찾기 어렵다
+4. 검증로직이 변경되는 경우, 테스트 및 전체로직이 흔들릴 수 있다
+
 ### Annotation
-- @Size: 문자 길이 측정, Int Type 불가
-- @NotNull: null 불가
-- @NotBlank: null, "", " " 불가
-- @Pattern: 정규식 적용
-- @Max: 최대값
-- @Min: 최소값
-- @AsserTrue / False: 별도 Logic 적용
-- @Valid: 해당 object validation 실행
-- @Past/@PastOrPresent/@Future/@FutureOrPresent
+![Bean Validation Annotation](./images/bean_validation_annotation.png)
+![Bean Validation Annotation2](./images/bean_validation_annotation2.png)
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-07. Spring Boot Validation 실전 적용 - 1
-### UserRegisterRequest(VO)
+## Project
+- validation
+```
+com.example.validation
+JDK11, Jar
+Dependency
+> Lombok, Spring Web, Validation
+```
+## 실습 (validation)
 ```java
-import javax.validation.constraints.*;
-import java.time.LocalDateTime;
-
+package com.example.validation.model;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class UserRegisterRequest {
-    @NotBlank
+    @NotBlank     // name != null & name != "" & name != " "
     private String name;
+
     @NotBlank
     @Size(min = 1, max = 12)
     private String password;
+
     @NotNull
     @Min(1)
     @Max(100)
     private Integer age;
+
     @Email
     private String email;
+
     @Pattern(regexp = "^\\d{2,3}-\\d{3,4}-\\d{4}$", message = "휴대폰 번호 양식에 맞지 않습니다.")
     private String phoneNumber;
-//    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Seoul")
+
     @FutureOrPresent
     private LocalDateTime registerAt;
 }
-```
-> javax.validation
-### UserApiController
-```
+
+
+package com.example.validation.controller;
 @Slf4j
 @RestController
 @RequestMapping("/api/user")
 public class UserApiController {
 
+    /**
+     * MethodArgumentNotValidException
+     * @param userRegisterRequest
+     * @return
+     */
     @PostMapping("")
-    public UserRegisterRequest register(@Valid @RequestBody UserRegisterRequest userRegisterRequest) {
+    public UserRegisterRequest register(
+            @Valid
+            @RequestBody
+                    UserRegisterRequest userRegisterRequest
+    ) {
         log.info("init : {}", userRegisterRequest);
+
         return userRegisterRequest;
     }
 }
 ```
-> `@Valid`
+- Request Json
+```json
+{
+  "name": "hong",
+  "password": "1234",
+  "age": 20,
+  "email": "hong@gmail.com",
+  "phone_number": "010-1111-2222",
+  "register_at": "2025-01-01T13:05:10",
+  "birthDayYearMonth": "1991-07"
+}
+```
+
+## 정리
+- BeanValidation
+> - `@NotNull, @NotBlank @FutureOrPresent`, 
+> - `@Pattern(regexp = "<regexp>", message)`
+- `@Valid`
+> `MethodArgumentNotValidException`
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-08. Spring Boot Validation 실전 적용 - 2
 - !클라이언트에서 200 OK 문제, 형식
 - MethodArgumentNotValidException > ExHandler
-- Controller: Return Api<UserRegisterRequest>
-- ExHandler: Return Responseentity<Api>
+- Controller: `Return Api<UserRegisterRequest>`
+- ExHandler: `Return Responseentity<Api>`
 
-### Api - 응답형식
+## 실습 (validation)
+- 응답 Api 공통형식
 ```java
+package com.example.validation.model;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -376,8 +489,37 @@ public class Api<T> {
     }
 }
 ```
-### ValidationExceptionHandler
+- Code
 ```java
+package com.example.validation.controller;
+@Slf4j
+@RestController
+@RequestMapping("/api/user")
+public class UserApiController {
+
+    /**
+     * MethodArgumentNotValidException
+     * @param userRegisterRequest
+     * @return
+     */
+    @PostMapping("")
+    public Api<UserRegisterRequest> register(
+            @Valid
+            @RequestBody
+            Api<UserRegisterRequest> userRegisterRequest
+    ) {
+        log.info("init : {}", userRegisterRequest);
+        UserRegisterRequest body = userRegisterRequest.getData();
+        Api<UserRegisterRequest> response = Api.<UserRegisterRequest>builder()
+                .resultCode(String.valueOf(HttpStatus.OK.value()))
+                .resultMessage(HttpStatus.OK.getReasonPhrase())
+                .data(body)
+                .build();
+        return response;
+    }
+}
+
+package com.example.validation.exception;
 @Slf4j
 @RestControllerAdvice
 public class ValidationExceptionHandler {
@@ -408,56 +550,69 @@ public class ValidationExceptionHandler {
                 .body(errorResponse);
     }
 }
-```
-> MethodArguemntNotValidException  
-Return: ResponseEntity<Api>
-### UserApiController
-```java
-/**
-    * MethodArgumentNotValidException
-    * @param userRegisterRequest
-    * @return
-    */
-@PostMapping("")
-public Api<UserRegisterRequest> register(
-        @Valid
-        @RequestBody
-        Api<UserRegisterRequest> userRegisterRequest
-) {
-    log.info("init : {}", userRegisterRequest);
 
-    UserRegisterRequest body = userRegisterRequest.getData();
-    Api<UserRegisterRequest> response = Api.<UserRegisterRequest>builder()
-            .resultCode(String.valueOf(HttpStatus.OK.value()))
-            .resultMessage(HttpStatus.OK.getReasonPhrase())
-            .data(body)
-            .build();
-    return response;
-}
+
 ```
 > Return: Api<UserRegisterreuqest>
+- Request Json
+```json
+{
+  "result_code": "",
+  "result_message": "",
+  "data": {
+    "name": "hong",
+    "password": "1234",
+    "age": 20,
+    "email": "hong@gmail.com",
+    "phone_number": "010-1111-2222",
+    "register_at": "2025-01-01T13:05:10",
+    "birthDayYearMonth": "1991-07"
+  },
+  "error": {
+    "error_message": [
+    ]
+  }
+}
+```
+
+## 정리
+- 요청 `Api<T> ` 응답 `Api<T> or ReponseEntity<Api<T>> : error` 
+> - ExceptionHandler를 통한 Validation Error 처리: MethodArgumentNotValidException
+> - cf, BindResult (직접 처리)
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # Ch03-09. Spring Boot Validation 실전 적용 - 3
+- Custom Validation
 - 두 개 이상 복합조건 검증만들기 `@AssertTrue`
 - Cusotom Annotation & Custom Validator 만들기
-### UserRegisterRequest
+> - `@AssertTrue(message = "<msg>")`
+> - `@Constraint(validatedBy = { "<Custom Class>" })` Annotation
+> - `public interface ConstraintValidator<A extends Annotation, T> {    }` Class Impl
+
+## 실습 (validation)
 ```java
-@AssertTrue(message = "name or nickName은 반드시 1개가 존재해야 합니다")
-public boolean isNameCheck() {
-    if (Objects.nonNull(name) && !name.isBlank()) {
-        return true;
+public class UserRegisterRequest {
+    //~
+    private String name;
+    private String nickName;
+
+    @PhoneNumber
+    private String phoneNumber;
+
+    @AssertTrue(message = "name or nickName은 반드시 1개가 존재해야 합니다")
+    public boolean isNameCheck() {
+        if (Objects.nonNull(name) && !name.isBlank()) {
+            return true;
+        }
+        if (Objects.nonNull(nickName) && !nickName.isBlank()) {
+            return true;
+        }
+        return false;
     }
-    if (Objects.nonNull(nickName) && !nickName.isBlank()) {
-        return true;
-    }
-    return false;
 }
-```
-> `@AssertTrue`
-### Phonenumber
-```
+
+package com.example.validation.annotation;
 @Constraint(validatedBy = { PhoneNumberValidator.class })
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
@@ -470,11 +625,9 @@ public @interface PhoneNumber {
 
     Class<? extends Payload>[] payload() default { };
 }
-```
-> Validator 연걸: `@Contraint(validateBy = {PhonenumberValidator.class})`  
-Annotation 만들기 : @Target/@Retention
-### PhoneNumberValidator
-```
+
+
+package com.example.validation.validator;
 public class PhoneNumberValidator implements ConstraintValidator<PhoneNumber, String> {
     private String regexp;
 
@@ -489,7 +642,12 @@ public class PhoneNumberValidator implements ConstraintValidator<PhoneNumber, St
         return result;
     }
 }
+
 ```
-> `Impl ConstraintValidator<A extends Annotation, T extends Object>`  
-@Over void initialize(PhoneNumber constraintAnnotation)  
-@Over boolean isValid(String value, ConstraintValidatorContext context)
+
+## 정리
+- Custom Validation
+1. `@AssertTrue(message = "<msg>"")` : boolean
+2. Custom Annotation
+> - `@Constraint(validatedBy = {<~Validator.class>})` @Target @Retention
+> - `~Validator ConstraintValidator<A extends Annotation, T extends Object>`

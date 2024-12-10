@@ -42,6 +42,7 @@ public class UserApiController {
                 .resultMessage(HttpStatus.OK.getReasonPhrase())
                 .data(body)
                 .build();
+
         return response;
     }
 }
