@@ -1,4 +1,4 @@
-# Ch04. Memory DataBase CRUD
+# ch04. Memory DataBase CRUD
 - [1. Memory Database CRUD 적용해보기 - 1](#ch04-01-memory-database-crud-적용해보기---1)
 - [2. Memory Database CRUD 적용해보기 - 2](#ch04-02-memory-database-crud-적용해보기---2)
 - [3. Memory Database CRUD 적용해보기 - 3](#ch04-03-memory-database-crud-적용해보기---3)
@@ -298,7 +298,7 @@ public class UserService {
 
 
 --------------------------------------------------------------------------------------------------------------------------------
-# CH04-05. Memory Database CRUD 적용해보기 - 5
+# ch04-05. Memory Database CRUD 적용해보기 - 5
 - 사용자 10명 생성 후 70점 이상 User 검색
 
 ## 실습 (memory)
