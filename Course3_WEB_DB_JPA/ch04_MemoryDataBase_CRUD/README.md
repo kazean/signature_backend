@@ -62,11 +62,27 @@ public class YearMonthValidator implements ConstraintValidator<YearMonth, String
 
 --------------------------------------------------------------------------------------------------------------------------------
 # ch04-02. Memory Database CRUD 적용해보기 - 2
-- <I> Repository<T, ID>, DataRepository<T, ID> - CRUD, <A> SimpleDataRepository impl DataRepository
-- <I> PrimaryKey - getId, setId(), <A> Entity - Long
-## 실습 
-### <I> DataRepository
+## Memory Database
+- Database: 데이터 저장소
+- DBMS(DataBase Management System): 데이터베이스를 운영하고 관리하는 소프트웨어
+
+### CRUD
+- <I>Repository -> <I>Data Repository -> <Abstract> class>Simple Data Repository
+- <I>Id -> <Abstract Class>Entity
+
+## Project
+```
+com.example.memroydb
+Gradle-Grooby, JDK11
+Dependency: Lombok, Spring Web
+```
+
+## 실습 (memory)
 ```java
+package com.example.memorydb.db;
+public interface Repository <T, ID>{
+}
+
 public interface DataRepository<T, ID> extends Repository<T, ID> {
     //    create, create
     T save(T data);
@@ -80,17 +96,94 @@ public interface DataRepository<T, ID> extends Repository<T, ID> {
     void delete(ID id);
 }
 
+public abstract class SimpleDataRepository<T extends Entity, ID extends Long> implements DataRepository<T, ID> {
+    private List<T> dataList = new ArrayList<>();
+    private static long index = 0;
+
+    private Comparator<T> sort = new Comparator<T>() {
+        @Override
+        public int compare(T o1, T o2) {
+            return Long.compare(o1.getId(), o2.getId());
+        }
+    };
+
+//    create, update
+    @Override
+    public T save(T data) {
+        if (Objects.isNull(data)) {
+            throw new RuntimeException("Data is null");
+        }
+//        db에 데이터가 있는가?
+        Optional<T> prevData = dataList.stream()
+                .filter(it -> {
+                    return it.getId().equals(data.getId());
+                }).findFirst();
+
+        if (prevData.isPresent()) {
+//            기존 데이터 있는 경우
+            dataList.remove(prevData.get());
+            dataList.add(data);
+        } else {
+//            없는 경우
+            index++;
+            data.setId(index);
+            dataList.add(data);
+
+        }
+        return data;
+    }
+
+//    read
+    @Override
+    public Optional<T> findById(ID id) {
+        return dataList.stream()
+                .filter(i -> {
+                    return i.getId().equals(id);
+                }).findFirst();
+    }
+
+    @Override
+    public List<T> findAll() {
+        return dataList.stream().sorted(sort).collect(toList());
+    }
+
+//    delete
+    @Override
+    public void delete(ID id) {
+        Optional<T> deleteEntity = dataList.stream()
+                .filter(i -> {
+                    return i.getId().equals(id);
+                }).findFirst();
+        if (deleteEntity.isPresent()) {
+            dataList.remove(deleteEntity.get());
+        }
+    }
+}
+
+
+package com.example.memorydb.entity;
+public interface PrimaryKey {
+    void setId(Long id);
+
+    Long getId();
+}
+public abstract class Entity implements PrimaryKey {
+    @Getter
+    @Setter
+    private Long id;
+
+}
 ```
-### <A> SimpleDataRepository
-CRUD 구현
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # ch04-03. Memory Database CRUD 적용해보기 - 3
-## 실습 
-### user/config, controller, service, db, model/UserEntity - name, score
-### UserApiController
+## CRUD
+- Req/Res 실습: save/findAll
+
+## 실습 (memory)
 ```java
+package com.example.memorydb.user.controller;
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
@@ -107,9 +200,8 @@ public class UserApiController {
         return userService.findAll();
     }
 }
-```
-### UserService
-```java
+
+package com.example.memorydb.user.service;
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -124,48 +216,156 @@ public class UserService {
         return userRepository.findAll();
     }
 }
+
+package com.example.memorydb.user.db;
+@Repository
+public class UserRepository extends SimpleDataRepository<UserEntity, Long> {
+    public List<UserEntity> findAllScoreGraterThen(int score) {
+        return this.findAll().stream()
+                .filter(it -> {
+                    return it.getScore() >= score;
+                }).collect(toList());
+    }
+}
+
+
+package com.example.memorydb.user.model;
+@EqualsAndHashCode(callSuper = true)
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UserEntity extends Entity {
+
+    private String name;
+    private int score;
+
+}
 ```
-### UserRepository - extends SimpleDataRepository
+- request
+```json
+{
+  "name": "홍길동",
+  "score": 100
+}
+```
+
+## 정리
+- Repository 틀 만들어서 DI 사용
+- Comparator
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # ch04-04. Memory Database CRUD 적용해보기 - 4
-## 실습 
-### UserApiController
+## CRUD
+- Req/Res 실습: delete/findById
+## 실습 (memory)
 ```java
-@DeleteMapping("/id/{id}")
-public void delete(@PathVariable Long id) {
-    userService.delete(id);
+package com.example.memorydb.user.controller;
+@RestController
+@RequestMapping("/api/user")
+@RequiredArgsConstructor
+public class UserApiController {
+    
+    private final UserService userService;
+    
+    // ~
+
+    @DeleteMapping("/id/{id}")
+    public void delete(@PathVariable Long id) {
+        userService.delete(id);
+    }
+
+    @GetMapping("/id/{id}")
+    public UserEntity findOne(@PathVariable Long id) {
+        Optional<UserEntity> response = userService.findById(id);
+        return response.get();
+    }
 }
 
-@GetMapping("/id/{id}")
-public UserEntity findOne(@PathVariable Long id) {
-    Optional<UserEntity> response = userService.findById(id);
-    return response.get();
+public class UserService {
+    // ~
+
+    public void delete(Long id) {
+        userRepository.delete(id);
+    }
+
+    public Optional<UserEntity> findById(Long id) {
+        return userRepository.findById(id);
+    }
 }
 ```
 
 
 --------------------------------------------------------------------------------------------------------------------------------
 # CH04-05. Memory Database CRUD 적용해보기 - 5
-70점 이상 User 검색
-## 실습 
-### UserApiController
+- 사용자 10명 생성 후 70점 이상 User 검색
+
+## 실습 (memory)
 ```java
-@GetMapping("/score")
-public List<UserEntity> filterScore(@RequestParam int score) {
-    return userService.filetScore(score);
+@Repository
+public class UserRepository extends SimpleDataRepository<UserEntity, Long> {
+    public List<UserEntity> findAllScoreGraterThen(int score) {
+        return this.findAll().stream()
+                .filter(it -> {
+                    return it.getScore() >= score;
+                }).collect(toList());
+    }
+}
+
+public class UserService {
+    public List<UserEntity> filetScore(int score) {
+        return userRepository.findAllScoreGraterThen(score);
+    }
+}
+
+public class UserApiController {
+    // ~
+
+    @GetMapping("/score")
+    public List<UserEntity> filterScore(@RequestParam int score) {
+        return userService.filetScore(score);
+    }
 }
 ```
-### UserService
-### USerRepository
-```
-public List<UserEntity> findAllScoreGraterThen(int score) {
-    return this.findAll().stream()
-            .filter(it -> {
-                return it.getScore() >= score;
-            }).collect(toList());
+### BookEntity CRUD ...
+```java
+package com.example.memorydb.book.db.entity;
+@EqualsAndHashCode(callSuper = true)
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class BookEntity extends Entity {
+    private String name;
+    private String category;
+    private BigDecimal amount;
 }
+
+package com.example.memorydb.book.db.repository;
+@Repository
+public class BookRepository extends SimpleDataRepository<BookEntity, Long> {
+}
+
+
+package com.example.memorydb.book.db.servie;
+@Service
+@RequiredArgsConstructor
+public class BookService {
+    private final BookRepository bookRepository;
+
+    //    create, update
+    public BookEntity create(BookEntity bookEntity) {
+        return bookRepository.save(bookEntity);
+    }
+
+    //    all
+    public List<BookEntity> findAll() {
+        return bookRepository.findAll();
+    }
+//    delete
+//    findOne
+}
+
+// Service, Controller
 ```
-### BookEntity - name, category, amount, BookRepository, BookService, BookApiController
-("") create, ("/all") findAll(), delete/findOne
