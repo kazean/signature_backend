@@ -132,7 +132,7 @@ SET
 name = '강감찬'
 WHERE age >= 777 AND name = '홍길동';
 
-ㅊ
+DELETE FROM `user` where name = '강감찬';
 ```
 
 
