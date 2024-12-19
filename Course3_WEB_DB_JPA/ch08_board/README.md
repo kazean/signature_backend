@@ -142,10 +142,7 @@ public class PostEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @ManyToOne
-    @JsonIgnore
-    @ToString.Exclude
-    private BoardEntity board;  // board + _id
+	private Long postId;
     private String userName;
     private String password;
     private String email;
@@ -154,9 +151,7 @@ public class PostEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
     private LocalDateTime postedAt;
-    @OneToMany(mappedBy = "post")
-    @Builder.Default
-    private List<ReplyEntity> replyList = new ArrayList<>();
+    
 }
 public interface PostRepository extends JpaRepository<PostEntity, Long> {
 }
@@ -173,10 +168,7 @@ public class ReplyEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @ManyToOne
-    @ToString.Exclude
-    @JsonIgnore
-    private PostEntity post;
+    private Long postId;
     private String userName;
     private String password;
     private String status;
@@ -207,7 +199,7 @@ public class BoardApiController {
     private final BoardService boardService;
 
     @PostMapping("")
-    public BoardDto create(@Valid @RequestBody BoardRequest boardRequest) {
+    public BoardEntity create(@Valid @RequestBody BoardRequest boardRequest) {
         return boardService.create(boardRequest);
     }
 }
@@ -231,13 +223,13 @@ public class BoardService {
     private final BoardRepository boardRepository;
     private final BoardConverter boardConverter;
 
-    public BoardDto create(BoardRequest boardRequest) {
+    public BoardEntity create(BoardRequest boardRequest) {
         BoardEntity boardEntity = BoardEntity.builder()
                 .boardName(boardRequest.getBoardName())
                 .status("REGISTERED")
                 .build();
         BoardEntity saveEntity = boardRepository.save(boardEntity);
-        return boardConverter.toDto(saveEntity);
+        return saveEntity;
     }
 }
 
@@ -313,7 +305,7 @@ public class PostService {
 
 --------------------------------------------------------------------------------------------------------------------------------
 # ch08-05. 간단한 게시판 개발하기 API End Point 개발 - 2
-- 게시판 전체보기, 열람, 삭제 API 개발
+- 게시글 전체보기, 열람, 삭제 API 개발
 
 ## 실습
 ```java
@@ -325,8 +317,8 @@ public class PostApiController {
     }
 
     @GetMapping("/all")
-    public Api<List<PostEntity>> list(@PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
-        return postService.all(pageable);
+    public List<PostEntity> list() {
+        return postService.all();
     }
 
     @PostMapping("/delete")
@@ -522,11 +514,11 @@ public class PostEntity {
 
 }
 ```
+> `@Transient`: Entity에서 DB Column 제외
+
 ## 실습2
 - Talent API
 > - 답변작성(2) > 게시글 열람
-
-
 
 
 --------------------------------------------------------------------------------------------------------------------------------
