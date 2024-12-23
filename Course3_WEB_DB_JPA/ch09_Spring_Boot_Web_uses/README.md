@@ -364,3 +364,7 @@ execution(public * com.exmaple.service.*Sample)
 > ex) @target(com.~.PhoneNumber)
 ### bean
 > ex) bean(userService): UserService bean의 모든 메서드
+
+## 정리
+- PCD
+> Spring Aop Document를 보면서 참고
