@@ -4,7 +4,8 @@
 - [Course2. JAVA Advance]()
 - [Course3. 웹 입문과 데이터베이스](https://github.com/kazean/signature_backend/tree/main/Course3_WEB_DB_JPA)
 > - HTTP, REST API, Mysql SQL 쿼리, MemoryDB
-> - SpringBoot/ Web/ Data JPA
+> - SpringBoot(ResponseEntity, @Advice, Validation)/ Web/ Data JPA
+> - SpringBoot Web(Filter, Interceptor, AOP)
 - [Course4. 프로젝트로 시작하는 웹 서비스 개발](https://github.com/kazean/signature_backend/tree/main/Course4_WebService)
 > - Web 인증(Http Session/Cookie, JWT)
 > - Multi Module, JPA, Swagger, ObjectMapper

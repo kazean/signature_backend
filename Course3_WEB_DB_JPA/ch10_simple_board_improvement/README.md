@@ -1,8 +1,17 @@
-# Ch10. 간단한 게시판 프로젝트 개선
-## Ch10-01. 추상화를 통한 게시판 프로젝트 개선 - 1
-### 추상화 crud
+# ch10. 간단한 게시판 프로젝트 개선
+- [1. 추상화를 통한 게시판 프로젝트 개선 - 1](#ch10-01-추상화를-통한-게시판-프로젝트-개선---1)
+- [2. 추상화를 통한 게시판 프로젝트 개선 - 2](#ch10-02-추상화를-통한-게시판-프로젝트-개선---2)
+
+
+--------------------------------------------------------------------------------------------------------------------------------
+# ch10-01. 추상화를 통한 게시판 프로젝트 개선 - 1
+## 추상화 CRUD
+- 기본제공 추상화 시키기(Service)
+
+## 실습 (simple-board)
 - CRUDInterface
-```
+```java
+package com.example.simpleboard.crud;
 public interface CRUDInterface<DTO> {
     DTO create(DTO dto);
 
@@ -14,9 +23,7 @@ public interface CRUDInterface<DTO> {
 
     Api<List<DTO>> list(Pageable pageable);
 }
-```
-- <A> CRUDAbstractService
-```
+
 /**
  * dto -> entity -> dto
  */
@@ -82,9 +89,7 @@ public abstract class CRUDAbstractService<DTO, ENTITY> implements CRUDInterface<
         return response;
     }
 }
-```
-- <I> Converter
-```
+
 public interface Converter<DTO, ENTITY> {
     DTO toDTO(ENTITY entity);
 
@@ -92,9 +97,13 @@ public interface Converter<DTO, ENTITY> {
 }
 ```
 
-## Ch10-02. 추상화를 통한 게시판 프로젝트 개선 - 2
-### crud.CRUDAbstractApiController
-```
+
+--------------------------------------------------------------------------------------------------------------------------------
+# ch10-02. 추상화를 통한 게시판 프로젝트 개선 - 2
+- 추상화 Controller
+## 실습 (simple-board)
+```java
+package com.example.simpleboard.crud;
 public abstract class CRUDAbstractApiController<DTO, ENTITY> implements CRUDInterface<DTO>{
     @Autowired(required = false)
     private CRUDAbstractService<DTO, ENTITY> crudAbstractService;
@@ -129,11 +138,16 @@ public abstract class CRUDAbstractApiController<DTO, ENTITY> implements CRUDInte
         return crudAbstractService.list(pageable);
     }
 }
-```
-### reply
-```
-- model/ReplyDto
-@~
+
+// - model/ReplyDto
+package com.example.simpleboard.reply.model;
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@Builder
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ReplyDto {
     private Long id;
     private Long postId;
@@ -144,7 +158,9 @@ public class ReplyDto {
     private String content;
     private LocalDateTime repliedAt;
 }
-- service/Replyconverter
+
+package com.example.simpleboard.reply.service;
+// - service/Replyconverter
 @Service
 @RequiredArgsConstructor
 public class ReplyConverter implements Converter<ReplyDto, ReplyEntity> {
@@ -178,17 +194,24 @@ public class ReplyConverter implements Converter<ReplyDto, ReplyEntity> {
                 .build();
     }
 }
-- controller/ReplyApiController
+
+// - controller/ReplyApiController
 @RestController
 @RequestMapping("/api/reply")
 @RequiredArgsConstructor
 public class ReplyApiController extends CRUDAbstractApiController<ReplyDto, ReplyEntity> {
 }
-- service/ReplyService
+
+// - service/ReplyService
 @Transactional
 @Service
 @RequiredArgsConstructor
 public class ReplyService extends CRUDAbstractService<ReplyDto, ReplyEntity> {
 }
 ```
-> ReplyConverter, ReplyService 자동주입(제네릭)
+> - TalentAPI
+> > - 답변작성
+> > - 답변/{id} / 답변전체(all)
+
+## 정리
+- 추상화를 통한 CRUD 적용 (공통기능)
